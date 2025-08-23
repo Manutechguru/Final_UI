@@ -1,0 +1,276 @@
+/* =============================
+   General Reset & Base Styles
+============================= */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Remove blue focus outline from inputs */
+input:focus, select:focus, textarea:focus, button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: #ccc !important;
+}
+
+/* =============================
+   Navbar
+============================= */
+.navbar, header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #007BFF;
+    padding: 10px 20px;
+}
+.navbar .logo, header .logo {
+    font-size: 1.5em;
+    color: #fff;
+    font-weight: bold;
+}
+.navbar .nav-links, header .nav-links {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+    padding: 0;
+    margin: 0;
+}
+.navbar .nav-links a, header .nav-links a {
+    text-decoration: none;
+    color: #fff;
+    font-weight: bold;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+.navbar .nav-links a:hover, header .nav-links a:hover {
+    background: rgba(255,255,255,0.2);
+    text-decoration: none;
+}
+
+/* =============================
+   Page Titles
+============================= */
+h1, h2, h4 {
+    margin: 1rem 0;
+}
+
+/* =============================
+   Dashboard Sections
+============================= */
+.dashboard-section {
+    background: white;
+    padding: 1rem;
+    margin: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* =============================
+   Tables
+============================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 0.75rem;
+    text-align: left;
+}
+th {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+tr:nth-child(even) {
+    background: #fafafa;
+}
+tr:hover {
+    background: #f1f9ff;
+}
+
+/* Table header color for search page */
+.table-primary th {
+    background-color: #007BFF !important;
+    color: white !important;
+}
+
+/* =============================
+   Search Page Styles
+============================= */
+.search-container {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-bottom: 2rem;
+}
+
+.search-container input {
+    height: 50px;
+    font-size: 1rem;
+    border-radius: 8px;
+}
+
+/* =============================
+   Badges (Skills)
+============================= */
+.badge-skill,
+.badge {
+    display: inline-block;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    background: #007BFF;
+    color: white;
+    border-radius: 20px;
+    margin: 2px 2px 4px 0;
+    white-space: nowrap;
+    transition: 0.2s;
+}
+
+.badge-skill:hover {
+    background: #0056b3;
+    cursor: default;
+}
+
+/* =============================
+   Hiring Pipeline Stage Bar
+============================= */
+.stage-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.stage {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: 0.2s;
+}
+.stage:hover {
+    transform: translateY(-2px);
+}
+.stage.Screening { background: #7f8c8d; }
+.stage.Submissions { background: #3498db; }
+.stage.Interview { background: #e67e22; }
+.stage.Offered { background: #9b59b6; }
+.stage.Hired { background: #27ae60; }
+.stage.Rejected { background: #c0392b; }
+.stage.Archived { background: #95a5a6; }
+
+/* =============================
+   Candidate Cards (Search Page)
+============================= */
+.candidate-card {
+    border: none;
+    padding: 20px;
+    border-radius: 12px;
+    background: #fff;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.candidate-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+}
+
+.candidate-card h5 {
+    font-size: 1.25rem;
+    margin-bottom: 10px;
+}
+
+.candidate-card ul {
+    padding-left: 0;
+    list-style: none;
+    margin-bottom: 15px;
+}
+
+.candidate-card ul li {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.candidate-card .card-body .mt-auto {
+    margin-top: auto;
+}
+
+/* =============================
+   Buttons
+============================= */
+.btn, .btn-outline-primary, .btn-secondary, .btn-primary {
+    transition: 0.2s;
+    border-radius: 8px;
+    font-weight: 500;
+}
+.btn:hover {
+    transform: translateY(-2px);
+}
+.btn-primary {
+    background: #007BFF;
+    border: none;
+}
+.btn-primary:hover {
+    background: #0056b3;
+}
+.btn-outline-primary {
+    border: 1px solid #007BFF;
+    color: #007BFF;
+}
+.btn-outline-primary:hover {
+    background: #007BFF;
+    color: white;
+}
+
+/* =============================
+   Responsive Tables
+============================= */
+@media (max-width: 768px) {
+    table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+    }
+    th, td {
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+    }
+    th::before, td::before {
+        position: absolute;
+        left: 0;
+        width: 45%;
+        padding-left: 10px;
+        font-weight: bold;
+        white-space: nowrap;
+        text-align: left;
+    }
+}
+
+/* =============================
+   Footer
+============================= */
+footer {
+    background: #007BFF;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    margin-top: auto;
+    font-size: 0.9em;
+}

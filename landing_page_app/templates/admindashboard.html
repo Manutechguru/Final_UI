@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/admin.css') }}">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- HEADER -->
+    <header class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md">
+        <h1 class="text-2xl font-bold">Admin Dashboard</h1>
+        <a href="/logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</a>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="p-6">
+        <!-- Tabs -->
+        <div class="mb-6">
+            <button onclick="showTab('pending', event)" class="tab-btn bg-indigo-500 text-white px-4 py-2 rounded mr-2">Pending Users</button>
+            <button onclick="showTab('logs', event)" class="tab-btn bg-gray-200 px-4 py-2 rounded mr-2">User Logs</button>
+            <button onclick="showTab('allusers', event)" class="tab-btn bg-gray-200 px-4 py-2 rounded">All Users</button>
+        </div>
+
+        <!-- Pending Users -->
+        <div id="pending" class="tab-content">
+            <h2 class="text-xl font-semibold mb-4">Pending Users</h2>
+            {% if pending_users %}
+                <ul class="space-y-3">
+                    {% for user in pending_users %}
+                        <li class="bg-white p-4 rounded shadow flex justify-between items-center">
+                            <div>
+                                <span class="font-medium">{{ user.full_name }}</span> - <span class="text-gray-600">{{ user.email }}</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <form method="post" action="/admin/approve/{{ user.id }}">
+                                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded">Approve</button>
+                                </form>
+                                <form method="post" action="/admin/reject/{{ user.id }}">
+                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Reject</button>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-gray-500">No pending users.</p>
+            {% endif %}
+        </div>
+
+        <!-- User Logs -->
+        <div id="logs" class="tab-content hidden">
+            <h2 class="text-xl font-semibold mb-4">User Logs</h2>
+            {% if user_logs %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white shadow rounded">
+                        <thead>
+                            <tr class="bg-indigo-500 text-white">
+                                <th class="px-4 py-2">User ID</th>
+                                <th class="px-4 py-2">Action</th>
+                                <th class="px-4 py-2">Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in user_logs %}
+                                <tr class="border-b">
+                                    <td class="px-4 py-2">{{ log.user_id }}</td>
+                                    <td class="px-4 py-2">{{ log.action }}</td>
+                                    <td class="px-4 py-2">{{ log.timestamp }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-gray-500">No logs yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- All Users -->
+        <div id="allusers" class="tab-content hidden">
+            <h2 class="text-xl font-semibold mb-4">All Users</h2>
+            {% if all_users %}
+                <ul class="space-y-3">
+                    {% for user in all_users %}
+                        <li class="bg-white p-4 rounded shadow flex justify-between items-center">
+                            <div>
+                                <span class="font-medium">{{ user.full_name }}</span> - <span class="text-gray-600">{{ user.email }}</span> - <span class="text-sm text-gray-400">{{ user.role }}</span>
+                            </div>
+                            <div>
+                                <form method="post" action="/admin/remove/{{ user.id }}">
+                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Remove</button>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-gray-500">No users available.</p>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- JS -->
+    <script src="{{ url_for('static', path='js/admin.js') }}"></script>
+</body>
+</html>

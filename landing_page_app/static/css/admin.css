@@ -1,0 +1,13 @@
+/* Admin dashboard custom styles */
+.tab-btn {
+    transition: background 0.2s, color 0.2s;
+}
+
+.tab-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
