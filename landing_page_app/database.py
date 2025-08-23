@@ -2,7 +2,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Updated with your DB name and password
 DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/teetli_db"
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
@@ -15,4 +14,3 @@ def get_db():
         yield db
     finally:
         db.close()
-

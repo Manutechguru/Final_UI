@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from passlib.hash import bcrypt
+from landing_page_app.database import get_db
 
 from landing_page_app import database
 from landing_page_app.routers import jobs, candidates, clients, status_history, templates as template_router
@@ -16,12 +17,6 @@ from landing_page_app.routers import auth
 # ------------------------------
 database.Base.metadata.create_all(bind=database.engine)
 
-def get_db():
-    db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # ------------------------------
 # FastAPI app setup
