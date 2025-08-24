@@ -9,7 +9,8 @@ class Client(Base):
     client_id = Column(Integer, primary_key=True, index=True)
     client_name = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String(10), default="active")  # <-- Added status column
+    status = Column(String(10), default="active")
 
-    # Relationship to Job model
-    jobs = relationship("Job", back_populates="client")  # <-- keeps the jobs relationship
+    # ✅ Correct relationships
+    managers = relationship("Manager", back_populates="client", cascade="all, delete-orphan")
+    jobs = relationship("Job", back_populates="client", cascade="all, delete-orphan")

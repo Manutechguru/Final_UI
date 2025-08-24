@@ -10,193 +10,68 @@
         margin: 0;
         background: #f8fafc;
     }
-
     h1 {
         color: #1e293b;
         margin-bottom: 25px;
         font-size: 28px;
         font-weight: 600;
     }
-
-    .page-wrapper {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-        padding: 30px;
-    }
-
-    /* Layout */
-    .content {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 30px;
-        align-items: flex-start;
-    }
-
-    /* Jobs Section */
-    .jobs-list {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
+    .page-wrapper { display: flex; flex-direction: column; min-height: 100vh; padding: 30px; }
+    .content { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; align-items: flex-start; }
+    .jobs-list { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .job-card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 20px;
+        background: #fff; border-radius: 12px; padding: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        position: relative;
-        transition: all .2s ease-in-out;
+        display: flex; flex-direction: column; gap: 12px;
+        position: relative; transition: all .2s ease-in-out;
     }
-    .job-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 14px rgba(0,0,0,0.08);
-    }
-    .job-card h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: #0f172a;
-    }
-    .job-card p {
-        margin: 0;
-        font-size: 14px;
-        color: #475569;
-    }
-
-    /* Status Toggle */
-    .status-container {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .toggle-switch {
-        position: relative;
-        width: 46px;
-        height: 24px;
-    }
+    .job-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+    .job-card h3 { margin: 0; font-size: 18px; font-weight: 600; color: #0f172a; }
+    .job-card p { margin: 0; font-size: 14px; color: #475569; }
+    .status-container { display: flex; align-items: center; gap: 10px; }
+    .toggle-switch { position: relative; width: 46px; height: 24px; }
     .toggle-switch input { display: none; }
     .slider {
-        position: absolute;
-        cursor: pointer;
+        position: absolute; cursor: pointer;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #cbd5e1;
-        transition: .3s;
-        border-radius: 30px;
+        background-color: #cbd5e1; transition: .3s; border-radius: 30px;
     }
     .slider:before {
-        content: "";
-        position: absolute;
-        height: 18px; width: 18px;
-        left: 3px; bottom: 3px;
-        background-color: white;
-        transition: .3s;
-        border-radius: 50%;
+        content: ""; position: absolute; height: 18px; width: 18px;
+        left: 3px; bottom: 3px; background-color: white;
+        transition: .3s; border-radius: 50%;
     }
     input:checked + .slider { background-color: #22c55e; }
     input:checked + .slider:before { transform: translateX(22px); }
-
-    .status-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: #475569;
-    }
-
-    /* Buttons */
+    .status-label { font-size: 13px; font-weight: 600; color: #475569; }
     .view-candidates-btn {
-        background-color: #2563eb;
-        color: white;
-        border: none;
-        padding: 8px 14px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        width: fit-content;
-        transition: 0.2s;
+        background-color: #2563eb; color: white; border: none;
+        padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 500;
+        cursor: pointer; text-decoration: none; width: fit-content; transition: 0.2s;
     }
-    .view-candidates-btn:hover {
-        background-color: #1d4ed8;
-    }
-
-    /* Menu */
+    .view-candidates-btn:hover { background-color: #1d4ed8; }
     .menu-container { position: absolute; top: 15px; right: 15px; }
-    .menu-btn {
-        background: none;
-        border: none;
-        font-size: 18px;
-        cursor: pointer;
-        color: #64748b;
-    }
+    .menu-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b; }
     .menu-dropdown {
-        display: none;
-        position: absolute;
-        right: 0;
-        top: 25px;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        min-width: 130px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        z-index: 100;
+        display: none; position: absolute; right: 0; top: 25px;
+        background: white; border: 1px solid #e2e8f0; border-radius: 6px;
+        min-width: 130px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 100;
     }
     .menu-dropdown button {
-        width: 100%;
-        padding: 10px 12px;
-        border: none;
-        background: none;
-        text-align: left;
-        cursor: pointer;
-        font-size: 14px;
-        color: #dc2626;
-        font-weight: 500;
+        width: 100%; padding: 10px 12px; border: none; background: none;
+        text-align: left; cursor: pointer; font-size: 14px; color: #dc2626; font-weight: 500;
     }
     .menu-dropdown button:hover { background-color: #fef2f2; }
-
-    /* Add Job Form */
     .add-job-form {
-        background: #fff;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
-    .add-job-form h3 {
-        margin-bottom: 15px;
-        font-size: 20px;
-        font-weight: 600;
-        color: #1e293b;
-    }
-    .add-job-form input {
-        width: 100%;
-        margin-bottom: 12px;
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid #cbd5e1;
-        font-size: 14px;
-    }
-    .add-job-form button {
-        background-color: #2563eb;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        width: 100%;
-    }
+    .add-job-form h3 { margin-bottom: 15px; font-size: 20px; font-weight: 600; color: #1e293b; }
+    .add-job-form input { width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; }
+    .add-job-form button { background-color: #2563eb; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; width: 100%; }
     .add-job-form button:hover { background-color: #1d4ed8; }
-
     #message { color: #16a34a; font-weight: 600; margin-bottom: 10px; }
     #error { color: #dc2626; font-weight: 600; margin-bottom: 10px; }
-
-    @media (max-width: 900px) {
-        .content { grid-template-columns: 1fr; }
-        .jobs-list { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 900px) { .content { grid-template-columns: 1fr; } .jobs-list { grid-template-columns: 1fr; } }
 </style>
 
 <div class="page-wrapper">
@@ -209,7 +84,6 @@
                 {% for job in jobs %}
                 <div class="job-card" data-job-id="{{ job.job_id }}">
                     <h3>{{ job.job_title }}</h3>
-
                     {% if job.job_description %}
                         <p><a href="{{ job.job_description }}" target="_blank">📄 View JD</a></p>
                     {% else %}
@@ -218,14 +92,13 @@
 
                     <div class="status-container">
                         <label class="toggle-switch">
-                            <input type="checkbox" class="status-toggle" {{ 'checked' if job.status == 'active' }}>
+                            <input type="checkbox" class="status-toggle" {{ 'checked' if job.status=='active' else '' }}>
                             <span class="slider"></span>
                         </label>
                         <span class="status-label">{{ job.status.capitalize() }}</span>
                     </div>
 
-                    <a href="/clients/{{ client.client_id }}/job/{{ job.job_id }}/candidates" 
-                       class="view-candidates-btn">👥 View Candidates</a>
+                    <a href="/clients/job/{{ job.job_id }}/candidates" class="view-candidates-btn">👥 View Candidates</a>
 
                     <!-- Menu -->
                     <div class="menu-container">
@@ -260,91 +133,26 @@ const form = document.getElementById('jobForm');
 const messageDiv = document.getElementById('message');
 const errorDiv = document.getElementById('error');
 
-// Add Job Form Submit
-form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    messageDiv.innerHTML = '';
-    errorDiv.innerHTML = '';
-
-    const jobTitle = form.job_title.value.trim();
-    const jdLink = form.jd_link.value.trim();
-
-    if (!jobTitle) {
-        errorDiv.innerHTML = "Job title is required!";
-        return;
-    }
-    if (!jdLink || !/^https?:\/\//.test(jdLink)) {
-        errorDiv.innerHTML = "Please enter a valid JD link!";
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append("job_title", jobTitle);
-    formData.append("jd_link", jdLink);
-
-    try {
-        const response = await fetch(`/clients/{{ client.client_id }}/add-job`, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            errorDiv.innerHTML = errorText || "Error adding job.";
-            return;
-        }
-
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        document.querySelector('.jobs-list').innerHTML =
-            doc.querySelector('.jobs-list').innerHTML;
-
-        messageDiv.innerHTML = doc.querySelector('#message').innerHTML;
-
-        form.reset();
-        attachEvents();
-
-    } catch (err) {
-        errorDiv.innerHTML = "Something went wrong: " + err.message;
-    }
-});
-
-// Attach all events
-function attachEvents() {
+async function attachEvents() {
     // Status toggle
     document.querySelectorAll('.status-toggle').forEach(toggle => {
         toggle.addEventListener('change', async function() {
             const jobCard = this.closest('.job-card');
             const jobId = jobCard.dataset.jobId;
-            try {
-                const response = await fetch(
-                    `/clients/{{ client.client_id }}/toggle-job/${jobId}`,
-                    { method: 'POST' }
-                );
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    alert(errorText || "Error toggling status.");
-                    return;
-                }
-                const html = await response.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                document.querySelector('.jobs-list').innerHTML =
-                    doc.querySelector('.jobs-list').innerHTML;
-                attachEvents();
-            } catch (err) {
-                alert("Something went wrong: " + err.message);
-            }
+            const response = await fetch(`/clients/{{ client.client_id }}/toggle-job/${jobId}`, { method: 'POST' });
+            if (!response.ok) return alert("Error toggling status");
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            document.querySelector('.jobs-list').innerHTML = doc.querySelector('.jobs-list').innerHTML;
+            attachEvents();
         });
     });
 
     // Menu toggle
     document.querySelectorAll('.menu-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', e => {
             e.stopPropagation();
-            const dropdown = this.nextElementSibling;
+            const dropdown = btn.nextElementSibling;
             dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
         });
     });
@@ -353,31 +161,36 @@ function attachEvents() {
     });
 
     // Delete job
-    document.querySelectorAll('.delete-job-btn').forEach(button => {
-        button.addEventListener('click', async function() {
+    document.querySelectorAll('.delete-job-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
             if (!confirm("Are you sure you want to delete this job?")) return;
-
             const jobCard = this.closest('.job-card');
             const jobId = jobCard.dataset.jobId;
-
-            try {
-                const response = await fetch(
-                    `/clients/{{ client.client_id }}/delete-job/${jobId}`,
-                    { method: 'POST' }
-                );
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    alert(errorText || "Error deleting job.");
-                    return;
-                }
-                jobCard.remove();
-                messageDiv.innerHTML = "Job deleted successfully!";
-            } catch (err) {
-                alert("Something went wrong: " + err.message);
-            }
+            const response = await fetch(`/clients/{{ client.client_id }}/delete-job/${jobId}`, { method: 'POST' });
+            if (!response.ok) return alert("Error deleting job");
+            jobCard.remove();
+            messageDiv.innerHTML = "Job deleted successfully!";
         });
     });
 }
+
+// Add Job Form Submit
+form.addEventListener('submit', async e => {
+    e.preventDefault();
+    messageDiv.innerHTML = '';
+    errorDiv.innerHTML = '';
+
+    const formData = new FormData(form);
+    const response = await fetch(`/clients/{{ client.client_id }}/add-job`, { method: 'POST', body: formData });
+    if (!response.ok) return errorDiv.innerHTML = "Error adding job";
+
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    document.querySelector('.jobs-list').innerHTML = doc.querySelector('.jobs-list').innerHTML;
+    messageDiv.innerHTML = doc.querySelector('#message').innerHTML;
+    form.reset();
+    attachEvents();
+});
 
 // Initial attach
 attachEvents();

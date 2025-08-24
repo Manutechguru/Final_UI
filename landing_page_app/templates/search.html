@@ -1,88 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 
-<style>
-/* ========== Layout ========= */
-.nxg-container{max-width:1320px;margin:28px auto;padding:0 18px}
-
-/* ========== Hero ========= */
-.nxg-hero{
-  background:linear-gradient(120deg,#f8fbff,#f3f7ff);
-  border-radius:14px;padding:20px 22px;margin-bottom:20px;
-  box-shadow:0 10px 30px rgba(2,6,23,.05)
-}
-.nxg-hero h1{margin:0 0 6px 0;font-size:1.55rem;font-weight:800}
-.nxg-hero .lead{color:#64748b}
-.nxg-divider{height:4px;border-radius:999px;background:linear-gradient(90deg,#34d399,#86efac);margin-top:14px}
-
-/* ========== KPI ========= */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin:18px 0 22px}
-.kpi{
-  background:#fff;border-radius:14px;padding:16px 18px;display:flex;gap:14px;align-items:center;
-  box-shadow:0 10px 26px rgba(2,6,23,.05);border:1px solid #eef2f8
-}
-.kpi .ico{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:1.1rem}
-.kpi .ico.primary{background:#2563eb}.kpi .ico.success{background:#10b981}
-.kpi .ico.warn{background:#f59e0b}.kpi .ico.info{background:#06b6d4}
-.kpi .val{font-weight:800;font-size:1.4rem;line-height:1}
-.kpi .lbl{color:#6b7280;font-weight:600;font-size:.9rem}
-
-/* ========== Cards ========= */
-.card-soft{
-  background:#fff;border-radius:14px;padding:20px;
-  box-shadow:0 10px 26px rgba(2,6,23,.05);border:1px solid #eef2f8;margin-bottom:18px
-}
-
-/* ========== Inputs ========= */
-.form-label-small{font-weight:700;font-size:.9rem;color:#334155;margin-bottom:6px;display:block}
-.input-with-icon{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid #e6edf3;background:#fff}
-.input-with-icon i{color:#64748b;font-size:16px}
-.input-with-icon input{border:0;outline:0;width:100%;padding:4px 6px}
-
-/* Buttons row on search */
-.search-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:4px}
-
-/* ========== Advanced search ========= */
-.adv-toggle{
-  display:flex;align-items:center;justify-content:space-between;width:100%;
-  background:#309ae0;color:#fff;border-radius:12px;
-  padding:14px 18px;font-weight:700;margin:12px 0;box-shadow:0 8px 20px rgba(2,6,23,.08);cursor:pointer;
-  transition:all 0.2s ease;
-}
-.adv-toggle:hover{background:#2563eb}
-.adv-toggle i{font-size:1.2rem;transition:transform 0.3s ease;}
-.adv-body{padding:20px;border:1px solid #e6edf3;border-radius:14px;background:#fff;box-shadow:0 10px 26px rgba(2,6,23,.05);display:none;z-index:10}
-.adv-body.show{display:block}
-.adv-help{color:#64748b;font-size:.92rem}
-.badge-pill{border-radius:999px;padding:.3rem .6rem}
-
-/* ========== Sticky action bar ========= */
-.action-bar{
-  position:sticky;top:84px;z-index:60;background:#fff;padding:12px 14px;border-radius:12px;
-  display:flex;gap:12px;align-items:center;border:1px solid #eef2f8;box-shadow:0 10px 26px rgba(2,6,23,.05);margin:18px 0
-}
-.action-bar .form-select{min-width:240px}
-
-/* ========== Table ========= */
-.results-card{background:#fff;border-radius:14px;padding:14px;border:1px solid #eef2f8;box-shadow:0 10px 26px rgba(2,6,23,.05)}
-.table-responsive{overflow:auto;max-height:62vh}
-.table thead th{position:sticky;top:0;z-index:5;background:#fbfdff;font-weight:700}
-.table tbody tr:hover{background:rgba(37,99,235,.03)}
-.table tbody tr.selected{background:rgba(37,99,235,.08)!important;box-shadow:inset 0 0 0 1px rgba(37,99,235,.04)}
-.nxg-avatar{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:#fff;background:#2563eb;font-weight:700;font-size:.92rem}
-
-/* ========== Chips / helpers ========= */
-.skill-badge{display:inline-block;background:#eef2ff;color:#1e40af;padding:.32rem .62rem;border-radius:999px;font-size:.76rem;margin:.14rem}
-.small-muted{color:#6b7280;font-size:.9rem}
-.col-wrap{white-space:normal;max-width:520px}
-
-/* ========== Responsive ========= */
-@media (max-width: 992px){
-  .action-bar{top:70px;flex-wrap:wrap}
-  .input-with-icon{padding:10px 12px}
-  .kpi .val{font-size:1.2rem}
-}
-</style>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/search.css">
 
 <div class="nxg-container">
 
@@ -101,82 +21,52 @@
     <div class="nxg-divider"></div>
   </div>
 
-  <!-- KPI -->
-  {% if results is defined %}
-  <div class="kpi-grid">
-    <div class="kpi">
-      <div class="ico primary"><i class="bi bi-people"></i></div>
-      <div><div class="val">{{ (results or [])|length }}</div><div class="lbl">Total Candidates</div></div>
-    </div>
-    <div class="kpi">
-      <div class="ico success"><i class="bi bi-check2-circle"></i></div>
-      <div><div class="val" id="kpiSelected">0</div><div class="lbl">Selected</div></div>
-    </div>
-    <div class="kpi">
-      <div class="ico warn"><i class="bi bi-building"></i></div>
-      <div><div class="val">{{ (clients or [])|length }}</div><div class="lbl">Clients</div></div>
-    </div>
-    <div class="kpi">
-      <div class="ico info"><i class="bi bi-briefcase"></i></div>
-      <div><div class="val" id="kpiJobs">0</div><div class="lbl">Jobs</div></div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- BASIC SEARCH -->
-  <div class="card-soft">
-    <form id="searchForm" method="GET" action="/candidates/search" class="row g-4 align-items-end">
+  <!-- BASIC SEARCH FORM -->
+  <div class="card-soft mb-3">
+    <form id="searchForm" method="GET" action="/candidates/search" class="row g-3 align-items-end">
       <div class="col-lg-4">
         <label class="form-label-small">Skills</label>
         <div class="input-with-icon">
           <i class="bi bi-stars"></i>
-          <input name="skills" value="{{ skills or '' }}" placeholder="e.g. SQL, Python, AWS" />
+          <input name="skills" value="{{ skills or '' }}" placeholder="e.g. SQL, Python, AWS" class="form-control form-control-sm"/>
         </div>
       </div>
-
       <div class="col-lg-4">
         <label class="form-label-small">Location</label>
         <div class="input-with-icon">
           <i class="bi bi-geo-alt"></i>
-          <input name="location" value="{{ location or '' }}" placeholder="City or Region" />
+          <input name="location" value="{{ location or '' }}" placeholder="City or Region" class="form-control form-control-sm"/>
         </div>
       </div>
-
       <div class="col-lg-4">
         <label class="form-label-small">Experience</label>
         <div class="input-with-icon">
           <i class="bi bi-briefcase"></i>
-          <input name="experience" value="{{ experience or '' }}" placeholder="e.g. 4 or 3-5 or 4 years 6 months" />
+          <input name="experience" value="{{ experience or '' }}" placeholder="e.g. 4 or 3-5 or 4y 6m" class="form-control form-control-sm"/>
         </div>
       </div>
-
-      <div class="col-12 search-actions">
+      <div class="col-12 d-flex gap-2">
         <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="bi bi-search me-1"></i>Search</button>
         <a href="/candidates/search" class="btn btn-outline-secondary rounded-pill px-4">Reset</a>
       </div>
     </form>
   </div>
 
-  <!-- ADVANCED SEARCH TOGGLE -->
-  <div class="adv-toggle" id="advToggle">
-    <span><i class="bi bi-file-earmark-text me-2"></i>Advanced Search: Parse JD (Google Drive / Docs link)</span>
+  <!-- ADVANCED SEARCH -->
+  <div class="adv-toggle mb-2" id="advToggle">
+    <span><i class="bi bi-file-earmark-text me-2"></i>Advanced Search: Parse JD</span>
     <i class="bi bi-caret-down-fill" id="advIcon"></i>
   </div>
-
   <div class="adv-body {% if advanced_from_jd %}show{% endif %}" id="advBody">
     <form action="/candidates/advanced-search" method="post" class="row g-3 align-items-end" autocomplete="off">
       <div class="col-lg-9">
         <label class="form-label-small">JD Google Drive / Docs Link</label>
         <div class="input-with-icon">
           <i class="bi bi-link-45deg"></i>
-          <input type="url" name="jd_drive_link"
-                 placeholder="Paste share link, e.g. https://docs.google.com/document/d/... or https://drive.google.com/file/d/..."
-                 required />
+          <input type="url" name="jd_drive_link" placeholder="Paste share link" required class="form-control form-control-sm"/>
         </div>
-        <div class="adv-help mt-2">
-          We’ll read the JD and extract <span class="badge bg-light text-dark border badge-pill">Skills</span>,
-          <span class="badge bg-light text-dark border badge-pill">Location</span>, and
-          <span class="badge bg-light text-dark border badge-pill">Experience</span> to pre-fill the fields above.
+        <div class="adv-help mt-1 small">
+          Extract <span class="badge bg-secondary rounded-pill">Skills</span>, <span class="badge bg-secondary rounded-pill">Location</span>, <span class="badge bg-secondary rounded-pill">Experience</span>.
         </div>
       </div>
       <div class="col-lg-3 text-lg-end">
@@ -185,22 +75,31 @@
         </button>
       </div>
     </form>
+  </div>
 
-    {% if advanced_from_jd %}
-    <div class="alert alert-info mt-3 mb-0" role="alert">
-      <div class="fw-semibold mb-1"><i class="bi bi-stars me-1"></i>Keywords extracted from JD</div>
-      <div class="small">
-        <span class="me-3"><strong>Skills:</strong> {{ skills or '—' }}</span>
-        <span class="me-3"><strong>Location:</strong> {{ location or '—' }}</span>
-        <span class="me-3"><strong>Experience:</strong> {{ experience or '—' }}</span>
-      </div>
-      <div class="small text-muted mt-1">You can edit these in the basic search above and click <strong>Search</strong>.</div>
+  {% if results is defined and results %}
+  <!-- KPI GRID -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="ico primary"><i class="bi bi-people"></i></div>
+      <div><div class="val">{{ results|length }}</div><div class="lbl">Total Candidates</div></div>
     </div>
-    {% endif %}
+    <div class="kpi">
+      <div class="ico success"><i class="bi bi-check2-circle"></i></div>
+      <div><div class="val" id="kpiSelected">0</div><div class="lbl">Selected</div></div>
+    </div>
+    <div class="kpi">
+      <div class="ico warn"><i class="bi bi-building"></i></div>
+      <div><div class="val">{{ clients|length }}</div><div class="lbl">Clients</div></div>
+    </div>
+    <div class="kpi">
+      <div class="ico info"><i class="bi bi-briefcase"></i></div>
+      <div><div class="val" id="kpiJobs">0</div><div class="lbl">Jobs</div></div>
+    </div>
   </div>
 
   <!-- ACTION BAR -->
-  <div class="action-bar">
+  <div class="action-bar d-flex align-items-center mb-2 gap-2">
     <select id="clientSelect" class="form-select form-select-sm">
       <option value="">Select Client</option>
       {% for client in clients %}
@@ -213,317 +112,103 @@
     </select>
 
     <div class="ms-auto d-flex gap-2">
-      <button id="linkCandidatesBtn" class="btn btn-success btn-sm rounded-pill" disabled>
-        🔗 Link Selected Candidates
-      </button>
+      <button id="linkCandidatesBtn" class="btn btn-success btn-sm rounded-pill" disabled>🔗 Link Selected Candidates</button>
       <button id="toggleAllBtn" class="btn btn-light btn-sm border rounded-pill">Mark All</button>
     </div>
   </div>
-<!-- RESULTS TABLE -->
-<div class="results-card">
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <h5 class="mb-0">Search Results</h5>
-    <div class="small-muted">Showing <strong>{{ (results or [])|length }}</strong> candidates</div>
-  </div>
 
-  <div class="table-responsive">
-    {% if results is defined and results %}
-    <table class="table table-sm table-hover align-middle mb-0 custom-results-table">
-      <thead class="table-light">
-        <tr>
-          <th></th>
-          <th><input id="selectAll" type="checkbox" aria-label="Select all"></th>
-          <th>Name</th>
-          <th>Skills</th>
-          <th>Email</th>
-          <th>IT Exp</th>
-          <th>Location</th>
-          <th>Contact</th>
-          <th>Rel Exp</th>
-          <th>Edu</th>
-          <th>Company</th>
-          <th>Resume</th>
-          <th>Clients</th>
-          <th>Notice</th>
-          <th>Comment</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for candidate in results %}
-          {% set cid = candidate.candidates_id or candidate.id %}
-          <!-- Main Row -->
-          <tr class="main-row" data-id="{{ cid }}">
-            <!-- Chevron cell -->
-            <td class="chevron">
-              <i class="bi bi-chevron-down"></i>
-            </td>
-            <td><input type="checkbox" class="candidateCheckbox form-check-input" value="{{ cid }}" aria-label="Select candidate"></td>
+  <!-- RESULTS TABLE -->
+  <div class="results-card">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Search Results</h5>
+      <div class="small-muted">Showing <strong>{{ results|length }}</strong> candidates</div>
+    </div>
 
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <div class="nxg-avatar" aria-hidden="true">
-                  {% set nm = (candidate.candidate_name or '').split() %}
-                  {{ (nm[0][0] if nm and nm[0] else '') ~ (nm[1][0] if nm|length > 1 else '') }}
-                </div>
-                <div class="fw-semibold text-truncate expand-cell">{{ candidate.candidate_name or 'N/A' }}</div>
-              </div>
-            </td>
-
-            <td class="text-truncate expand-cell" style="max-width:100px;">{% if candidate.skillset %}{{ candidate.skillset }}{% else %}N/A{% endif %}</td>
-
-            <td class="text-truncate expand-cell" style="max-width:120px;">
-              {% if candidate.email %}<a href="mailto:{{ candidate.email }}">{{ candidate.email }}</a>{% else %}N/A{% endif %}
-            </td>
-
+    <div class="table-responsive">
+      <table class="table table-hover table-sm align-middle mb-0 custom-results-table">
+        <colgroup>
+          <col style="width: 30px;">
+          <col style="width: 30px;">
+          <col style="width: 140px;">
+          <col style="width: 200px;">
+          <col style="width: 160px;">
+          <col style="width: 80px;">
+          <col style="width: 120px;">
+          <col style="width: 100px;">
+          <col style="width: 80px;">
+          <col style="width: 120px;">
+          <col style="width: 140px;">
+          <col style="width: 50px;">
+          <col style="width: 120px;">
+          <col style="width: 80px;">
+          <col style="width: 120px;">
+        </colgroup>
+        <thead class="table-light">
+          <tr>
+            <th></th>
+            <th><input id="selectAll" type="checkbox" aria-label="Select all"></th>
+            <th>Name</th>
+            <th>Skills</th>
+            <th>Email</th>
+            <th>IT Exp</th>
+            <th>Location</th>
+            <th>Contact</th>
+            <th>Rel Exp</th>
+            <th>Edu</th>
+            <th>Company</th>
+            <th>Resume</th>
+            <th>Clients</th>
+            <th>Notice</th>
+            <th>Comment</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for candidate in results %}
+          <tr class="main-row">
+            <td class="chevron"><i class="bi bi-chevron-down"></i></td>
+            <td><input type="checkbox" class="candidateCheckbox form-check-input" value="{{ candidate.id }}"></td>
+            <td class="expand-cell">{{ candidate.candidate_name or 'N/A' }}</td>
+            <td class="expand-cell">{{ candidate.skillset or 'N/A' }}</td>
+            <td class="expand-cell">{{ candidate.email or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.it_experience or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.location or 'N/A' }}</td>
-
-            <td class="expand-cell">{% if candidate.contact %}<a href="tel:{{ candidate.contact }}">{{ candidate.contact }}</a>{% else %}N/A{% endif %}</td>
-
+            <td class="expand-cell">{{ candidate.contact or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.relevant_experience or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.education or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.company or 'N/A' }}</td>
-
             <td class="expand-cell">
               {% if candidate.resumelinks %}
-                <a href="{{ candidate.resumelinks }}" target="_blank" rel="noopener" class="resume-link" title="View Resume">
-                  <i class="bi bi-paperclip"></i>
-                </a>
-              {% elif candidate.resume %}
-                <a href="{{ candidate.resume }}" target="_blank" rel="noopener" class="resume-link" title="View Resume">
-                  <i class="bi bi-paperclip"></i>
-                </a>
+              <a href="{{ candidate.resumelinks }}" target="_blank" title="Download Resume"><i class="bi bi-paperclip"></i></a>
               {% else %}N/A{% endif %}
             </td>
-
             <td class="expand-cell">{{ candidate.clients or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.notice_period or 'N/A' }}</td>
-            <td class="text-truncate expand-cell" style="max-width:100px;">{{ candidate.comment or 'N/A' }}</td>
+            <td class="expand-cell">{{ candidate.comment or 'N/A' }}</td>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <div class="text-center py-5 small-muted">
-        <div style="font-size:1.6rem;">🚫</div>
-        <div class="mt-2">No candidates found for your search criteria.</div>
-      </div>
-    {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
+  {% endif %}
+
 </div>
 
 <style>
-  .custom-results-table th, 
-  .custom-results-table td {
-    font-size: 11px;
-    padding: 3px 4px;
+.custom-results-table th, .custom-results-table td {
     vertical-align: middle;
-  }
-
-  .custom-results-table .text-truncate {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .nxg-avatar {
-    width: 20px;
-    height: 20px;
-    background: #007bff;
-    color: #fff;
-    font-size: 10px;
-    font-weight: bold;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .custom-results-table tbody tr:hover {
-    background-color: #f8f9fa;
-    transition: 0.15s ease-in-out;
-    cursor: pointer;
-  }
-
-  /* Chevron rotation */
-  .main-row .chevron i {
-    transition: transform 0.2s;
-  }
-  .main-row.expanded .chevron i {
-    transform: rotate(180deg);
-  }
-
-  /* Expanded row cells show full content */
-  .main-row .expand-cell {
-    max-width: 100px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .main-row.expanded .expand-cell {
-    max-width: none !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-  }
-
-  /* Resume paperclip link styling */
-  .resume-link {
-    font-size: 14px;
-    color: #0d6efd;
-    text-decoration: none;
-  }
-  .resume-link:hover {
-    color: #0a58ca;
-  }
+    padding: 0.45rem 0.6rem;
+}
+.custom-results-table td.expand-cell {
+    max-width: 150px;
+}
+.table-responsive {
+    overflow-x: auto;
+}
 </style>
 
-<!-- Bootstrap icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll(".main-row").forEach(row => {
-      row.addEventListener("click", function(e) {
-        // Prevent toggling when clicking on checkbox, email, phone, or resume link
-        if (e.target.tagName.toLowerCase() === 'input' || 
-            e.target.tagName.toLowerCase() === 'a' || 
-            e.target.closest('.form-check-input')) return;
-
-        this.classList.toggle("expanded");
-      });
-    });
-  });
-</script>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  // Advanced Search Toggle
-  const advToggle = document.getElementById('advToggle');
-  const advBody = document.getElementById('advBody');
-  const advIcon = document.getElementById('advIcon');
-  if(advToggle && advBody && advIcon){
-    advToggle.addEventListener('click', ()=>{
-      advBody.classList.toggle('show');
-      advIcon.classList.toggle('bi-caret-down-fill');
-      advIcon.classList.toggle('bi-caret-up-fill');
-    });
-  }
-
-  const selectAll = document.getElementById('selectAll');
-  const clientSelect = document.getElementById('clientSelect');
-  const jdSelect = document.getElementById('jdSelect');
-  const linkBtn = document.getElementById('linkCandidatesBtn');
-  const toggleAllBtn = document.getElementById('toggleAllBtn');
-  const kpiSelected = document.getElementById('kpiSelected');
-  const kpiJobs = document.getElementById('kpiJobs');
-
-  const getBoxes = () => Array.from(document.querySelectorAll('.candidateCheckbox'));
-
-  function updateKPIs(){
-    if(kpiSelected) kpiSelected.textContent = getBoxes().filter(b=>b.checked).length;
-    if(kpiJobs) kpiJobs.textContent = Math.max(0, (jdSelect ? jdSelect.options.length : 0) - 1);
-    const ok = (clientSelect && clientSelect.value) && (jdSelect && jdSelect.value) && getBoxes().some(b=>b.checked);
-    if(linkBtn) linkBtn.disabled = !ok;
-  }
-
-  function syncRowVisuals(){
-    getBoxes().forEach(cb=>{
-      const tr = cb.closest('tr');
-      if(tr) tr.classList.toggle('selected', !!cb.checked);
-    });
-    updateKPIs();
-  }
-
-  if(selectAll){
-    selectAll.addEventListener('change', ()=> {
-      const checked = selectAll.checked;
-      getBoxes().forEach(b => b.checked = checked);
-      syncRowVisuals();
-    });
-  }
-
-  document.addEventListener('change', (e) => {
-    if(e.target && e.target.classList && e.target.classList.contains('candidateCheckbox')){
-      const boxes = getBoxes();
-      if(boxes.length && boxes.every(b=>b.checked)) selectAll && (selectAll.checked = true);
-      if(boxes.length && boxes.some(b=>!b.checked)) selectAll && (selectAll.checked = false);
-      syncRowVisuals();
-    }
-  });
-
-  if(toggleAllBtn){
-    toggleAllBtn.addEventListener('click', () => {
-      const boxes = getBoxes();
-      const allChecked = boxes.length && boxes.every(b => b.checked);
-      boxes.forEach(b => b.checked = !allChecked);
-      selectAll && (selectAll.checked = !allChecked);
-      syncRowVisuals();
-    });
-  }
-
-  if(clientSelect){
-    clientSelect.addEventListener('change', () => {
-      const clientId = clientSelect.value;
-      jdSelect.innerHTML = '<option value="">Loading...</option>';
-      updateKPIs();
-      if(!clientId){
-        jdSelect.innerHTML = '<option value="">Select Job</option>';
-        updateKPIs();
-        return;
-      }
-      fetch(`/candidates/jobs/${clientId}`)
-        .then(r => { if(!r.ok) throw new Error('Failed to fetch jobs'); return r.json(); })
-        .then(list => {
-          jdSelect.innerHTML = '<option value="">Select Job</option>';
-          if(Array.isArray(list) && list.length){
-            list.forEach(j => {
-              const opt = document.createElement('option');
-              opt.value = j.jd_id;
-              opt.textContent = j.title;
-              jdSelect.appendChild(opt);
-            });
-          }
-          updateKPIs();
-        })
-        .catch(err => {
-          console.error(err);
-          jdSelect.innerHTML = '<option value="">Select Job</option>';
-          updateKPIs();
-        });
-    });
-  }
-
-  if(linkBtn){
-    linkBtn.addEventListener('click', () => {
-      const selected = getBoxes().filter(b=>b.checked).map(b => parseInt(b.value)).filter(Boolean);
-      const clientId = clientSelect ? parseInt(clientSelect.value) : null;
-      const jdId = jdSelect ? parseInt(jdSelect.value) : null;
-
-      if(!clientId || !jdId || !selected.length){
-        alert('Please select client, job, and at least one candidate.');
-        return;
-      }
-
-      const prev = linkBtn.innerHTML;
-      linkBtn.disabled = true;
-      linkBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Linking...';
-
-      fetch('/candidates/link-to-job', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ client_id: clientId, jd_id: jdId, candidate_ids: selected })
-      })
-      .then(r => { if(!r.ok) throw new Error('Link failed'); return r.json(); })
-      .then(resp => { alert(resp.message || 'Linked successfully'); window.location.reload(); })
-      .catch(err => { console.error(err); alert('Failed to link candidates. See console for details.'); })
-      .finally(() => { linkBtn.disabled = false; linkBtn.innerHTML = prev; });
-    });
-  }
-
-  updateKPIs();
-});
-</script>
-
+<script src="/static/js/search.js"></script>
 {% endblock %}

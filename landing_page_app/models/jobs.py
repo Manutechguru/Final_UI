@@ -7,10 +7,14 @@ class Job(Base):
     __tablename__ = "jobs"
 
     job_id = Column(Integer, primary_key=True, index=True)
-    client_id = Column(Integer, ForeignKey("clients.client_id"), nullable=False)
-    job_title = Column(String(255), nullable=False)
-    job_description = Column(String, nullable=True)  # Google Drive link
-    status = Column(String(50), default="active")  # <-- NEW COLUMN
+    client_id = Column(Integer, ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=True)
+    manager_id = Column(Integer, ForeignKey("managers.manager_id", ondelete="CASCADE"), nullable=True)
+
+    job_title = Column(String(255), nullable=True)
+    job_description = Column(String, nullable=True)
+    status = Column(String(10), default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # ✅ Relationships
     client = relationship("Client", back_populates="jobs")
+    manager = relationship("Manager", back_populates="jobs")

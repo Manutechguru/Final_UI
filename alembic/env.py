@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from landing_page_app.database import Base
-from landing_page_app.models import Client, Job, Candidate, UserLog, User, CandidateJDMapping
+from landing_page_app.models import Client, Job, Candidate, UserLog, User, CandidateJDMapping, Manager
 from alembic import context
 
 # this is the Alembic Config object, which provides
