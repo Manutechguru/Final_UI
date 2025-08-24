@@ -1,74 +1,69 @@
-from fastapi import FastAPI, Request, Cookie, APIRouter
+# landing_page_app/routers/router.py
+from fastapi import FastAPI, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from landing_page_app.core.settings import settings
-from landing_page_app.routers import auth, admin, candidates, clients, jobs
+from landing_page_app.routers import auth, admin, candidates, clients, jobs, status_history, templates as template_router
+from landing_page_app.database import get_db
+from landing_page_app.models.user import User
+from sqlalchemy.orm import Session
+from fastapi import Depends
 
-def create_app() -> FastAPI:
-    app = FastAPI(
-        title=settings.APP_NAME,
-        description="Landing Page API for jobs, clients, and candidates",
-        version="1.0.0"
-    )
-
+def include_routers(app: FastAPI):
     # Serve static files
     app.mount("/static", StaticFiles(directory="landing_page_app/static"), name="static")
 
     # Templates
     templates = Jinja2Templates(directory="landing_page_app/templates")
 
+    # ------------------------------
     # Root redirects to login
+    # ------------------------------
     @app.get("/", response_class=HTMLResponse)
     async def root():
         return RedirectResponse(url="/login")
 
-    # Login page
-    @app.get("/login", response_class=HTMLResponse)
-    async def login_page(request: Request):
-        return templates.TemplateResponse("login.html", {"request": request})
-
-    # Signup page
-    @app.get("/signup", response_class=HTMLResponse)
-    async def signup_page(request: Request):
-        return templates.TemplateResponse("signup.html", {"request": request})
-
-    # Landing page for normal users
+    # ------------------------------
+    # User landing page (protected)
+    # ------------------------------
     @app.get("/landing", response_class=HTMLResponse)
-    async def landing_page(request: Request, user: str | None = Cookie(None)):
-        if user != "user":
-            return RedirectResponse(url="/login")
-        return templates.TemplateResponse("landing.html", {"request": request})
+    async def landing_page(
+        request: Request,
+        user_email: str | None = Cookie(None),
+        db: Session = Depends(get_db)
+    ):
+        if not user_email:
+            return RedirectResponse("/login")
 
-    # Admin dashboard
-    @app.get("/admin/dashboard", response_class=HTMLResponse)
-    async def admin_dashboard(request: Request, user: str | None = Cookie(None)):
-        if user != "admin":
-            return RedirectResponse(url="/login")
-        return templates.TemplateResponse("admindashboard.html", {"request": request})
+        user = db.query(User).filter(User.email == user_email).first()
+        if not user or not user.is_active:
+            return templates.TemplateResponse("login.html", {"request": request, "message": "Waiting for admin approval"})
 
-    # Optional: other protected pages
+        return templates.TemplateResponse("landing.html", {"request": request, "user": user})
+
+    # ------------------------------
+    # Extra protected pages
+    # ------------------------------
     @app.get("/search", response_class=HTMLResponse)
-    async def search_page(request: Request, user: str | None = Cookie(None)):
-        if user not in ["user", "admin"]:
-            return RedirectResponse(url="/login")
+    async def search_page(request: Request, user_email: str | None = Cookie(None)):
+        if not user_email:
+            return RedirectResponse("/login")
         return templates.TemplateResponse("search.html", {"request": request})
 
     @app.get("/clients/new-arrivals", response_class=HTMLResponse)
-    async def clients_new_arrivals(request: Request, user: str | None = Cookie(None)):
-        if user not in ["user", "admin"]:
-            return RedirectResponse(url="/login")
+    async def clients_new_arrivals(request: Request, user_email: str | None = Cookie(None)):
+        if not user_email:
+            return RedirectResponse("/login")
         return templates.TemplateResponse("clients_new_arrivals.html", {"request": request})
 
+    # ------------------------------
     # Include routers
-    app.include_router(auth.router, prefix="/routers/auth", tags=["auth"])
-    app.include_router(admin.router, prefix="/admin", tags=["admin"])
-    app.include_router(candidates.router, prefix="/candidates", tags=["candidates"])
-    app.include_router(clients.router, prefix="/clients", tags=["clients"])
-    app.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
-
-    return app
-
-# Initialize app
-app = create_app()
+    # ------------------------------
+    app.include_router(auth.router, tags=["Auth"])
+    app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+    app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
+    app.include_router(clients.router, prefix="/clients", tags=["Clients"])
+    app.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
+    app.include_router(status_history.router, prefix="/status", tags=["Status History"])
+    app.include_router(template_router.router, prefix="/templates", tags=["Templates"])
