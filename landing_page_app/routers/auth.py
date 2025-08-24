@@ -20,7 +20,6 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 def signup_form(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
-
 @router.post("/signup")
 async def signup(
     request: Request,

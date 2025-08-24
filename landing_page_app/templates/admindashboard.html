@@ -26,6 +26,7 @@
             <button onclick="showTab('pending', event)" class="tab-btn bg-indigo-500 text-white px-4 py-2 rounded mr-2">Pending Users</button>
             <button onclick="showTab('logs', event)" class="tab-btn bg-gray-200 px-4 py-2 rounded mr-2">User Logs</button>
             <button onclick="showTab('allusers', event)" class="tab-btn bg-gray-200 px-4 py-2 rounded">All Users</button>
+            <button onclick="showTab('uploadcsv', event)" class="tab-btn bg-gray-200 px-4 py-2 rounded">Upload CSV</button>
         </div>
 
         <!-- Pending Users -->
@@ -105,6 +106,46 @@
                 <p class="text-gray-500">No users available.</p>
             {% endif %}
         </div>
+
+        <div id="uploadcsv" class="tab-content hidden">
+            <h2 class="text-xl font-semibold mb-4">Upload Candidates CSV</h2>
+        
+            <!-- Success/Error message -->
+            {% if msg %}
+                <p class="text-green-600 font-medium mb-4">{{ msg }}</p>
+            {% endif %}
+            {% if error %}
+                <p class="text-red-600 font-medium mb-4">{{ error }}</p>
+            {% endif %}
+        
+            <form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="bg-white p-6 rounded shadow-md">
+                <input type="file" name="csv_file" accept=".csv" required
+                       class="border p-2 rounded w-full mb-4">
+                <button type="submit" 
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">
+                    Upload CSV
+                </button>
+            </form>
+
+            {% if msg %}
+            <p class="text-green-600 font-medium mb-4">{{ msg }}</p>
+            {% endif %}
+            {% if error %}
+            <p class="text-red-600 font-medium mb-4">{{ error }}</p>
+            {% endif %}
+            {% if duplicates %}
+            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+                <p class="font-semibold">These candidates were skipped (already exist):</p>
+                <ul class="list-disc list-inside">
+                {% for name in duplicates %}
+                    <li>{{ name }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+        </div>
+              
     </main>
 
     <!-- JS -->

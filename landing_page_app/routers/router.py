@@ -9,6 +9,7 @@ from landing_page_app.database import get_db
 from landing_page_app.models.user import User
 from sqlalchemy.orm import Session
 from fastapi import Depends
+from landing_page_app.routers import uploadCSV
 
 def include_routers(app: FastAPI):
     # Serve static files
@@ -67,3 +68,4 @@ def include_routers(app: FastAPI):
     app.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
     app.include_router(status_history.router, prefix="/status", tags=["Status History"])
     app.include_router(template_router.router, prefix="/templates", tags=["Templates"])
+    app.include_router(uploadCSV.router)

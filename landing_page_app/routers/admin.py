@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Response, Cookie
+from fastapi import APIRouter, Depends, Request, Response, Cookie, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -16,31 +16,42 @@ templates = Jinja2Templates(directory="landing_page_app/templates")
 # ------------------------------
 
 @router.get("/", response_class=HTMLResponse)
-def admin_dashboard(request: Request, user_email: str | None = Cookie(None), db: Session = Depends(get_db)):
+def admin_dashboard(
+    request: Request,
+    user_email: str | None = Cookie(None),
+    db: Session = Depends(get_db),
+    msg: str | None = Query(None),
+    error: str | None = Query(None),
+    duplicates: str | None = Query(None)
+):
+
     if not user_email:
-        return RedirectResponse("/login")
+        return RedirectResponse("/auth/login")
 
     admin = db.query(User).filter(User.email == user_email, User.role == UserRole.ADMIN).first()
     if not admin:
-        return RedirectResponse("/login")
+        return RedirectResponse("/auth/login")
 
-    # Queries
+    # Pending users
     pending_users = db.query(User).filter(User.is_active == False, User.role == UserRole.USER).all()
+    # All users
+    all_users = db.query(User).filter(User.role == UserRole.USER).all()
+    # User logs
     user_logs = db.query(UserLog).order_by(UserLog.timestamp.desc()).all()
-    all_users = db.query(User).filter(User.is_active == True, User.role == UserRole.USER).all()
-
 
     return templates.TemplateResponse(
-        "adminDashboard.html",
+        "admindashboard.html",
         {
             "request": request,
             "admin": admin,
             "pending_users": pending_users,
-            "user_logs": user_logs,
             "all_users": all_users,
+            "user_logs": user_logs,
+            "msg": msg,
+            "error": error,
+            "duplicates": duplicates.split(",") if duplicates else []
         }
     )
-
 # ------------------------------
 # Approve user
 # ------------------------------
