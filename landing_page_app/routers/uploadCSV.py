@@ -26,4 +26,4 @@ async def upload_csv(
             status_code=303
         )
     except Exception as e:
-        return RedirectResponse(url=f"/admin?error=Upload+failed:+{str(e)}", status_code=303)
+        return RedirectResponse(url=f"/adminpage?error=Upload+failed:+{str(e)}", status_code=303)
