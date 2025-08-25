@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from landing_page_app.database import Base
 from datetime import datetime
 
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -13,8 +14,11 @@ class Job(Base):
     job_title = Column(String(255), nullable=True)
     job_description = Column(String, nullable=True)
     status = Column(String(10), default="active")
-    created_at = Column(DateTime, default=datetime.utcnow)
 
-    # ✅ Relationships
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     client = relationship("Client", back_populates="jobs")
     manager = relationship("Manager", back_populates="jobs")

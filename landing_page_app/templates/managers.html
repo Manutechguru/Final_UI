@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="nxg-container">
+
+  <!-- HERO / Page Header -->
+  <div class="nxg-hero hero-flex mb-4">
+    <h1>🧑‍💼 Vendors for Client: {{ client.client_name }}</h1>
+    <form id="addVendorForm" action="{{ url_for('add_new_manager', client_id=client.client_id) }}" method="POST" class="add-form">
+      <input type="text" name="manager_name" id="manager_name" placeholder="Enter Vendor Name" required>
+      <button type="submit">Add Vendor</button>
+    </form>
+  </div>
+
+  <!-- Display message if any -->
+  {% if message %}
+    <div class="alert alert-info" id="messageBox">{{ message }}</div>
+  {% endif %}
+
+  <!-- Vendors Table -->
+  <div class="table-responsive">
+    <table class="vendors-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Vendor Name</th>
+          <th>Status</th>
+          <th>Created At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for manager in managers %}
+        <tr id="manager-{{ manager.manager_id }}">
+          <td>{{ loop.index }}</td>
+          <td>{{ manager.manager_name }}</td>
+          <td>
+            <span class="status-badge {% if manager.status == 'active' %}active{% else %}inactive{% endif %}">
+              {{ manager.status|capitalize }}
+            </span>
+          </td>
+          <td>{{ manager.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td class="actions">
+            <button class="toggle-btn" data-id="{{ manager.manager_id }}">
+              {% if manager.status == 'active' %}Deactivate{% else %}Activate{% endif %}
+            </button>
+            <button class="delete-btn" data-id="{{ manager.manager_id }}">
+              Delete
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="no-data">No vendors found for this client.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/managers.js') }}"></script>
+{% endblock %}

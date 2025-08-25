@@ -1,0 +1,139 @@
+/* ===== Container ===== */
+.nxg-container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ===== Hero Header ===== */
+.nxg-hero {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(120deg, #f0f4ff, #e6ecff);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.nxg-hero h1 {
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+/* ===== Add Form ===== */
+.add-form {
+    display: flex;
+    gap: 10px;
+}
+
+.add-form input {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+}
+
+.add-form button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    background-color: #4f46e5;
+    color: #fff;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.add-form button:hover {
+    background-color: #4338ca;
+}
+
+/* ===== Table ===== */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.vendors-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.vendors-table th, .vendors-table td {
+    padding: 12px 15px;
+    text-align: left;
+}
+
+.vendors-table th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+}
+
+.vendors-table tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+
+/* ===== Status Badge ===== */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.status-badge.active {
+    background-color: #16a34a;
+}
+
+.status-badge.inactive {
+    background-color: #dc2626;
+}
+
+/* ===== Actions Buttons ===== */
+.actions button {
+    margin-right: 5px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: 0.3s;
+}
+
+.toggle-btn {
+    background-color: #2563eb;
+    color: #fff;
+}
+
+.toggle-btn:hover {
+    background-color: #1e40af;
+}
+
+.delete-btn {
+    background-color: #ef4444;
+    color: #fff;
+}
+
+.delete-btn:hover {
+    background-color: #b91c1c;
+}
+
+/* ===== Alerts ===== */
+.alert {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    color: #1f2937;
+    background-color: #dbeafe;
+    font-weight: 500;
+}
+
+.no-data {
+    text-align: center;
+    color: #6b7280;
+    font-style: italic;
+}
