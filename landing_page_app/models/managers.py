@@ -2,12 +2,15 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from landing_page_app.database import Base
 from datetime import datetime
+
 class Manager(Base):
     __tablename__ = "managers"
 
     manager_id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False)
     manager_name = Column(String(255), nullable=False)
+    
+    status = Column(String(20), default="active")  # 🟢 Added status column
 
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)

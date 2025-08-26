@@ -1,67 +1,81 @@
 {% extends "base.html" %}
+{% block title %}Vendors for {{ client.client_name }}{% endblock %}
+
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/managers.css') }}">
 
-<div class="nxg-container">
-
-  <!-- HERO / Page Header -->
-  <div class="nxg-hero hero-flex mb-4">
+<div class="page-container">
+  <div class="header-container">
     <h1>🧑‍💼 Vendors for Client: {{ client.client_name }}</h1>
-    <form id="addVendorForm" action="{{ url_for('add_new_manager', client_id=client.client_id) }}" method="POST" class="add-form">
+
+    <form id="addVendorForm" action="{{ url_for('add_new_manager', client_id=client.client_id) }}" method="POST" class="add-form" aria-label="Add vendor">
       <input type="text" name="manager_name" id="manager_name" placeholder="Enter Vendor Name" required>
-      <button type="submit">Add Vendor</button>
+      <button type="submit" class="btn add-btn">➕ Add Vendor</button>
     </form>
   </div>
 
-  <!-- Display message if any -->
   {% if message %}
-    <div class="alert alert-info" id="messageBox">{{ message }}</div>
+    <div class="alert" id="messageBox">{{ message }}</div>
   {% endif %}
 
-  <!-- Vendors Table -->
-  <div class="table-responsive">
-    <table class="vendors-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Vendor Name</th>
-          <th>Status</th>
-          <th>Created At</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for manager in managers %}
-        <tr id="manager-{{ manager.manager_id }}">
-          <td>{{ loop.index }}</td>
-          <td>{{ manager.manager_name }}</td>
-          <td>
-            <span class="status-badge {% if manager.status == 'active' %}active{% else %}inactive{% endif %}">
-              {{ manager.status|capitalize }}
-            </span>
-          </td>
-          <td>{{ manager.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
-          <td class="actions">
-            <button class="toggle-btn" data-id="{{ manager.manager_id }}">
-              {% if manager.status == 'active' %}Deactivate{% else %}Activate{% endif %}
-            </button>
-            <button class="delete-btn" data-id="{{ manager.manager_id }}">
-              Delete
-            </button>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="5" class="no-data">No vendors found for this client.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  {# Detect if vendor_jobs route exists; fallback to /jobs/vendor/<id> #}
+  {% set has_vendor_jobs = (request.app.router.routes | selectattr('name','equalto','vendor_jobs') | list) | length > 0 %}
 
+  <div class="managers-grid" id="managersGrid" data-client-id="{{ client.client_id }}">
+    {% for m in managers %}
+      <div class="manager-card" id="manager-{{ m.manager_id }}">
+        <div class="card-head">
+          <h3 class="card-title">{{ m.manager_name }}</h3>
+
+          <div class="three-dots">
+            <button class="three-dots-btn" aria-haspopup="true" aria-expanded="false" title="More actions">⋮</button>
+
+            <div class="dropdown-content" role="menu" aria-hidden="true">
+              <button class="menu-edit" data-edit-url="{{ url_for('edit_manager_route', manager_id=m.manager_id) }}" data-name="{{ m.manager_name | e }}">Edit</button>
+
+              <button class="menu-delete" data-delete-url="{{ url_for('delete_manager_route', manager_id=m.manager_id) }}">Delete</button>
+
+              <a class="menu-view" href="{{ url_for('vendor_jobs', manager_id=m.manager_id) if has_vendor_jobs else ('/jobs/vendor/' ~ m.manager_id) }}">View Jobs</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-meta">
+          <div class="meta-row">
+            <span class="meta-label">Created by</span>
+            <span class="meta-value">{{ m.created_by_name or 'N/A' }}</span>
+            <span class="meta-ts">{% if m.created_at %}{{ m.created_at.strftime('%Y-%m-%d %H:%M:%S') }}{% endif %}</span>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">Updated by</span>
+            <span class="meta-value">{{ m.updated_by_name or 'N/A' }}</span>
+            <span class="meta-ts">{% if m.updated_at %}{{ m.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}{% endif %}</span>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <div class="toggle-wrap">
+            <label class="switch" title="Toggle active/inactive">
+              <input type="checkbox"
+                     class="toggle-switch"
+                     data-toggle-url="{{ url_for('toggle_manager_status_route', manager_id=m.manager_id) }}"
+                     {% if m.status == 'active' %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+            <span class="status-badge {{ 'active' if m.status=='active' else 'inactive' }}" id="status-{{ m.manager_id }}">{{ m.status|capitalize }}</span>
+          </div>
+
+          <div class="cta-wrap">
+            <a class="btn view-jobs" href="{{ url_for('vendor_jobs', manager_id=m.manager_id) if has_vendor_jobs else ('/jobs/vendor/' ~ m.manager_id) }}">View Jobs</a>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="no-data">No vendors found for this client.</div>
+    {% endfor %}
+  </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
 <script src="{{ url_for('static', path='js/managers.js') }}"></script>
 {% endblock %}

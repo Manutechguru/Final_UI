@@ -13,7 +13,7 @@ from landing_page_app.routers.candidates import link as cand_link
 from landing_page_app.routers.candidates import shortlist as cand_shortlist
 from landing_page_app.routers.candidates import downloads as cand_downloads
 from landing_page_app.routers.candidates import scoring as cand_scoring
-
+from landing_page_app.routers import jobs as managers_jobs
 # pages router
 from landing_page_app.routers import pages
 
@@ -27,8 +27,10 @@ def include_routers(app):
 
     # Clients
     app.include_router(clients_base.router, tags=["Clients"])
-    app.include_router(clients_jobs.router, prefix="/clients/jobs", tags=["Client Jobs"])
+    app.include_router(clients_jobs.router, tags=["Client Jobs"])
     app.include_router(clients_vendors.router, prefix="/clients/vendors", tags=["Client Vendors"])  # <-- NEW
+    app.include_router(managers_jobs.router, tags=["Manager Jobs"])
+
 
 
     # Candidates

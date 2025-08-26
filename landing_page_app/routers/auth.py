@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Form, Response, Cookie, Form
+from fastapi import APIRouter, Request, Depends, Form, Response, Cookie, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from landing_page_app.database import get_db
@@ -117,3 +117,17 @@ async def logout(
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie("user_email")
     return response
+
+
+def get_current_user(
+    user_email: str | None = Cookie(None),
+    db: Session = Depends(get_db)
+) -> User:
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user

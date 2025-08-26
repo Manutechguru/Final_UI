@@ -8,10 +8,9 @@ class Job(Base):
     __tablename__ = "jobs"
 
     job_id = Column(Integer, primary_key=True, index=True)
-    client_id = Column(Integer, ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=True)
-    manager_id = Column(Integer, ForeignKey("managers.manager_id", ondelete="CASCADE"), nullable=True)
+    manager_id = Column(Integer, ForeignKey("managers.manager_id", ondelete="CASCADE"), nullable=False)
 
-    job_title = Column(String(255), nullable=True)
+    job_title = Column(String(255), nullable=False)
     job_description = Column(String, nullable=True)
     status = Column(String(10), default="active")
 
@@ -20,5 +19,5 @@ class Job(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    client = relationship("Client", back_populates="jobs")
+    # Relationship
     manager = relationship("Manager", back_populates="jobs")

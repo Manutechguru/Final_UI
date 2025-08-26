@@ -8,10 +8,8 @@ from landing_page_app.database import get_db
 from landing_page_app.models.candidate_status_history import CandidateJDMapping
 from landing_page_app.models.candidates import Candidate
 from landing_page_app.models.jobs import Job
-from landing_page_app.models.clients import Client
 
 router = APIRouter(prefix="/candidates", tags=["Candidate Shortlisting"])
-
 
 # ----------------------------------------------------------------------
 # SHORTLIST CANDIDATES
@@ -23,8 +21,17 @@ def shortlist_candidates(
     db: Session = Depends(get_db)
 ):
     """Mark selected candidates as Shortlisted for a job."""
+
+    # ✅ Check if job exists
+    job = db.query(Job).filter(Job.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
     if not candidate_ids:
         raise HTTPException(status_code=400, detail="No candidates provided.")
+
+    updated = 0
+    added = 0
 
     for cid in candidate_ids:
         mapping = (
@@ -37,23 +44,31 @@ def shortlist_candidates(
         )
 
         if mapping:
+            # ✅ Update stage & status if already mapped
             mapping.stage = "Shortlisted"
+            mapping.status = "Screening"
             mapping.updated_at = datetime.utcnow()
+            updated += 1
         else:
+            # ✅ Add new mapping if not exists
             db.add(
                 CandidateJDMapping(
                     jd_id=job_id,
                     candidate_id=cid,
                     stage="Shortlisted",
+                    status="Screening",
                     updated_at=datetime.utcnow(),
                 )
             )
+            added += 1
 
     db.commit()
     return JSONResponse(
-        content={"message": f"{len(candidate_ids)} candidates shortlisted successfully."}
+        content={
+            "message": f"{updated} candidates updated, {added} candidates added.",
+            "total": updated + added
+        }
     )
-
 
 # ----------------------------------------------------------------------
 # REJECT CANDIDATES
@@ -65,8 +80,17 @@ def reject_candidates(
     db: Session = Depends(get_db)
 ):
     """Mark selected candidates as Rejected for a job."""
+
+    # ✅ Check if job exists
+    job = db.query(Job).filter(Job.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
     if not candidate_ids:
         raise HTTPException(status_code=400, detail="No candidates provided.")
+
+    updated = 0
+    added = 0
 
     for cid in candidate_ids:
         mapping = (
@@ -80,70 +104,25 @@ def reject_candidates(
 
         if mapping:
             mapping.stage = "Rejected"
+            mapping.status = "Rejected"
             mapping.updated_at = datetime.utcnow()
+            updated += 1
         else:
             db.add(
                 CandidateJDMapping(
                     jd_id=job_id,
                     candidate_id=cid,
                     stage="Rejected",
+                    status="Rejected",
                     updated_at=datetime.utcnow(),
                 )
             )
-
-    db.commit()
-    return JSONResponse(
-        content={"message": f"{len(candidate_ids)} candidates rejected successfully."}
-    )
-
-
-# ----------------------------------------------------------------------
-# MOVE CANDIDATE STAGE (Generic)
-# ----------------------------------------------------------------------
-@router.patch("/{candidate_id}/stage")
-def update_candidate_stage(
-    candidate_id: int,
-    jd_id: int = Body(..., embed=True),
-    stage: str = Body(..., embed=True),
-    db: Session = Depends(get_db),
-):
-    """Update candidate stage for a specific JD (Generic stage updater)."""
-    candidate = (
-        db.query(Candidate)
-        .filter(Candidate.candidates_id == candidate_id)
-        .first()
-    )
-    if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-
-    mapping = (
-        db.query(CandidateJDMapping)
-        .filter(
-            CandidateJDMapping.candidate_id == candidate_id,
-            CandidateJDMapping.jd_id == jd_id
-        )
-        .first()
-    )
-
-    if mapping:
-        mapping.stage = stage
-        mapping.updated_at = datetime.utcnow()
-    else:
-        db.add(
-            CandidateJDMapping(
-                jd_id=jd_id,
-                candidate_id=candidate_id,
-                stage=stage,
-                updated_at=datetime.utcnow()
-            )
-        )
+            added += 1
 
     db.commit()
     return JSONResponse(
         content={
-            "message": "Candidate stage updated successfully",
-            "candidate_id": candidate_id,
-            "jd_id": jd_id,
-            "stage": stage,
+            "message": f"{updated} candidates updated, {added} candidates added.",
+            "total": updated + added
         }
     )

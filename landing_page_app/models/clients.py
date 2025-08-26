@@ -16,4 +16,4 @@ class Client(Base):
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     managers = relationship("Manager", back_populates="client", cascade="all, delete-orphan")
-    jobs = relationship("Job", back_populates="client", cascade="all, delete-orphan")
+
