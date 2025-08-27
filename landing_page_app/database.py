@@ -1,8 +1,8 @@
-# landing_page_app/database.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = "postgresql+psycopg2://postgres@localhost:5432/teetli_db"
+# Use your real DB name: mydb
+DATABASE_URL = "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/mydb"
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

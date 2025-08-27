@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="user-logs">
+  <!-- Admin tabs (local to this page) -->
+  <div class="admin-tabs" style="margin: 12px 0 18px;">
+    <a href="/admin" class="tab-btn">Pending Users</a>
+    <a href="/admin/user-logs" class="tab-btn active">User Logs</a>
+    <a href="/admin" class="tab-btn">All Users</a>
+    <a href="/admin" class="tab-btn">Upload CSV</a>
+  </div>
+
+  <h2>User Logs (last 2 days)</h2>
+
+  <style>
+    /* --- tabs styling (no Tailwind needed) --- */
+    .admin-tabs .tab-btn {
+      display: inline-block;
+      background: #e5e7eb; /* light gray */
+      color: #111827;      /* dark text */
+      padding: 8px 14px;
+      border-radius: 6px;
+      margin-right: 8px;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .admin-tabs .tab-btn:hover { background: #d1d5db; }
+    .admin-tabs .tab-btn.active {
+      background: #4f46e5; /* indigo */
+      color: #fff;
+    }
+
+    /* --- table spacing --- */
+    .user-logs table {
+      width: 100%;
+      border-collapse: separate;   /* allow column spacing */
+      border-spacing: 28px 0;      /* horizontal gap, no vertical gap */
+    }
+    .user-logs th, .user-logs td {
+      padding: 6px 0;              /* compact row height */
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .user-logs th { background: #f7f7f7; }
+    .col-id { text-align: center; width: 80px; }
+    .nowrap { white-space: nowrap; } /* keep timestamp on one line */
+  </style>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="col-id">User<br>ID</th>
+        <th>Username</th>
+        <th>Action</th>
+        <th>Timestamp</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if logs %}
+        {% for row in logs %}
+          <tr>
+            <td class="col-id">{{ row.user_id }}</td>
+            <td>{{ row.username }}</td>
+            <td>{{ row.action }}</td>
+            <td class="nowrap">{{ row.timestamp }}</td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="4" style="text-align:center; padding:14px;">No logs in the last 2 days.</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <!-- Load more -->
+  <div style="text-align:center; margin-top:12px;">
+    <form method="get">
+      <input type="hidden" name="skip" value="{{ skip + limit }}">
+      <input type="hidden" name="limit" value="{{ limit }}">
+      <button type="submit">Load more</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
