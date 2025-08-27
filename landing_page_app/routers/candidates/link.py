@@ -1,112 +1,77 @@
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
 from typing import List
 
 from landing_page_app.database import get_db
 from landing_page_app.models.candidates import Candidate
 from landing_page_app.models.candidate_status_history import CandidateJDMapping
-from landing_page_app.models.clients import Client
 from landing_page_app.models.jobs import Job
 
-from landing_page_app.routers.utils.storage_utils import (
-    save_candidate_metadata,
-    save_candidate_resume
+from landing_page_app.routers.utils.link_utils import (
+    link_candidates_to_jd_db,
+    fetch_jd_candidates
 )
+from fastapi.templating import Jinja2Templates
 
+templates = Jinja2Templates(directory="landing_page_app/templates")
 router = APIRouter(prefix="/candidates", tags=["Candidates Linking"])
 
-
 # ----------------------------------------------------------------------
-# LINK CANDIDATES TO JOB + SAVE RESUMES + METADATA
+# LINK SELECTED CANDIDATES TO A JD
 # ----------------------------------------------------------------------
-
-@router.post("/link-to-job")
-def link_candidates_to_job(
-    client_id: int = Body(...),
+@router.post("/link-to-jd")
+def link_to_jd(
     jd_id: int = Body(...),
     candidate_ids: List[int] = Body(...),
     db: Session = Depends(get_db)
 ):
-    """
-    Link selected candidates to a job + save segregated resumes + metadata JSON.
-    Folder structure:
-        storage/
-          └── <ClientName>_<ClientID>/
-                └── <JobTitle>_<JobID>/
-                      ├── resumes/
-                      └── metadata/
-    """
     if not candidate_ids:
         raise HTTPException(status_code=400, detail="No candidates selected.")
+    
+    linked_count = link_candidates_to_jd_db(db, jd_id, candidate_ids)
+    
+    return JSONResponse({"message": f"Linked {linked_count} candidates successfully."})
 
-    # Fetch client + job details
-    client = db.query(Client).filter(Client.client_id == client_id).first()
-    job = db.query(Job).filter(Job.job_id == jd_id, Job.client_id == client_id).first()
 
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found.")
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found for this client.")
-
-    linked_count = 0
-
-    for c_id in candidate_ids:
-        candidate = db.query(Candidate).filter(Candidate.candidates_id == c_id).first()
-        if not candidate:
-            continue
-
-        # Save candidate resume in segregated folder
-        if candidate.resumelinks:
-            try:
-                save_candidate_resume(
-                    client.client_name, client.client_id,
-                    job.job_title, job.job_id,
-                    candidate.candidates_id,
-                    candidate.resumelinks
-                )
-            except Exception as e:
-                print(f"⚠️ Failed to save resume for candidate {c_id}: {e}")
-
-        # Save candidate metadata JSON
-        save_candidate_metadata(
-            client.client_name, client.client_id,
-            job.job_title, job.job_id,
-            candidate.candidates_id,
-            {
-                "candidate_name": candidate.candidate_name,
-                "email": candidate.email,
-                "contact": candidate.contact,
-                "location": candidate.location,
-                "skillset": candidate.skillset,
-                "education": candidate.education,
-                "company": candidate.company,
-                "resumelinks": candidate.resumelinks,
-                "status": "Linked"
-            }
-        )
-
-        # Update or create mapping in CandidateJDMapping
-        mapping = db.query(CandidateJDMapping).filter(
-            CandidateJDMapping.jd_id == jd_id,
-            CandidateJDMapping.candidate_id == c_id
-        ).first()
-
-        if mapping:
-            mapping.stage = "Linked"
-            mapping.updated_at = datetime.utcnow()
-        else:
-            db.add(CandidateJDMapping(
-                jd_id=jd_id,
-                candidate_id=c_id,
-                stage="Linked",
-                updated_at=datetime.utcnow()
-            ))
-
-        linked_count += 1
-
-    db.commit()
-    return JSONResponse(
-        content={"message": f"Linked {linked_count} candidates successfully."}
+# ----------------------------------------------------------------------
+# JD CANDIDATES PAGE
+# ----------------------------------------------------------------------
+@router.get("/jd-candidates/{jd_id}")
+def jd_candidates_page(jd_id: int, request: Request, db: Session = Depends(get_db)):
+    candidates = fetch_jd_candidates(db, jd_id)
+    return templates.TemplateResponse(
+        "jd_candidates.html",
+        {
+            "request": request,
+            "jd_id": jd_id,
+            "candidates": candidates,
+            "status_options": ["Screening", "Submissions", "Interview",
+                               "Offered", "Hired", "Rejected", "Archived"]
+        }
     )
+
+
+# ----------------------------------------------------------------------
+# UPDATE STAGE OF CANDIDATE
+# ----------------------------------------------------------------------
+@router.post("/update-stage")
+def update_candidate_stage(
+    jd_id: int = Body(...),
+    candidate_id: int = Body(...),
+    stage: str = Body(...),
+    db: Session = Depends(get_db)
+):
+    mapping = db.query(CandidateJDMapping).filter(
+        CandidateJDMapping.jd_id == jd_id,
+        CandidateJDMapping.candidate_id == candidate_id
+    ).first()
+    
+    if not mapping:
+        raise HTTPException(status_code=404, detail="Candidate mapping not found.")
+    
+    mapping.stage = stage
+    db.commit()
+    return JSONResponse({"message": f"Updated stage to {stage}"})
+  
+  

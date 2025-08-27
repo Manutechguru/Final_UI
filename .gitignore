@@ -1,0 +1,81 @@
+# =========================================
+# Python
+# =========================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs & cache
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VSCode / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================================
+# FastAPI / Uvicorn
+# =========================================
+# Uvicorn log files
+*.pid
+
+# =========================================
+# Alembic (migrations)
+# =========================================
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+# (Keep .py migration files, ignore only compiled caches)
+
+# =========================================
+# Other ignores
+# =========================================
+.DS_Store
+Thumbs.db

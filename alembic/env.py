@@ -3,8 +3,9 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from landing_page_app.database import Base
-from landing_page_app.models import Client, Job, Candidate, UserLog, User, CandidateJDMapping, Manager
+from landing_page_app.models import clients, candidate_status_history, candidates, log, managers, UserRole, jobs
 from alembic import context
+import enum
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
