@@ -1,9 +1,10 @@
-# landing_page_app/routers/uploadCSV.py
 from fastapi import APIRouter, Request, Depends, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from urllib.parse import quote_plus
+
 from landing_page_app.database import get_db
-from landing_page_app.crud import insertCandidates
+from landing_page_app.crud.insertCandidates import insert_candidates_from_csv
 
 router = APIRouter()
 
@@ -11,19 +12,23 @@ router = APIRouter()
 async def upload_csv(
     request: Request,
     csv_file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    if not csv_file.filename.endswith(".csv"):
-        return RedirectResponse(url="/admin?error=Please+upload+a+valid+CSV+file", status_code=303)
+    # Basic check
+    if not csv_file.filename.lower().endswith(".csv"):
+        err = quote_plus("Please upload a valid CSV file")
+        return RedirectResponse(url=f"/admin?tab=uploadcsv&error={err}", status_code=303)
 
     try:
-        result = insertCandidates.insert_candidates_from_csv(db, csv_file)
-
-        # Pass duplicates as query string (joined by commas)
-        dup_names = ",".join(result["duplicates"]) if result["duplicates"] else ""
+        result = insert_candidates_from_csv(db, csv_file)
+        msg = quote_plus(result.get("message", "Upload complete"))
+        dups = ",".join(result.get("duplicates", [])) if result.get("duplicates") else ""
+        # ✅ Stay on Upload CSV tab and show only one message area
         return RedirectResponse(
-            url=f"/admin?msg={result['message']}&duplicates={dup_names}",
+            url=f"/admin?tab=uploadcsv&msg={msg}&duplicates={quote_plus(dups)}",
             status_code=303
         )
     except Exception as e:
-        return RedirectResponse(url=f"/adminpage?error=Upload+failed:+{str(e)}", status_code=303)
+        err = quote_plus(f"Upload failed: {str(e)}")
+        # ✅ On error, also keep user on the same tab
+        return RedirectResponse(url=f"/admin?tab=uploadcsv&error={err}", status_code=303)
