@@ -9,14 +9,13 @@ class Manager(Base):
     manager_id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False)
     manager_name = Column(String(255), nullable=False)
+    
+    status = Column(String(20), default="active")  # 🟢 Added status column
 
     created_at = Column(DateTime, default=datetime.utcnow)
-    created_by = Column(String(255), nullable=True)
-    updated_at = Column(DateTime, nullable=True)
-    updated_by = Column(String(255), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    # ✅ Relationship back to client
     client = relationship("Client", back_populates="managers")
-
-    # ✅ Jobs uploaded under this manager
     jobs = relationship("Job", back_populates="manager", cascade="all, delete-orphan")

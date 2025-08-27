@@ -5,8 +5,10 @@ from sqlalchemy import func
 from datetime import datetime
 from landing_page_app.database import get_db
 from landing_page_app.models.jobs import Job
+from landing_page_app.models.user import User
 from landing_page_app.models.candidates import Candidate
 from landing_page_app.models.candidate_status_history import CandidateJDMapping
+from landing_page_app.routers.auth import get_current_user  # ✅ import auth dependency
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
@@ -52,10 +54,33 @@ def job_candidates(job_id: int, db: Session = Depends(get_db)):
 # -----------------------
 @router.get("/client/{client_id}")
 def client_jobs_page(request: Request, client_id: int, db: Session = Depends(get_db), message: str = ""):
-    jobs = db.query(Job).filter(Job.client_id == client_id).order_by(Job.created_at.desc()).all()
+    jobs = (
+        db.query(Job)
+        .filter(Job.client_id == client_id)
+        .order_by(Job.created_at.desc())
+        .all()
+    )
+
+    # ✅ Fetch creator and updater names
+    job_list = []
+    for job in jobs:
+        created_by_name = db.query(User.full_name).filter(User.id == job.created_by).scalar() if job.created_by else "N/A"
+        updated_by_name = db.query(User.full_name).filter(User.id == job.updated_by).scalar() if job.updated_by else "N/A"
+
+        job_list.append({
+            "job_id": job.job_id,
+            "job_title": job.job_title,
+            "job_description": job.job_description,
+            "status": job.status,
+            "created_by": created_by_name,
+            "created_at": job.created_at,
+            "updated_by": updated_by_name,
+            "updated_at": job.updated_at
+        })
+
     return templates.TemplateResponse(
         "client_jobs.html",
-        {"request": request, "jobs": jobs, "client_id": client_id, "message": message}
+        {"request": request, "jobs": job_list, "client_id": client_id, "message": message}
     )
 
 
@@ -68,7 +93,8 @@ def add_job(
     client_id: int,
     job_title: str = Form(...),
     job_description: str = Form(""),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # ✅ Get logged-in user
 ):
     message = ""
     job_title = job_title.strip()
@@ -76,7 +102,7 @@ def add_job(
     if not job_title:
         message = "Job title is required!"
     else:
-        # Optional: check if the same job exists for this client
+        # Check if job already exists for this client
         existing_job = db.query(Job).filter(Job.client_id == client_id, Job.job_title == job_title).first()
         if existing_job:
             message = f"Job '{job_title}' already exists for this client!"
@@ -85,14 +111,14 @@ def add_job(
                 client_id=client_id,
                 job_title=job_title,
                 job_description=job_description,
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
+                created_by=current_user.id  # ✅ Save created_by
             )
             db.add(new_job)
             db.commit()
             db.refresh(new_job)
             message = f"Job '{job_title}' added successfully!"
 
-    # Return updated jobs list for the client
     jobs = db.query(Job).filter(Job.client_id == client_id).order_by(Job.created_at.desc()).all()
     return templates.TemplateResponse(
         "client_jobs.html",

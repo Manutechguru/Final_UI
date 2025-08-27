@@ -1,157 +1,128 @@
-from fastapi import APIRouter, Request, Form, HTTPException, Depends
+from fastapi import APIRouter, Request, Form, HTTPException, Depends, status
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from datetime import datetime
 
 from landing_page_app.database import get_db
+from landing_page_app.routers.utils.jobs_utils import (
+    get_manager_by_id,
+    get_jobs_by_manager,
+    add_new_job,
+    toggle_job_status,
+    delete_job,
+)
 from landing_page_app.models.jobs import Job
-from landing_page_app.models.candidates import Candidate
-from landing_page_app.models.clients import Client
-from landing_page_app.models.candidate_status_history import CandidateJDMapping
 
-router = APIRouter()
+router = APIRouter(prefix="/managers/jobs", tags=["Jobs"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 
 
-# ------------------------------
-# Jobs Overview → Count of jobs by title
-# ------------------------------
-@router.get("/jobs/overview")
-def jobs_overview(db: Session = Depends(get_db)):
-    job_counts = db.query(Job.job_title, func.count(Job.job_id)) \
-                   .group_by(Job.job_title).all()
-    return {title or "Unknown": count for title, count in job_counts}
+# -----------------------------
+# 1. Manager Jobs Page
+# -----------------------------
+@router.get("/{manager_id}", name="manager_jobs_page")
+def manager_jobs_page(
+    request: Request,
+    manager_id: int,
+    db: Session = Depends(get_db),
+    message: str = ""
+):
+    manager = get_manager_by_id(db, manager_id)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Manager not found")
 
-
-# ------------------------------
-# View All Jobs for a Client
-# ------------------------------
-@router.get("/clients/{client_id}")
-def client_jobs_page(request: Request, client_id: int, db: Session = Depends(get_db), message: str = ""):
-    client = db.query(Client).filter(Client.client_id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-
-    jobs = db.query(Job).filter(Job.client_id == client_id).order_by(Job.created_at.desc()).all()
-    for job in jobs:
-        if not hasattr(job, 'status') or job.status is None:
-            job.status = 'inactive'
-
+    jobs = get_jobs_by_manager(db, manager_id)
     return templates.TemplateResponse(
         "client_jobs.html",
-        {"request": request, "jobs": jobs, "client": client, "message": message}
+        {"request": request, "manager": manager, "jobs": jobs, "message": message}
     )
 
 
-# ------------------------------
-# Add a New Job under a Client
-# ------------------------------
-@router.post("/{client_id}/add-job")
+# -----------------------------
+# 2. Add a New Job (Manager Only)
+# -----------------------------
+@router.post("/{manager_id}/add-job", name="add_job")
 def add_job(
     request: Request,
-    client_id: int,
+    manager_id: int,
     job_title: str = Form(...),
-    jd_link: str = Form(""),
+    job_description: str = Form(""),
     db: Session = Depends(get_db)
 ):
-    client = db.query(Client).filter(Client.client_id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    manager = get_manager_by_id(db, manager_id)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Manager not found")
 
+    job_title_clean = (job_title or "").strip()
+    job_description_clean = (job_description or "").strip()
     message = ""
-    job_title = job_title.strip()
 
-    if not job_title:
+    if not job_title_clean:
         message = "Job title is required!"
     else:
-        existing_job = db.query(Job).filter(Job.client_id == client_id, Job.job_title == job_title).first()
-        if existing_job:
-            message = f"Job '{job_title}' already exists for this client!"
+        jobs = get_jobs_by_manager(db, manager_id)
+        if any(job.job_title.lower() == job_title_clean.lower() for job in jobs):
+            message = f"Job '{job_title_clean}' already exists!"
         else:
-            new_job = Job(
-                client_id=client_id,
-                job_title=job_title,
-                job_description=jd_link,
-                created_at=datetime.utcnow(),
-                status="inactive"
-            )
-            db.add(new_job)
-            db.commit()
-            db.refresh(new_job)
-            message = f"Job '{job_title}' added successfully!"
+            add_new_job(db, manager_id, job_title_clean, job_description_clean)
+            message = f"Job '{job_title_clean}' added successfully!"
 
-    jobs = db.query(Job).filter(Job.client_id == client_id).order_by(Job.created_at.desc()).all()
-    return templates.TemplateResponse(
-        "client_jobs.html",
-        {"request": request, "jobs": jobs, "client": client, "message": message}
-    )
+    redirect_url = str(request.url_for("manager_jobs_page", manager_id=manager_id)) + f"?message={message}"
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
-# ------------------------------
-# Toggle Job Status
-# ------------------------------
-@router.post("/{client_id}/toggle-job/{job_id}")
-def toggle_job_status(client_id: int, job_id: int, request: Request, db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.client_id == client_id, Job.job_id == job_id).first()
+# -----------------------------
+# 3. Toggle Job Status
+# -----------------------------
+@router.post("/{manager_id}/toggle-job/{job_id}", name="toggle_job_status")
+def toggle_job_status_route(manager_id: int, job_id: int, db: Session = Depends(get_db)):
+    job = toggle_job_status(db, job_id, manager_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    job.status = "inactive" if job.status == "active" else "active"
-    db.commit()
-
-    jobs = db.query(Job).filter(Job.client_id == client_id).order_by(Job.created_at.desc()).all()
-    client = db.query(Client).filter(Client.client_id == client_id).first()
-
-    return templates.TemplateResponse(
-        "client_jobs.html",
-        {"request": request, "jobs": jobs, "client": client, "message": "Job status updated successfully!"}
+    message = f"Job '{job.job_title}' status updated!"
+    return RedirectResponse(
+        url=f"/managers/jobs/{manager_id}?message={message}",
+        status_code=status.HTTP_303_SEE_OTHER
     )
 
 
-# ------------------------------
-# Delete Job
-# ------------------------------
-@router.post("/{client_id}/delete-job/{job_id}")
-def delete_job(client_id: int, job_id: int, request: Request, db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.client_id == client_id, Job.job_id == job_id).first()
+# -----------------------------
+# 4. Delete Job
+# -----------------------------
+@router.post("/{manager_id}/delete-job/{job_id}", name="delete_job")
+def delete_job_route(manager_id: int, job_id: int, db: Session = Depends(get_db)):
+    success = delete_job(db, job_id, manager_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Job not found")
+    message = "Job deleted successfully!"
+    return RedirectResponse(
+        url=f"/managers/jobs/{manager_id}?message={message}",
+        status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+# -----------------------------
+# 5. View Job JD
+# -----------------------------
+@router.get("/view-jd/{job_id}", name="view_job_jd")
+def view_job_jd(request: Request, job_id: int, db: Session = Depends(get_db)):
+    job = db.query(Job).filter(Job.job_id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    db.delete(job)
-    db.commit()
-
-    jobs = db.query(Job).filter(Job.client_id == client_id).order_by(Job.created_at.desc()).all()
-    client = db.query(Client).filter(Client.client_id == client_id).first()
-
     return templates.TemplateResponse(
-        "client_jobs.html",
-        {"request": request, "jobs": jobs, "client": client, "message": "Job deleted successfully!"}
+        "view_jd.html",
+        {"request": request, "job": job}
     )
 
 
-# ------------------------------
-# View Candidates Linked to a Job
-# ------------------------------
-@router.get("/job/{job_id}/candidates")
+# -----------------------------
+# 6. Get Candidates for a Job
+# -----------------------------
+@router.get("/{job_id}/candidates", name="job_candidates")
 def job_candidates(job_id: int, db: Session = Depends(get_db)):
-    candidates = (
-        db.query(Candidate)
-        .join(CandidateJDMapping, Candidate.candidates_id == CandidateJDMapping.candidate_id)
-        .filter(CandidateJDMapping.jd_id == job_id)
-        .all()
-    )
-    results = []
-    for c in candidates:
-        latest_status = (
-            db.query(CandidateJDMapping.stage)
-            .filter(CandidateJDMapping.candidate_id == c.candidates_id)
-            .order_by(CandidateJDMapping.updated_at.desc())
-            .first()
-        )
-        results.append({
-            "candidates_id": c.candidates_id,
-            "candidate_name": c.candidate_name,
-            "status": latest_status[0] if latest_status else "Not Updated"
-        })
-    return results
+    job = db.query(Job).filter(Job.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # ✅ Redirect to the working JD candidates page
+    return RedirectResponse(url=f"/candidates/jd-candidates/{job.job_id}")

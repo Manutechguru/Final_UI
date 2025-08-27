@@ -107,6 +107,10 @@
       {% endfor %}
     </select>
 
+    <select id="vendorSelect" class="form-select form-select-sm">
+      <option value="">Select Vendor</option>
+    </select>
+
     <select id="jdSelect" class="form-select form-select-sm">
       <option value="">Select Job</option>
     </select>
@@ -126,23 +130,6 @@
 
     <div class="table-responsive">
       <table class="table table-hover table-sm align-middle mb-0 custom-results-table">
-        <colgroup>
-          <col style="width: 30px;">
-          <col style="width: 30px;">
-          <col style="width: 140px;">
-          <col style="width: 200px;">
-          <col style="width: 160px;">
-          <col style="width: 80px;">
-          <col style="width: 120px;">
-          <col style="width: 100px;">
-          <col style="width: 80px;">
-          <col style="width: 120px;">
-          <col style="width: 140px;">
-          <col style="width: 50px;">
-          <col style="width: 120px;">
-          <col style="width: 80px;">
-          <col style="width: 120px;">
-        </colgroup>
         <thead class="table-light">
           <tr>
             <th></th>
@@ -166,7 +153,7 @@
           {% for candidate in results %}
           <tr class="main-row">
             <td class="chevron"><i class="bi bi-chevron-down"></i></td>
-            <td><input type="checkbox" class="candidateCheckbox form-check-input" value="{{ candidate.id }}"></td>
+            <td><input type="checkbox" class="candidateCheckbox form-check-input" value="{{ candidate.candidates_id }}"></td>
             <td class="expand-cell">{{ candidate.candidate_name or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.skillset or 'N/A' }}</td>
             <td class="expand-cell">{{ candidate.email or 'N/A' }}</td>
@@ -178,7 +165,7 @@
             <td class="expand-cell">{{ candidate.company or 'N/A' }}</td>
             <td class="expand-cell">
               {% if candidate.resumelinks %}
-              <a href="{{ candidate.resumelinks }}" target="_blank" title="Download Resume"><i class="bi bi-paperclip"></i></a>
+                <a href="{{ candidate.resumelinks }}" target="_blank" title="Download Resume"><i class="bi bi-paperclip"></i></a>
               {% else %}N/A{% endif %}
             </td>
             <td class="expand-cell">{{ candidate.clients or 'N/A' }}</td>
@@ -191,7 +178,6 @@
     </div>
   </div>
   {% endif %}
-
 </div>
 
 <style>
@@ -210,5 +196,108 @@
 }
 </style>
 
-<script src="/static/js/search.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const clientSelect = document.getElementById('clientSelect');
+    const vendorSelect = document.getElementById('vendorSelect');
+    const jdSelect = document.getElementById('jdSelect');
+    const linkBtn = document.getElementById('linkCandidatesBtn');
+    const toggleAllBtn = document.getElementById('toggleAllBtn');
+    const checkboxes = document.querySelectorAll('.candidateCheckbox');
+    const selectAll = document.getElementById('selectAll');
+    const kpiSelected = document.getElementById('kpiSelected');
+
+    function updateKPI() {
+        kpiSelected.textContent = document.querySelectorAll('.candidateCheckbox:checked').length;
+    }
+
+    // Select/Deselect all
+    selectAll.addEventListener('change', function () {
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        updateKPI();
+    });
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateKPI));
+
+    toggleAllBtn.addEventListener('click', function () {
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+        selectAll.checked = !allChecked;
+        updateKPI();
+    });
+
+    // Enable link button if JD selected
+    jdSelect.addEventListener('change', function () {
+        linkBtn.disabled = !this.value;
+    });
+
+    // Link selected candidates to JD
+    linkBtn.addEventListener('click', async function () {
+        const jdId = jdSelect.value;
+        if (!jdId) { alert("Select a Job first"); return; }
+
+        const selected = Array.from(document.querySelectorAll('.candidateCheckbox:checked')).map(cb => parseInt(cb.value));
+        if (selected.length === 0) { alert("Select candidates"); return; }
+
+        const res = await fetch('/candidates/link-to-jd', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ jd_id: parseInt(jdId), candidate_ids: selected })
+        });
+
+        const data = await res.json();
+        alert(data.message);
+
+        // Remove linked candidates from table
+        selected.forEach(id => {
+            const row = document.querySelector(`.candidateCheckbox[value="${id}"]`).closest('tr');
+            if (row) row.remove();
+        });
+
+        updateKPI();
+    });
+
+    // Fetch vendors dynamically
+    clientSelect.addEventListener('change', async function () {
+        const clientId = this.value;
+        vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
+        jdSelect.innerHTML = '<option value="">Select Job</option>';
+        linkBtn.disabled = true;
+
+        if (!clientId) return;
+
+        const res = await fetch(`/candidates/get-vendors/${clientId}`);
+        const data = await res.json();
+        if (data && data.length) {
+            data.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.vendor_id;
+                opt.textContent = v.vendor_name;
+                vendorSelect.appendChild(opt);
+            });
+        }
+    });
+
+    // Fetch jobs dynamically
+    vendorSelect.addEventListener('change', async function () {
+        const vendorId = this.value;
+        jdSelect.innerHTML = '<option value="">Select Job</option>';
+        linkBtn.disabled = true;
+
+        if (!vendorId) return;
+
+        const res = await fetch(`/candidates/get-jobs/${vendorId}`);
+        const data = await res.json();
+        if (data && data.length) {
+            data.forEach(j => {
+                const opt = document.createElement('option');
+                opt.value = j.job_id;
+                opt.textContent = j.job_title;
+                jdSelect.appendChild(opt);
+            });
+        }
+    });
+});
+</script>
+
 {% endblock %}

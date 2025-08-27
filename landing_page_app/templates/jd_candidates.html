@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+<div class="nxg-container mt-4">
+    <h2 class="mb-3">JD Candidates <small class="text-muted">(JD ID: {{ jd_id }})</small></h2>
+
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-hover table-striped table-bordered align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Name</th>
+                    <th>Skills</th>
+                    <th>Email</th>
+                    <th>IT Exp</th>
+                    <th>Location</th>
+                    <th>Contact</th>
+                    <th>Rel Exp</th>
+                    <th>Education</th>
+                    <th>Company</th>
+                    <th>Resume</th>
+                    <th>Clients</th>
+                    <th>Notice</th>
+                    <th>Comment</th>
+                    <th>Stage</th>
+                    <th>AI Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if candidates %}
+                    {% for c in candidates %}
+                    <tr>
+                        <td>{{ c.name or 'N/A' }}</td>
+                        <td>{{ c.skills or 'N/A' }}</td>
+                        <td>{{ c.email or 'N/A' }}</td>
+                        <td>{{ c.it_experience or 'N/A' }}</td>
+                        <td>{{ c.location or 'N/A' }}</td>
+                        <td>{{ c.contact or 'N/A' }}</td>
+                        <td>{{ c.relevant_experience or 'N/A' }}</td>
+                        <td>{{ c.education or 'N/A' }}</td>
+                        <td>{{ c.company or 'N/A' }}</td>
+                        <td class="text-center">
+                            {% if c.resume %}
+                                 <a href="{{ c.resume }}" target="_blank" title="Download Resume">
+                                    <i class="bi bi-paperclip fs-5"></i>
+                                </a>
+                            {% else %}N/A{% endif %}
+                        </td>
+                        <td>{{ c.clients or 'N/A' }}</td>
+                        <td>{{ c.notice_period or 'N/A' }}</td>
+                        <td>{{ c.comment or 'N/A' }}</td>
+                        <td>
+                            <select class="form-select form-select-sm stageDropdown" data-candidate="{{ c.candidate_id }}">
+                                {% for s in status_options %}
+                                    <option value="{{ s }}" {% if s == c.stage %}selected{% endif %}>{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>{{ c.ai_score or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="15" class="text-center text-muted">No candidates linked to this JD yet.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .table thead th {
+        vertical-align: middle;
+        text-align: center;
+    }
+    .table tbody td {
+        vertical-align: middle;
+    }
+    .stageDropdown {
+        min-width: 120px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.stageDropdown').forEach(function(dropdown){
+        dropdown.addEventListener('change', async function(){
+            const candidateId = this.dataset.candidate;
+            const stage = this.value;
+            const jdId = "{{ jd_id }}";
+            
+            try {
+                const res = await fetch('/candidates/update-stage', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({candidate_id: candidateId, jd_id: jdId, stage: stage})
+                });
+
+                if (!res.ok) throw new Error('Failed to update stage');
+            } catch (err) {
+                alert('Error updating stage: ' + err.message);
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}
