@@ -2,301 +2,916 @@
 {% block content %}
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/search.css">
 
-<div class="nxg-container">
+<!-- Container -->
+<div class="nxg-container" style="max-width:1180px; margin:18px auto;">
 
-  <!-- HERO -->
-  <div class="nxg-hero">
-    <div class="d-flex justify-content-between align-items-start flex-column flex-md-row">
-      <div>
-        <h1>🔍 Candidate Search</h1>
-        {% if advanced_from_jd %}
-          <p class="lead mb-0">We parsed your JD link and pre-filled the fields below. Review and click <strong>Search</strong>.</p>
-        {% else %}
-          <p class="lead mb-0">Find the right candidates by Skills, Location, and Experience. Use Advanced Search to parse a JD link.</p>
-        {% endif %}
+  <!-- TOP HERO / SEARCH AREA (improved, attractive) -->
+  <div class="hero-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:18px;">
+    <!-- Advanced Search card (left) -->
+    <div class="card-advanced" style="background: linear-gradient(135deg,#eef2ff 0%, #e6f7ff 100%); border-radius:12px; padding:18px; box-shadow:0 8px 20px rgba(14,30,37,0.06); border:1px solid rgba(14,30,37,0.04);">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="background:linear-gradient(180deg,#fff 0,#f3f8ff 100%); border-radius:12px; padding:10px; display:flex; align-items:center; justify-content:center; width:56px; height:56px;">
+          <i class="bi bi-file-earmark-text" style="font-size:22px; color:#2563eb;"></i>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:800; font-size:16px; color:#0f172a;">Advanced: Parse JD (Drive / Docs)</div>
+          <div style="color:#374151; font-size:13px; margin-top:4px;">Paste a Google Drive/Docs share link — our AI will extract keywords and match the best candidates.</div>
+        </div>
       </div>
-    </div>
-    <div class="nxg-divider"></div>
-  </div>
 
-  <!-- BASIC SEARCH FORM -->
-  <div class="card-soft mb-3">
-    <form id="searchForm" method="GET" action="/candidates/search" class="row g-3 align-items-end">
-      <div class="col-lg-4">
-        <label class="form-label-small">Skills</label>
-        <div class="input-with-icon">
-          <i class="bi bi-stars"></i>
-          <input name="skills" value="{{ skills or '' }}" placeholder="e.g. SQL, Python, AWS" class="form-control form-control-sm"/>
-        </div>
-      </div>
-      <div class="col-lg-4">
-        <label class="form-label-small">Location</label>
-        <div class="input-with-icon">
-          <i class="bi bi-geo-alt"></i>
-          <input name="location" value="{{ location or '' }}" placeholder="City or Region" class="form-control form-control-sm"/>
-        </div>
-      </div>
-      <div class="col-lg-4">
-        <label class="form-label-small">Experience</label>
-        <div class="input-with-icon">
-          <i class="bi bi-briefcase"></i>
-          <input name="experience" value="{{ experience or '' }}" placeholder="e.g. 4 or 3-5 or 4y 6m" class="form-control form-control-sm"/>
-        </div>
-      </div>
-      <div class="col-12 d-flex gap-2">
-        <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="bi bi-search me-1"></i>Search</button>
-        <a href="/candidates/search" class="btn btn-outline-secondary rounded-pill px-4">Reset</a>
-      </div>
-    </form>
-  </div>
-
-  <!-- ADVANCED SEARCH -->
-  <div class="adv-toggle mb-2" id="advToggle">
-    <span><i class="bi bi-file-earmark-text me-2"></i>Advanced Search: Parse JD</span>
-    <i class="bi bi-caret-down-fill" id="advIcon"></i>
-  </div>
-  <div class="adv-body {% if advanced_from_jd %}show{% endif %}" id="advBody">
-    <form action="/candidates/advanced-search" method="post" class="row g-3 align-items-end" autocomplete="off">
-      <div class="col-lg-9">
-        <label class="form-label-small">JD Google Drive / Docs Link</label>
-        <div class="input-with-icon">
-          <i class="bi bi-link-45deg"></i>
-          <input type="url" name="jd_drive_link" placeholder="Paste share link" required class="form-control form-control-sm"/>
-        </div>
-        <div class="adv-help mt-1 small">
-          Extract <span class="badge bg-secondary rounded-pill">Skills</span>, <span class="badge bg-secondary rounded-pill">Location</span>, <span class="badge bg-secondary rounded-pill">Experience</span>.
-        </div>
-      </div>
-      <div class="col-lg-3 text-lg-end">
-        <button type="submit" class="btn btn-info text-white rounded-pill px-4">
-          <i class="bi bi-magic me-1"></i>Extract Keywords
+      <form id="advancedSearchForm" action="/candidates/advanced-search" method="post" class="mt-3" autocomplete="off" style="display:flex; gap:10px; align-items:center;">
+        <input type="url" name="jd_drive_link" placeholder="Paste share link (Drive / Docs)" required
+               class="form-control" style="flex:1; min-width:0; border-radius:8px; padding:10px 12px; border:1px solid #e6eefc; background:#fff;"/>
+        <button type="submit" class="btn proceed-btn" style="background:#10b981; color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:700;">
+          <i class="bi bi-magic me-1"></i> Proceed
         </button>
+      </form>
+      <div style="font-size:12px; color:#6b7280; margin-top:8px;">AI will examine JD text and compare with stored resumes (10 at a time) to find best matches.</div>
+    </div>
+
+    <!-- Manual search + Client/Vendor/Job (right) -->
+    <div class="card-manual" style="background:#fff; border-radius:12px; padding:14px; box-shadow:0 8px 20px rgba(14,30,37,0.04); border:1px solid rgba(14,30,37,0.04);">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-weight:800; font-size:16px; color:#0f172a;">Manual Search</div>
+        <div style="font-size:13px; color:#6b7280;">Quick filters</div>
       </div>
-    </form>
+
+      <form id="searchForm" method="GET" action="/candidates/search" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+        <div>
+          <label style="font-size:12px; color:#6b7280;">Skills</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <i class="bi bi-stars" style="color:#2563eb; font-size:18px;"></i>
+            <input name="skills" value="{{ skills or '' }}" placeholder="e.g. SQL, Python, AWS" class="form-control" style="border-radius:8px; padding:8px 10px; border:1px solid #e6eefc;">
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:12px; color:#6b7280;">Location</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <i class="bi bi-geo-alt" style="color:#2563eb; font-size:18px;"></i>
+            <input name="location" value="{{ location or '' }}" placeholder="City or Region" class="form-control" style="border-radius:8px; padding:8px 10px; border:1px solid #e6eefc;">
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:12px; color:#6b7280;">Experience</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <i class="bi bi-briefcase" style="color:#2563eb; font-size:18px;"></i>
+            <input name="experience" value="{{ experience or '' }}" placeholder="e.g. 4 or 3-5 or 4y 6m" class="form-control" style="border-radius:8px; padding:8px 10px; border:1px solid #e6eefc;">
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="display:flex; gap:8px; width:100%;">
+            <button type="submit" class="btn btn-primary" style="flex:1; border-radius:8px; padding:9px 12px;">Search</button>
+            <a href="/candidates/search" class="btn btn-outline-secondary" style="flex:1; border-radius:8px; padding:9px 12px;">Reset</a>
+          </div>
+        </div>
+      </form>
+
+      <!-- Client / Vendor / Job (kept IDs and endpoints) -->
+      <div style="display:flex; gap:8px; margin-top:12px; align-items:center;">
+        <select id="clientSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
+          <option value="">Select Client</option>
+          {% for client in clients %}
+            <option value="{{ client.client_id }}">{{ client.client_name }}</option>
+          {% endfor %}
+        </select>
+
+        <select id="vendorSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
+          <option value="">Select Vendor</option>
+        </select>
+
+        <select id="jdSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
+          <option value="">Select Job</option>
+        </select>
+      </div>
+
+    </div>
   </div>
 
   {% if results is defined and results %}
-  <!-- KPI GRID -->
-  <div class="kpi-grid">
-    <div class="kpi">
-      <div class="ico primary"><i class="bi bi-people"></i></div>
-      <div><div class="val">{{ results|length }}</div><div class="lbl">Total Candidates</div></div>
+  <!-- KPI Row (simple) -->
+  <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+    <div style="background:#fff; border:1px solid #eef2f7; border-radius:10px; padding:10px 14px;">
+      <div style="font-weight:800; font-size:18px;">{{ results|length }}</div>
+      <div style="font-size:12px; color:#6b7280;">Total Candidates</div>
     </div>
-    <div class="kpi">
-      <div class="ico success"><i class="bi bi-check2-circle"></i></div>
-      <div><div class="val" id="kpiSelected">0</div><div class="lbl">Selected</div></div>
+    <div style="background:#fff; border:1px solid #eef2f7; border-radius:10px; padding:10px 14px;">
+      <div id="kpiSelected" style="font-weight:800; font-size:18px;">0</div>
+      <div style="font-size:12px; color:#6b7280;">Selected</div>
     </div>
-    <div class="kpi">
-      <div class="ico warn"><i class="bi bi-building"></i></div>
-      <div><div class="val">{{ clients|length }}</div><div class="lbl">Clients</div></div>
+    <div style="background:#fff; border:1px solid #eef2f7; border-radius:10px; padding:10px 14px;">
+      <div style="font-weight:800; font-size:18px;">{{ clients|length }}</div>
+      <div style="font-size:12px; color:#6b7280;">Clients</div>
     </div>
-    <div class="kpi">
-      <div class="ico info"><i class="bi bi-briefcase"></i></div>
-      <div><div class="val" id="kpiJobs">0</div><div class="lbl">Jobs</div></div>
-    </div>
+    <div style="flex:1"></div>
   </div>
 
-  <!-- ACTION BAR -->
-  <div class="action-bar d-flex align-items-center mb-2 gap-2">
-    <select id="clientSelect" class="form-select form-select-sm">
-      <option value="">Select Client</option>
-      {% for client in clients %}
-        <option value="{{ client.client_id }}">{{ client.client_name }}</option>
-      {% endfor %}
-    </select>
+  <!-- Clean Results Table -->
+  <div style="background:#fff; border:1px solid #eef4fb; border-radius:10px; overflow:hidden;">
+    <div style="padding:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:700; font-size:15px;">Search Results</div>
+        <div style="color:#6b7280; font-size:13px;">Showing <strong id="visibleCountLabel">{{ results|length }}</strong> candidates</div>
+      </div>
 
-    <select id="vendorSelect" class="form-select form-select-sm">
-      <option value="">Select Vendor</option>
-    </select>
-
-    <select id="jdSelect" class="form-select form-select-sm">
-      <option value="">Select Job</option>
-    </select>
-
-    <div class="ms-auto d-flex gap-2">
-      <button id="linkCandidatesBtn" class="btn btn-success btn-sm rounded-pill" disabled>🔗 Link Selected Candidates</button>
-      <button id="toggleAllBtn" class="btn btn-light btn-sm border rounded-pill">Mark All</button>
-    </div>
-  </div>
-
-  <!-- RESULTS TABLE -->
-  <div class="results-card">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h5 class="mb-0">Search Results</h5>
-      <div class="small-muted">Showing <strong>{{ results|length }}</strong> candidates</div>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table table-hover table-sm align-middle mb-0 custom-results-table">
-        <thead class="table-light">
-          <tr>
-            <th></th>
-            <th><input id="selectAll" type="checkbox" aria-label="Select all"></th>
-            <th>Name</th>
-            <th>Skills</th>
-            <th>Email</th>
-            <th>IT Exp</th>
-            <th>Location</th>
-            <th>Contact</th>
-            <th>Rel Exp</th>
-            <th>Edu</th>
-            <th>Company</th>
-            <th>Resume</th>
-            <th>Clients</th>
-            <th>Notice</th>
-            <th>Comment</th>
+      <table class="clean-table" style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+        <thead style="background:#fff; border-bottom:1px solid #eef2f7;">
+          <tr style="text-align:left; color:#374151; font-weight:700;">
+            <th style="width:56px; padding:12px;"></th>
+            <th style="padding:12px;">Candidate Name</th>
+            <th style="padding:12px;">Skills</th>
+            <th style="padding:12px;">Email</th>
+            <th style="padding:12px;">Contact</th>
+            <th style="padding:12px;">IT Exp</th>
+            <th style="padding:12px; text-align:center;">AI Score</th>
+            <th style="padding:12px;">Resume</th>
+            <th style="padding:12px;">Location</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="search-results-body">
           {% for candidate in results %}
-          <tr class="main-row">
-            <td class="chevron"><i class="bi bi-chevron-down"></i></td>
-            <td><input type="checkbox" class="candidateCheckbox form-check-input" value="{{ candidate.candidates_id }}"></td>
-            <td class="expand-cell">{{ candidate.candidate_name or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.skillset or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.email or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.it_experience or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.location or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.contact or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.relevant_experience or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.education or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.company or 'N/A' }}</td>
-            <td class="expand-cell">
-              {% if candidate.resumelinks %}
-                <a href="{{ candidate.resumelinks }}" target="_blank" title="Download Resume"><i class="bi bi-paperclip"></i></a>
-              {% else %}N/A{% endif %}
-            </td>
-            <td class="expand-cell">{{ candidate.clients or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.notice_period or 'N/A' }}</td>
-            <td class="expand-cell">{{ candidate.comment or 'N/A' }}</td>
-          </tr>
+            {% set cid = candidate.candidates_id %}
+            <tr class="candidate-row" data-candidate-id="{{ cid }}" data-hidden="{{ 'true' if candidate.is_linked else 'false' }}" style="border-bottom:1px solid #f1f5f9; cursor:pointer;">
+              <!-- LINK toggle -->
+              <td style="padding:8px 12px; vertical-align:middle; text-align:center;">
+                <input type="checkbox" id="link_cb_{{ cid }}" class="candidate-link-checkbox" data-candidate="{{ cid }}" style="position:absolute; left:-9999px;"
+                       {% if candidate.is_linked %}checked{% endif %} />
+                <label for="link_cb_{{ cid }}" class="link-btn" title="Toggle link/unlink" style="display:inline-block; width:36px; height:36px; border-radius:10px; border:1px solid #d1d5db; background:#fff; box-shadow:0 1px 0 rgba(0,0,0,0.02); text-align:center; line-height:36px; font-size:16px; cursor:pointer;">
+                  🔗
+                </label>
+              </td>
+                            <td style="padding:12px; vertical-align:middle;">
+                <div style="font-weight:700; color:#111827;">{{ candidate.candidate_name or 'N/A' }}</div>
+              </td>
+
+              <td style="padding:12px; vertical-align:middle;">
+                {% if candidate.skillset %}
+                  {% set sl = candidate.skillset.split(',') %}
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    {% for s2 in sl[:3] %}<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px; font-weight:700;">{{ s2.strip() }}</span>{% endfor %}
+                    {% if sl|length > 3 %}<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px;">+{{ sl|length - 3 }}</span>{% endif %}
+                  </div>
+                {% else %}
+                  <span style="color:#6b7280;">N/A</span>
+                {% endif %}
+              </td>
+
+              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.email or 'N/A' }}</td>
+              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.contact or 'N/A' }}</td>
+              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.it_experience or candidate.it_exp or 'N/A' }}</td>
+              <td style="padding:12px; vertical-align:middle; text-align:center;">
+                <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                  <span class="ai-score-cell" data-id="{{ cid }}" style="font-weight:800;">{{ (candidate.score | default(candidate.ai_score)) }}</span>
+                  <button type="button" class="ai-explain-btn" data-id="{{ cid }}" title="Explain" style="border:1px solid #e5e7eb; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button>
+                  <button type="button" class="ai-reset-btn" data-id="{{ cid }}" title="Reset" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px; color:#b91c1c;">Reset</button>
+                </div>
+              </td>
+              <td style="padding:12px; vertical-align:middle;">
+                {% if candidate.resumelinks %}
+                  <a href="{{ candidate.resumelinks }}" target="_blank" style="color:#2563eb; text-decoration:none;">View <i class="bi bi-paperclip"></i></a>
+                {% else %}
+                  <span style="color:#6b7280;">N/A</span>
+                {% endif %}
+              </td>
+              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.location or 'N/A' }}</td>
+            </tr>
           {% endfor %}
         </tbody>
       </table>
+
+      <!-- Pagination controls & Recently linked -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="color:#6b7280; font-size:13px;">Rows per page</label>
+          <select id="records-per-page" style="padding:8px 10px; border-radius:8px; border:1px solid #e6eefc; font-size:13px;">
+            <option value="10">10 Records per page</option>
+            <option value="20">20 Records per page</option>
+            <option value="30" selected>30 Records per page</option>
+            <option value="40">40 Records per page</option>
+            <option value="50">50 Records per page</option>
+          </select>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="prev-page" class="btn btn-outline-secondary" style="padding:6px 12px; border-radius:8px;">Prev</button>
+          <div id="page-info" style="color:#6b7280; font-size:13px;">Showing 0–0 of 0</div>
+          <button id="next-page" class="btn btn-outline-secondary" style="padding:6px 12px; border-radius:8px;">Next</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <a id="recentlyLinkedBtn" href="/candidates/shortlisted" style="font-size:13px; color:#1d4ed8; text-decoration:underline; cursor:pointer;"> Recently linked&gt;&gt; </a>
+      </div>
+    </div>
+  </div>
+
+  {% elif results is defined and not results and (skills or location or experience or prefill_skills|default('') or prefill_location|default('') or prefill_experience|default('') or (advanced_from_jd|default(False))) %}
+  <!-- NO RESULTS ALERT (shown only after a search/advanced-search produced zero results) -->
+  <div style="margin-top:12px;">
+    <div style="background:#fff; border:1px dashed #e6eefc; border-radius:10px; padding:18px; display:flex; gap:12px; align-items:flex-start;">
+      <div style="width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#fff 0,#f3f8ff 100%); display:flex; align-items:center; justify-content:center;">
+        <i class="bi bi-exclamation-circle" style="font-size:28px; color:#f97316;"></i>
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:800; font-size:16px; color:#111827;">No candidates found</div>
+        <div style="color:#6b7280; margin-top:6px; font-size:14px;">
+          We couldn't find any candidates matching your search criteria. Try relaxing filters (remove location or reduce required skills), or click Reset to start over.
+        </div>
+        <div style="margin-top:10px;">
+          <a href="/candidates/search" class="btn btn-outline-secondary" style="border-radius:8px; padding:8px 12px;">Reset</a>
+        </div>
+      </div>
     </div>
   </div>
   {% endif %}
 </div>
 
+<!-- Candidate Modal -->
+<div id="candidateModalBackdrop" style="display:none; position:fixed; inset:0; z-index:2200; align-items:center; justify-content:center;">
+  <div id="candidateModalOverlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.22);"></div>
+
+  <div id="candidateModal" style="position:relative; width:100%; max-width:900px; background:#fff; border-radius:10px; box-shadow:0 20px 60px rgba(2,6,23,0.18); z-index:2201; overflow:auto; max-height:86vh;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #eef4fb;">
+      <div style="font-weight:800;">Candidate Details</div>
+      <button id="candidateModalClose" style="border:0; background:transparent; font-size:20px; cursor:pointer;">×</button>
+    </div>
+
+    <div id="candidateModalBody" style="padding:14px 18px; color:#111827; font-size:0.95rem;"></div>
+
+    <div style="display:flex; gap:8px; justify-content:flex-end; padding:12px 18px; border-top:1px solid #eef4fb;">
+      <button id="candidateModalCancel" class="btn btn-outline-secondary" style="padding:6px 12px;">Close</button>
+      <button id="saveNotesBtn" class="btn btn-primary" style="padding:6px 12px;">Save Recruitment Notes</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Explanation Modal -->
+<div id="aiExplanationModal" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; z-index:99999;">
+  <div style="background:#fff; max-width:720px; width:92%; border-radius:8px; padding:18px; box-shadow:0 8px 40px rgba(2,6,23,0.08);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0; font-size:16px;">AI Explanation</h3>
+      <button id="aiExplanationModalClose" style="border:0; background:transparent; font-size:18px; cursor:pointer;">✕</button>
+    </div>
+    <div id="aiExplanationModalBody" style="margin-top:12px; max-height:60vh; overflow:auto; white-space:pre-wrap; color:#111827;"></div>
+  </div>
+</div>
+
+<!-- AI Progress overlay (robust manager included below) -->
+<div id="aiProgressOverlay" class="ai-progress-overlay" style="display:none;">
+  <div class="ai-progress-box" role="status" aria-live="polite" aria-atomic="true">
+    <div class="ai-spinner" aria-hidden="true"></div>
+    <div class="ai-progress-text">
+      <div id="aiProgressTitle" style="font-weight:800; font-size:16px; color:#0f172a;">AI is evaluating candidates</div>
+      <div id="aiProgressSubtitle" style="font-size:13px; color:#6b7280; margin-top:6px;">Extracting keywords and matching resumes — this may take a moment.</div>
+    </div>
+  </div>
+</div>
+
 <style>
-.custom-results-table th, .custom-results-table td {
-    vertical-align: middle;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0.45rem 0.6rem;
+/* keep your existing styles intact */
+.candidate-link-checkbox:checked + .link-btn {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 8px 20px rgba(16,185,129,0.14);
+  transform: translateY(-2px);
+  color: #fff;
 }
-.custom-results-table td.expand-cell {
-    max-width: 150px;
+.link-btn { transition: all .18s ease; display:inline-block; user-select:none; }
+.link-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(2,6,23,0.06); }
+.clean-table tbody tr:hover { background:#fbfdff; }
+.btn-primary { background:#2563eb; border:0; }
+.recently-linked-highlight { animation: pulseHighlight 1s ease-in-out 0s 3; background: rgba(16,185,129,0.06); border-left: 4px solid #10b981; }
+@keyframes pulseHighlight {0%{box-shadow:0 0 0 0 rgba(16,185,129,0);}50%{box-shadow:0 0 12px 6px rgba(16,185,129,0.08);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);} }
+
+/* AI overlay styles */
+.ai-progress-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 30000;
+  background-color: rgba(255,255,255,0.85);
 }
-.table-responsive {
-    overflow-x: auto;
+.ai-progress-box {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  background:#fff;
+  padding:16px 18px;
+  border-radius:12px;
+  box-shadow: 0 12px 40px rgba(2,6,23,0.12);
+  border: 1px solid #eef4fb;
+  max-width:520px;
+  width:90%;
 }
+.ai-spinner {
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:4px solid #eef2f7;
+  border-top-color:#2563eb;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Rich toast */
+.rich-toast { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-radius:10px; box-shadow: 0 12px 30px rgba(2,6,23,0.12); color:#fff; z-index:40000; min-width:320px; font-weight:700; }
+.rich-toast .rt-left { font-size:20px; line-height:1; }
+.rich-toast .rt-main { font-weight:800; font-size:14px; }
+.rich-toast .rt-sub { font-weight:600; font-size:13px; opacity:0.95; margin-top:6px; }
+.rich-toast .rt-close { margin-left:12px; background:transparent; border:0; color:inherit; font-size:20px; cursor:pointer; }
+.rich-toast.success { background: linear-gradient(90deg,#10b981,#059669); }
+
+/* position container */
+#richToastContainer { position: fixed; right: 12px; top: 12px; display:flex; flex-direction:column; gap:12px; z-index:40001; }
 </style>
+
+<!-- toast container -->
+<div id="richToastContainer" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const clientSelect = document.getElementById('clientSelect');
-    const vendorSelect = document.getElementById('vendorSelect');
-    const jdSelect = document.getElementById('jdSelect');
-    const linkBtn = document.getElementById('linkCandidatesBtn');
-    const toggleAllBtn = document.getElementById('toggleAllBtn');
-    const checkboxes = document.querySelectorAll('.candidateCheckbox');
-    const selectAll = document.getElementById('selectAll');
-    const kpiSelected = document.getElementById('kpiSelected');
+  // DOM refs (no IDs changed)
+  const clientSelect = document.getElementById('clientSelect');
+  const vendorSelect = document.getElementById('vendorSelect');
+  const jdSelect = document.getElementById('jdSelect');
+  const rows = Array.from(document.querySelectorAll('tr.candidate-row'));
+  const recordsPerPageSelect = document.getElementById('records-per-page');
+  const prevBtn = document.getElementById('prev-page');
+  const nextBtn = document.getElementById('next-page');
+  const pageInfo = document.getElementById('page-info');
+  const recentlyLinkedBtn = document.getElementById('recentlyLinkedBtn');
+  const aiProgressOverlay = document.getElementById('aiProgressOverlay');
+  const advancedForm = document.getElementById('advancedSearchForm');
+  const searchForm = document.getElementById('searchForm');
 
-    function updateKPI() {
-        kpiSelected.textContent = document.querySelectorAll('.candidateCheckbox:checked').length;
+  if (searchForm) {
+    searchForm.addEventListener('submit', function () {
+      if (typeof _aiProgressPersistent !== 'undefined' && _aiProgressPersistent) return;
+      try {
+        const skillsEl = document.querySelector('input[name="skills"]');
+        const expEl = document.querySelector('input[name="experience"]');
+        const locEl = document.querySelector('input[name="location"]');
+        const skillsVal = skillsEl && skillsEl.value ? skillsEl.value.trim() : '';
+        const expVal = expEl && expEl.value ? expEl.value.trim() : '';
+        const locVal = locEl && locEl.value ? locEl.value.trim() : '';
+        if (skillsVal || expVal || locVal) {
+          showAiProgress({ persist: true, title: 'AI is evaluating candidates', subtitle: 'Reading resumes and matching — this may take a few moments.' });
+        }
+      } catch(e) { /* no-op */ }
+    });
+  }
+
+  // Overlay manager (counter + persistent mode)
+  let _aiProgressCount = 0;
+  let _aiProgressPersistent = false;
+  function showAiProgress(opts = {}) {
+    // opts: { persist: boolean, title: string, subtitle: string }
+    try {
+      if (opts.title) document.getElementById('aiProgressTitle').textContent = opts.title;
+      if (opts.subtitle) document.getElementById('aiProgressSubtitle').textContent = opts.subtitle;
+      if (opts.persist) _aiProgressPersistent = true;
+      _aiProgressCount = Math.max(1, _aiProgressCount + 1);
+      if (aiProgressOverlay) aiProgressOverlay.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    } catch (e) { console.warn('showAiProgress error', e); }
+  }
+  function hideAiProgress(force = false) {
+    if (_aiProgressPersistent && !force) {
+      _aiProgressCount = Math.max(0, _aiProgressCount - 1);
+      return;
+    }
+    _aiProgressCount = Math.max(0, _aiProgressCount - 1);
+    if (_aiProgressCount === 0 || force) {
+      try { if (aiProgressOverlay) aiProgressOverlay.style.display = 'none'; } catch(e){}
+      document.body.style.overflow = '';
+      _aiProgressPersistent = false;
+      _aiProgressCount = 0;
+    }
+  }
+  function clearAiProgress() {
+    _aiProgressPersistent = false;
+    _aiProgressCount = 0;
+    try { if (aiProgressOverlay) aiProgressOverlay.style.display = 'none'; } catch(e){}
+    document.body.style.overflow = '';
+  }
+  window.addEventListener('beforeunload', function () {
+    if (typeof _aiProgressPersistent === 'undefined' || !_aiProgressPersistent) clearAiProgress();
+  });
+
+  // Rich success toast for linking
+  function showLinkedToast(clientName, vendorName, jobName) {
+    const container = document.getElementById('richToastContainer');
+    if (!container) return;
+    const root = document.createElement('div');
+    root.className = 'rich-toast success';
+    root.role = 'status';
+    root.innerHTML = `
+      <div class="rt-left">✔</div>
+      <div style="flex:1;">
+        <div class="rt-main">Candidate linked successfully</div>
+        <div class="rt-sub">${escapeHtml(clientName || 'Client')} › ${escapeHtml(vendorName || 'Vendor')} › ${escapeHtml(jobName || 'Job')}</div>
+      </div>
+      <button class="rt-close" aria-label="Close">&times;</button>
+    `;
+    container.appendChild(root);
+    const close = root.querySelector('.rt-close');
+    close.addEventListener('click', ()=> root.remove());
+    setTimeout(()=>{ root.style.opacity = '0'; setTimeout(()=> root.remove(), 300); }, 4000);
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
+  }
+
+  // PREFILL fallback (safe)
+  try {
+    const pfSkills = {{ prefill_skills|tojson if prefill_skills is defined else 'null' }};
+    const pfLoc = {{ prefill_location|tojson if prefill_location is defined else 'null' }};
+    const pfExp = {{ prefill_experience|tojson if prefill_experience is defined else 'null' }};
+    if (pfSkills) { const el = document.querySelector('input[name="skills"]'); if (el && !el.value) el.value = pfSkills; }
+    if (pfLoc)    { const el = document.querySelector('input[name="location"]'); if (el && !el.value) el.value = pfLoc; }
+    if (pfExp)    { const el = document.querySelector('input[name="experience"]'); if (el && !el.value) el.value = pfExp; }
+  } catch(e){}
+
+  // Initialize row flags: start visible; will hide only after a Job is selected
+  rows.forEach(row => {
+    const cb = row.querySelector('.candidate-link-checkbox');
+    row.dataset.linked = 'false';
+    row.dataset.hidden = 'false';
+    if (cb) { cb.checked = false; cb.dataset.mappingId = ''; }
+  });
+
+  // Pagination
+  let currentPage = 1;
+  let recordsPerPage = parseInt(recordsPerPageSelect ? recordsPerPageSelect.value : '30', 10);
+  function getVisibleRows() { return rows.filter(r => r.dataset.hidden !== 'true'); }
+  function renderPagination() {
+    const visible = getVisibleRows();
+    const total = visible.length;
+    const start = (currentPage - 1) * recordsPerPage;
+    const end = Math.min(start + recordsPerPage, total);
+    rows.forEach(r => { if (r.dataset.hidden === 'true') r.style.display = 'none'; });
+    visible.forEach((r, idx) => { r.style.display = (idx >= start && idx < end) ? '' : 'none'; });
+    if (pageInfo) pageInfo.textContent = `Showing ${total === 0 ? 0 : (start + 1)}–${end} of ${total}`;
+    const visibleCountEl = document.getElementById('visibleCountLabel');
+    if (visibleCountEl) visibleCountEl.textContent = total;
+    if (prevBtn) prevBtn.disabled = currentPage === 1;
+    if (nextBtn) nextBtn.disabled = end >= total;
+  }
+  if (recordsPerPageSelect) {
+    recordsPerPageSelect.addEventListener('change', function () { recordsPerPage = parseInt(this.value, 10); currentPage = 1; renderPagination(); });
+  }
+  if (prevBtn) prevBtn.addEventListener('click', function () { if (currentPage > 1) { currentPage--; renderPagination(); }});
+  if (nextBtn) nextBtn.addEventListener('click', function () { if (currentPage * recordsPerPage < getVisibleRows().length) { currentPage++; renderPagination(); }});
+  renderPagination();
+
+  // Cascading dropdowns: client->vendors->jobs
+  if (clientSelect && vendorSelect) {
+    clientSelect.addEventListener('change', async function () {
+      vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
+      jdSelect.innerHTML = '<option value="">Select Job</option>';
+      if (!this.value) return;
+      try {
+        const res = await fetch(`/candidates/get-vendors/${this.value}`);
+        const data = await res.json();
+        data.forEach(v => {
+          const o = document.createElement('option'); o.value = v.vendor_id; o.textContent = v.vendor_name;
+          vendorSelect.appendChild(o);
+        });
+      } catch(err) { console.warn(err); }
+    });
+  }
+  if (vendorSelect && jdSelect) {
+    vendorSelect.addEventListener('change', async function () {
+      jdSelect.innerHTML = '<option value="">Select Job</option>';
+      if (!this.value) return;
+      try {
+        const res = await fetch(`/candidates/get-jobs/${this.value}`);
+        const data = await res.json();
+        data.forEach(j => {
+          const o = document.createElement('option'); o.value = j.job_id; o.textContent = j.job_title;
+          jdSelect.appendChild(o);
+        });
+      } catch(err) { console.warn(err); }
+    });
+  }
+
+  // Advanced form submit: show persistent overlay BEFORE performing request (fetch) to avoid flash
+  if (advancedForm) {
+    advancedForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      // avoid stacking if already persistent
+      if (_aiProgressPersistent) return;
+      showAiProgress({ persist: true, title: 'AI is evaluating candidates', subtitle: 'Analyzing JD and matching candidates — this may take a few moments.' });
+
+      // disable submit to prevent double submits
+      const submitBtn = advancedForm.querySelector('button[type="submit"], input[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; }
+
+      try {
+        const formData = new FormData(advancedForm);
+        const resp = await fetch(advancedForm.action, { method: 'POST', body: formData, credentials: 'same-origin' });
+        if (!resp.ok) {
+          const txt = await resp.text().catch(()=>null);
+          hideAiProgress(true);
+          if (submitBtn) submitBtn.disabled = false;
+          alert('Advanced search failed: ' + (txt || (resp.status + ' ' + resp.statusText)));
+          return;
+        }
+
+        // If response is JSON with redirect, follow it
+        const contentType = resp.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const j = await resp.json().catch(()=>null);
+          if (j && j.redirect) {
+            window.location.href = j.redirect;
+            return;
+          }
+          // fallback: reload
+          hideAiProgress(true);
+          window.location.reload();
+          return;
+        }
+
+        // Otherwise assume HTML. Replace current document with response HTML so overlay remains until server returns.
+        const html = await resp.text();
+        try {
+          document.open();
+          document.write(html);
+          document.close();
+        } catch (writeErr) {
+          // fallback to navigation if write fails
+          window.location.href = '/candidates/search';
+        }
+      } catch (err) {
+        hideAiProgress(true);
+        if (submitBtn) submitBtn.disabled = false;
+        alert('Advanced search error: ' + (err.message || err));
+      }
+    });
+  }
+
+  // helper to get option text safely
+  function getSelectText(selectEl) {
+    if (!selectEl) return '';
+    try {
+      const idx = selectEl.selectedIndex;
+      if (typeof idx === 'number' && idx >= 0) {
+        const o = selectEl.options[idx];
+        return (o && o.text) ? o.text.trim() : '';
+      }
+      return '';
+    } catch(e) { return ''; }
+  }
+
+  // Refresh mapping for job — show overlay while mapping loads (non-persistent)
+  async function refreshMappingsForJob(jobId) {
+    if (!jobId) return;
+    showAiProgress({ persist: false, title: 'Updating job mapping', subtitle: 'Fetching mapped candidates — please wait.' });
+    try {
+      const res = await fetch(`/candidates/get-mapped-candidates/${jobId}`);
+      const mappings = await res.json();
+      const map = {};
+      (mappings || []).forEach(m => map[String(m.candidate_id)] = m);
+
+      rows.forEach(row => {
+        const cid = String(row.dataset.candidateId || '');
+        const cb = row.querySelector('.candidate-link-checkbox');
+        const scoreCell = row.querySelector('.ai-score-cell');
+
+        if (map[cid]) {
+          const m = map[cid];
+          row.dataset.linked = 'true';
+          row.dataset.hidden = 'true';
+          if (cb) { cb.checked = true; cb.dataset.mappingId = m.mapping_id || ''; }
+          if (scoreCell && (m.ai_score !== null && m.ai_score !== undefined)) scoreCell.textContent = m.ai_score;
+        } else {
+          // Not mapped to the currently selected job: keep visible (unlinked)
+          row.dataset.hidden = 'false';
+          row.dataset.linked = 'false';
+          if (cb) { cb.checked = false; cb.dataset.mappingId = ''; }
+        }
+      });
+
+      currentPage = 1;
+      renderPagination();
+    } catch (err) {
+      console.warn('refreshMappingsForJob error', err);
+    } finally {
+      hideAiProgress();
+    }
+  }
+
+  if (jdSelect) {
+    jdSelect.addEventListener('change', () => refreshMappingsForJob(jdSelect.value));
+    if (jdSelect.value) setTimeout(()=> refreshMappingsForJob(jdSelect.value), 200);
+  }
+
+  // per-row link toggle (keeps same endpoint)
+  document.querySelectorAll('.candidate-link-checkbox').forEach(cb => {
+    cb.addEventListener('change', async function () {
+      const candidateId = Number(this.dataset.candidate);
+      const jobId = jdSelect && jdSelect.value ? Number(jdSelect.value) : null;
+      if (!jobId) {
+        alert('Please select a Job before linking/unlinking.');
+        this.checked = !this.checked;
+        return;
+      }
+      const linked = !!this.checked;
+      const row = this.closest('tr.candidate-row');
+      const scoreCell = row ? row.querySelector('.ai-score-cell') : null;
+      let ai_score = null;
+      if (scoreCell) {
+        const p = parseInt((scoreCell.textContent || '').trim(), 10);
+        if (!isNaN(p)) ai_score = p;
+      }
+
+      const clientName = getSelectText(clientSelect) || '';
+      const vendorName = getSelectText(vendorSelect) || '';
+      const jobName = getSelectText(jdSelect) || '';
+
+      try {
+        showAiProgress({ persist: false, title: linked ? 'Linking candidate' : 'Unlinking candidate', subtitle: 'Please wait...' });
+
+        const resp = await fetch('/candidates/toggle-link', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, linked: linked, ai_score: ai_score })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.message || 'Toggle failed');
+
+        if (linked) {
+          if (data.mapping_id) this.dataset.mappingId = data.mapping_id;
+          try {
+            const key='recently_linked';
+            const raw = localStorage.getItem(key);
+            const arr = raw ? JSON.parse(raw) : [];
+            if (!arr.includes(candidateId)) { arr.push(candidateId); localStorage.setItem(key, JSON.stringify(arr)); }
+          } catch(e){}
+
+          showLinkedToast(clientName || 'Client', vendorName || 'Vendor', jobName || 'Job');
+          row.classList.add('recently-linked-highlight');
+          setTimeout(()=> {
+            row.classList.remove('recently-linked-highlight');
+            row.dataset.linked = 'true';
+            row.dataset.hidden = 'true';
+            currentPage = 1;
+            renderPagination();
+          }, 500);
+        } else {
+          this.dataset.mappingId = '';
+          row.dataset.linked = 'false';
+          row.dataset.hidden = 'false';
+          renderPagination();
+        }
+      } catch (err) {
+        alert('Failed to toggle link: ' + (err.message || err));
+        this.checked = !this.checked;
+      } finally {
+        hideAiProgress();
+      }
+    });
+  });
+
+  // Find candidate payload shapes for modal
+  function findCandidateObject(obj, depth=0) {
+    if (!obj || typeof obj !== 'object' || depth > 4) return null;
+    const keys = Object.keys(obj); const markers = ['candidates_id','candidate_id','candidate_name','name','email','skillset','it_experience','ai_score','score'];
+    if (keys.some(k => markers.includes(k))) return obj;
+    for (const k of keys) {
+      try { const v = obj[k]; if (v && typeof v === 'object') { const f = findCandidateObject(v, depth+1); if (f) return f; } } catch(e){}
+    }
+    return null;
+  }
+  function normalizeCandidatePayload(payload) {
+    if (!payload) return {};
+    if (Array.isArray(payload) && payload.length) { for (const p of payload) { const f = findCandidateObject(p); if (f) return f; } return payload[0] || {}; }
+    if (payload.candidate) return findCandidateObject(payload.candidate) || payload.candidate;
+    const f = findCandidateObject(payload); return f || payload;
+  }
+
+  // Open candidate modal
+  async function openCandidateModal(candidateId) {
+    try {
+      showAiProgress({ persist: false, title: 'Loading candidate', subtitle: 'Please wait.' });
+      const resp = await fetch(`/candidates/${encodeURIComponent(candidateId)}`);
+      const payload = await resp.json().catch(()=> ({}));
+      hideAiProgress();
+      if (!resp.ok) throw new Error('Failed to fetch candidate');
+      const c = normalizeCandidatePayload(payload);
+      const name = c.candidate_name || c.name || 'N/A';
+      const skills = c.skillset || c.skills || 'N/A';
+      const aiScore = (c.ai_score !== undefined && c.ai_score !== null) ? c.ai_score : (c.score !== undefined ? c.score : '');
+      const email = c.email || c.email_address || 'N/A';
+      const contact = c.contact || c.phone || 'N/A';
+      const itExp = c.it_experience || c.it_exp || c.it_experience || 'N/A';
+      const location = c.location || 'N/A';
+      const relExp = c.relevant_experience || 'N/A';
+      const education = c.education || 'N/A';
+      const company = c.company || 'N/A';
+      const clients = c.clients || 'N/A';
+      const resume = c.resumelinks || c.resume || '';
+      const notice = c.notice_period || c.notice || '';
+      const comment = c.comment || '';
+      const notes = c.recruitment_notes || c.recruiter_notes || '';
+
+      const mapping_jd_id = c.mapping_jd_id || c.mapping || '';
+
+      const body = document.getElementById('candidateModalBody');
+      body.innerHTML = `
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div><strong>Name:</strong><div style="margin-top:6px;">${escapeHtml(name)}</div></div>
+          <div><strong>AI Score:</strong><div style="margin-top:6px;">${escapeHtml(aiScore)}</div></div>
+
+          <div><strong>Skills:</strong><div style="margin-top:6px;">${escapeHtml(skills)}</div></div>
+          <div><strong>Email:</strong><div style="margin-top:6px;">${escapeHtml(email)}</div></div>
+          <div><strong>Contact:</strong><div style="margin-top:6px;">${escapeHtml(contact)}</div></div>
+
+          <div><strong>IT Exp:</strong><div style="margin-top:6px;">${escapeHtml(itExp)}</div></div>
+          <div><strong>Location:</strong><div style="margin-top:6px;">${escapeHtml(location)}</div></div>
+
+          <div><strong>Relevant Exp:</strong><div style="margin-top:6px;">${escapeHtml(relExp)}</div></div>
+          <div><strong>Education:</strong><div style="margin-top:6px;">${escapeHtml(education)}</div></div>
+
+          <div><strong>Company:</strong><div style="margin-top:6px;">${escapeHtml(company)}</div></div>
+          <div><strong>Clients:</strong><div style="margin-top:6px;">${escapeHtml(clients)}</div></div>
+
+          <div style="grid-column:1/3;"><strong>Resume:</strong><div style="margin-top:6px;">${resume ? `<a href="${resume}" target="_blank" style="color:#2563eb;">Open resume</a>` : 'N/A'}</div></div>
+
+          <div><strong>Notice:</strong><div style="margin-top:6px;">${escapeHtml(notice)}</div></div>
+          <div><strong>Comment:</strong><div style="margin-top:6px;">${escapeHtml(comment)}</div></div>
+
+          <div style="grid-column:1/3; margin-top:6px;">
+            <label style="font-weight:700;">Recruitment Notes</label>
+            <textarea id="modalRecruitmentNotes" rows="5" style="width:100%; padding:8px; border:1px solid #e6eefc; border-radius:6px; margin-top:6px;">${escapeHtml(notes)}</textarea>
+            <div style="font-size:12px; color:#6b7280; margin-top:6px;">Notes are stored for this candidate; if later linked to a Job they may be associated with the mapping.</div>
+          </div>
+        </div>
+      `;
+
+      const backdrop = document.getElementById('candidateModalBackdrop');
+      backdrop.dataset.candidateId = candidateId; backdrop.dataset.mappingJdId = mapping_jd_id || '';
+      backdrop.style.display = 'flex'; document.body.style.overflow = 'hidden';
+    } catch (err) {
+      hideAiProgress();
+      alert('Failed to load candidate details: ' + (err.message || err));
+    }
+  }
+
+  // open modal when clicking a row (ignore clicks on interactive controls)
+  const tbody = document.getElementById('search-results-body');
+  tbody?.addEventListener('click', function (e) {
+    if (e.target.closest('input, label, a, button, textarea, select')) return;
+    const row = e.target.closest('tr.candidate-row');
+    if (!row) return;
+    const cid = row.dataset.candidateId;
+    if (!cid) return;
+    openCandidateModal(cid);
+  });
+
+  // modal handlers
+  document.getElementById('candidateModalClose').addEventListener('click', closeCandidateModal);
+  document.getElementById('candidateModalCancel').addEventListener('click', closeCandidateModal);
+  document.getElementById('candidateModalBackdrop').addEventListener('click', function (e) {
+    if (e.target.id === 'candidateModalBackdrop' || e.target.id === 'candidateModalOverlay') closeCandidateModal();
+  });
+  function closeCandidateModal() {
+    const b = document.getElementById('candidateModalBackdrop'); b.style.display = 'none'; b.dataset.candidateId=''; b.dataset.mappingJdId=''; document.body.style.overflow='';
+  }
+
+  // Save recruitment notes
+  document.getElementById('saveNotesBtn').addEventListener('click', async function () {
+    const backdrop = document.getElementById('candidateModalBackdrop');
+    const candidateId = Number(backdrop.dataset.candidateId || 0);
+    const mappingJd = backdrop.dataset.mappingJdId || '';
+    let jobIdVal = mappingJd || (jdSelect ? jdSelect.value : '') || '';
+    const job_id = jobIdVal ? Number(jobIdVal) : 0;
+    const notes = document.getElementById('modalRecruitmentNotes').value || '';
+    try {
+      showAiProgress({ persist: false, title: 'Saving notes', subtitle: 'Please wait.' });
+      const resp = await fetch('/candidates/update-note', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ candidate_id: Number(candidateId), job_id: job_id, note: notes })
+      });
+      const data = await resp.json();
+      hideAiProgress();
+      if (!resp.ok) throw new Error(data?.message || 'Save failed');
+      showToast('Notes saved', 'success', 2000);
+      try {
+        const row = document.querySelector(`tr[data-candidate-id="${candidateId}"]`);
+        if (row) {
+          const notesEl = row.querySelector('.notes-content');
+          if (notesEl) notesEl.textContent = notes || 'N/A';
+        }
+      } catch(e){}
+      closeCandidateModal();
+    } catch (err) {
+      hideAiProgress();
+      alert('Failed to save notes: ' + (err.message || err));
+    }
+  });
+
+  // recently linked: add highlight params
+  if (recentlyLinkedBtn) {
+    recentlyLinkedBtn.addEventListener('click', function(e){
+      try {
+        const raw = localStorage.getItem('recently_linked');
+        const arr = raw ? JSON.parse(raw) : [];
+        if (!arr || arr.length === 0) {
+          e.preventDefault();
+          alert('No recently linked candidates in this session.');
+          return;
+        }
+        const url = new URL(this.href, window.location.origin);
+        url.searchParams.set('highlight', arr.join(','));
+        this.href = url.pathname + url.search;
+      } catch(e){}
+    });
+  }
+
+  // AI Explanation & Reset
+  document.addEventListener('click', async function (e) {
+    const explainBtn = e.target.closest('.ai-explain-btn');
+    if (explainBtn) {
+      e.preventDefault();
+      const cid = explainBtn.dataset.id;
+      if (!cid) return;
+      try {
+        showAiProgress({ persist: false, title: 'Fetching explanation', subtitle: 'Please wait for the AI explanation.' });
+        const res = await fetch(`/candidates/ai-explanation/${encodeURIComponent(cid)}`);
+        const data = await res.json().catch(()=>null);
+        hideAiProgress();
+        if (!res.ok) throw new Error(data?.message || 'Explanation fetch failed');
+        const body = document.getElementById('aiExplanationModalBody');
+        const score = (data && (data.ai_score !== undefined && data.ai_score !== null)) ? data.ai_score : (data.score !== undefined ? data.score : '');
+        const expl = data && (data.explanation || data.ai_explanation) ? (data.explanation || data.ai_explanation) : 'No explanation available.';
+        body.innerText = `Score: ${score}\n\nExplanation:\n${expl}`;
+        document.getElementById('aiExplanationModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      } catch (err) {
+        hideAiProgress();
+        alert('Failed to fetch explanation: ' + (err.message || err));
+      }
+      return;
     }
 
-    // Select/Deselect all
-    selectAll.addEventListener('change', function () {
-        checkboxes.forEach(cb => cb.checked = selectAll.checked);
-        updateKPI();
-    });
-
-    checkboxes.forEach(cb => cb.addEventListener('change', updateKPI));
-
-    toggleAllBtn.addEventListener('click', function () {
-        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-        checkboxes.forEach(cb => cb.checked = !allChecked);
-        selectAll.checked = !allChecked;
-        updateKPI();
-    });
-
-    // Enable link button if JD selected
-    jdSelect.addEventListener('change', function () {
-        linkBtn.disabled = !this.value;
-    });
-
-    // Link selected candidates to JD
-    linkBtn.addEventListener('click', async function () {
-        const jdId = jdSelect.value;
-        if (!jdId) { alert("Select a Job first"); return; }
-
-        const selected = Array.from(document.querySelectorAll('.candidateCheckbox:checked')).map(cb => parseInt(cb.value));
-        if (selected.length === 0) { alert("Select candidates"); return; }
-
-        const res = await fetch('/candidates/link-to-jd', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ jd_id: parseInt(jdId), candidate_ids: selected })
+    const resetBtn = e.target.closest('.ai-reset-btn');
+    if (resetBtn) {
+      e.preventDefault();
+      const cid = resetBtn.dataset.id;
+      if (!cid) return;
+      if (!confirm('Reset AI score for this candidate?')) return;
+      try {
+        showAiProgress({ persist: false, title: 'Resetting score', subtitle: 'Please wait...' });
+        const res = await fetch('/candidates/ai-reset', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ candidate_id: Number(cid) })
         });
+        const data = await res.json().catch(()=>null);
+        hideAiProgress();
+        if (!res.ok) throw new Error(data?.message || 'Reset failed');
+        const scoreEl = document.querySelector('.ai-score-cell[data-id="'+cid+'"]');
+        if (scoreEl) scoreEl.innerText = '';
+        alert('AI score reset.');
+      } catch (err) {
+        hideAiProgress();
+        alert('Failed to reset AI score: ' + (err.message || err));
+      }
+      return;
+    }
+  });
 
-        const data = await res.json();
-        alert(data.message);
+  // close explanation modal
+  document.getElementById('aiExplanationModalClose').addEventListener('click', function(){
+    document.getElementById('aiExplanationModal').style.display = 'none';
+    document.body.style.overflow = '';
+  });
 
-        // Remove linked candidates from table
-        selected.forEach(id => {
-            const row = document.querySelector(`.candidateCheckbox[value="${id}"]`).closest('tr');
-            if (row) row.remove();
-        });
+  // small toast
+  function showToast(msg, type='default', time=2500) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.position = 'fixed';
+    t.style.right = '12px';
+    t.style.bottom = '12px';
+    t.style.background = type==='success' ? '#198754' : (type==='error' ? '#dc3545' : '#2563eb');
+    t.style.color = '#fff';
+    t.style.padding = '10px 14px';
+    t.style.borderRadius = '8px';
+    t.style.zIndex = 99999;
+    document.body.appendChild(t);
+    setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=> t.remove(), 300); }, time);
+  }
 
-        updateKPI();
-    });
-
-    // Fetch vendors dynamically
-    clientSelect.addEventListener('change', async function () {
-        const clientId = this.value;
-        vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
-        jdSelect.innerHTML = '<option value="">Select Job</option>';
-        linkBtn.disabled = true;
-
-        if (!clientId) return;
-
-        const res = await fetch(`/candidates/get-vendors/${clientId}`);
-        const data = await res.json();
-        if (data && data.length) {
-            data.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v.vendor_id;
-                opt.textContent = v.vendor_name;
-                vendorSelect.appendChild(opt);
-            });
-        }
-    });
-
-    // Fetch jobs dynamically
-    vendorSelect.addEventListener('change', async function () {
-        const vendorId = this.value;
-        jdSelect.innerHTML = '<option value="">Select Job</option>';
-        linkBtn.disabled = true;
-
-        if (!vendorId) return;
-
-        const res = await fetch(`/candidates/get-jobs/${vendorId}`);
-        const data = await res.json();
-        if (data && data.length) {
-            data.forEach(j => {
-                const opt = document.createElement('option');
-                opt.value = j.job_id;
-                opt.textContent = j.job_title;
-                jdSelect.appendChild(opt);
-            });
-        }
-    });
 });
 </script>
 

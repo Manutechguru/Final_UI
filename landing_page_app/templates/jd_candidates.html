@@ -1,110 +1,291 @@
 {% extends "base.html" %}
+{% block title %}JD Candidates - {{ jd_id }}{% endblock %}
+
 {% block content %}
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/jd_candidates.css') }}">
 
-<div class="nxg-container mt-4">
-    <h2 class="mb-3">JD Candidates <small class="text-muted">(JD ID: {{ jd_id }})</small></h2>
 
-    <div class="table-responsive shadow-sm rounded">
-        <table class="table table-hover table-striped table-bordered align-middle mb-0">
-            <thead class="table-dark">
-                <tr>
-                    <th>Name</th>
-                    <th>Skills</th>
-                    <th>Email</th>
-                    <th>IT Exp</th>
-                    <th>Location</th>
-                    <th>Contact</th>
-                    <th>Rel Exp</th>
-                    <th>Education</th>
-                    <th>Company</th>
-                    <th>Resume</th>
-                    <th>Clients</th>
-                    <th>Notice</th>
-                    <th>Comment</th>
-                    <th>Stage</th>
-                    <th>AI Score</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if candidates %}
-                    {% for c in candidates %}
-                    <tr>
-                        <td>{{ c.name or 'N/A' }}</td>
-                        <td>{{ c.skills or 'N/A' }}</td>
-                        <td>{{ c.email or 'N/A' }}</td>
-                        <td>{{ c.it_experience or 'N/A' }}</td>
-                        <td>{{ c.location or 'N/A' }}</td>
-                        <td>{{ c.contact or 'N/A' }}</td>
-                        <td>{{ c.relevant_experience or 'N/A' }}</td>
-                        <td>{{ c.education or 'N/A' }}</td>
-                        <td>{{ c.company or 'N/A' }}</td>
-                        <td class="text-center">
-                            {% if c.resume %}
-                                 <a href="{{ c.resume }}" target="_blank" title="Download Resume">
-                                    <i class="bi bi-paperclip fs-5"></i>
-                                </a>
-                            {% else %}N/A{% endif %}
-                        </td>
-                        <td>{{ c.clients or 'N/A' }}</td>
-                        <td>{{ c.notice_period or 'N/A' }}</td>
-                        <td>{{ c.comment or 'N/A' }}</td>
-                        <td>
-                            <select class="form-select form-select-sm stageDropdown" data-candidate="{{ c.candidate_id }}">
-                                {% for s in status_options %}
-                                    <option value="{{ s }}" {% if s == c.stage %}selected{% endif %}>{{ s }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td>{{ c.ai_score or 'N/A' }}</td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="15" class="text-center text-muted">No candidates linked to this JD yet.</td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
+<div class="nxg-container mt-2">
+  <div class="page-head">
+    <h1>JD Candidates <small>(JD ID: {{ jd_id }})</small></h1>
+    
+    <!-- Three-dot menu -->
+    <div class="action-menu-container">
+      <button class="action-menu-btn" id="actionMenuBtn">
+        <i class="bi bi-three-dots-vertical"></i>
+      </button>
+      <div class="action-menu-dropdown" id="actionMenuDropdown">
+        <button type="button" class="action-menu-item" id="removeSelectedBtn">
+          <i class="bi bi-trash"></i>Remove Selected
+        </button>
+        <button type="button" class="action-menu-item" id="downloadZipBtn">
+          <i class="bi bi-file-earmark-zip"></i>Download Resumes (ZIP)
+        </button>
+        <button type="button" class="action-menu-item" id="downloadXlsxBtn">
+          <i class="bi bi-file-earmark-excel"></i>Download XLSX
+        </button>
+      </div>
     </div>
+  </div>
+
+  <!-- ACTION BAR -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="filter-container">
+        <span class="filter-label">Filter Stage:</span>
+        <select id="stageFilter" class="filter-select">
+          <option value="">All Stages</option>
+          {% for s in status_options %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="toolbar-right">
+      <div class="selected-counter">
+        <span class="counter-label">Selected:</span>
+        <span class="counter-value" id="kpiSelected">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANDIDATES TABLE -->
+  <div class="table-card" role="region" aria-live="polite">
+    {% if candidates %}
+    <table class="candidates table" role="table" aria-label="JD candidates table">
+      <thead>
+        <tr>
+          <th aria-hidden="true"></th>
+          <th><input id="selectAll" type="checkbox" aria-label="Select all"></th>
+          <th>Name</th>
+          <th>Skills</th>
+          <th>Email</th>
+          <th>IT Exp</th>
+          <th>Location</th>
+          <th>Contact</th>
+          <th>Rel Exp</th>
+          <th>Education</th>
+          <th>Company</th>
+          <th>Resume</th>
+          <th>Clients</th>
+          <th>Notice</th>
+          <th>Comment</th>
+          <th>Recruiter Notes</th>
+          <th>Stage</th>
+          <th>AI Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in candidates %}
+            {% set cid = c.candidate_id|default(c.candidates_id)|default(c.id)|default('') %}
+            <tr class="main-row" data-candidate-id="{{ cid }}" data-stage="{{ c.stage }}">
+              <td style="text-align:center;">
+                <button class="expander-btn chevron" aria-expanded="false" type="button"><i class="bi bi-chevron-right"></i></button>
+              </td>
+
+              <td style="text-align:center;">
+                <input type="checkbox"
+                       class="candidateCheckbox form-check-input"
+                       value="{{ cid }}"
+                       data-candidate-id="{{ cid }}">
+              </td>
+
+              <td><div class="ellipsis" title="{{ c.candidate_name or c.name or '' }}">{{ c.candidate_name or c.name or 'N/A' }}</div></td>
+
+              <td>
+                {% if c.skillset %}
+                  <div class="ellipsis" title="{{ c.skillset }}">
+                    {% set sl = c.skillset.split(',') %}
+                    {% for s2 in sl[:3] %}<span class="pill">{{ s2.strip() }}</span>{% endfor %}
+                    {% if sl|length > 3 %}<span class="pill">+{{ sl|length - 3 }}</span>{% endif %}
+                  </div>
+                {% else %}
+                  <div class="ellipsis" style="color:var(--muted)">N/A</div>
+                {% endif %}
+              </td>
+
+              <td><div class="ellipsis" title="{{ c.email or '' }}">{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}N/A{% endif %}</div></td>
+              <td><div class="ellipsis" title="{{ c.it_experience or '' }}">{{ c.it_experience or 'N/A' }}</div></td>
+              <td><div class="ellipsis" title="{{ c.location or '' }}">{{ c.location or 'N/A' }}</div></td>
+              <td><div class="ellipsis" title="{{ c.contact or '' }}">{{ c.contact or 'N/A' }}</div></td>
+              <td><div class="ellipsis" title="{{ c.relevant_experience or '' }}">{{ c.relevant_experience or 'N/A' }}</div></td>
+              <td><div class="ellipsis" title="{{ c.education or '' }}">{{ c.education or 'N/A' }}</div></td>
+              <td><div class="ellipsis" title="{{ c.company or '' }}">{{ c.company or 'N/A' }}</div></td>
+
+              <td style="text-align:center;">
+                {% if c.resumelinks %}
+                  <a class="resume-link" href="{{ c.resumelinks }}" target="_blank" rel="noopener noreferrer" title="Open resume"><i class="bi bi-paperclip fs-5"></i></a>
+                {% else %}
+                  <div style="text-align:center;color:var(--muted)">N/A</div>
+                {% endif %}
+              </td>
+
+              <td><div class="ellipsis" title="{{ c.clients or '' }}">{{ c.clients or 'N/A' }}</div></td>
+              <td><div class="ellipsis" title="{{ c.notice_period or '' }}">{{ c.notice_period or 'N/A' }}</div></td>
+              <td><div class="ellipsis" title="{{ c.comment or '' }}">{{ c.comment or 'N/A' }}</div></td>
+              
+              <td>
+                <div class="notes-editable" data-candidate-id="{{ cid }}">
+                  <div class="notes-display" tabindex="0">
+                    {{ c.recruiter_notes or 'Click to add notes' }}
+                  </div>
+                  <textarea class="notes-edit" placeholder="Add recruiter notes here..." style="display:none;">{{ c.recruiter_notes or '' }}</textarea>
+                </div>
+              </td>
+
+              <td>
+                <select class="form-select form-select-sm stageDropdown" data-candidate="{{ cid }}" style="font-size:0.84rem;">
+                  {% for s in status_options %}
+                    <option value="{{ s }}" {% if s == c.stage %}selected{% endif %}>{{ s }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              
+              <td style="text-align:center;">
+                {% if c.ai_score is defined and c.ai_score != "N/A" %}
+                  {% set score = c.ai_score|float %}
+                  <div class="ai-score-container" data-candidate-id="{{ cid }}" data-explanation="{{ c.ai_explanation or 'No explanation available' }}">
+                    {% if score >= 80 %}
+                      <span class="ai-score high">{{ score|int }}%</span>
+                    {% elif score >= 60 %}
+                      <span class="ai-score medium">{{ score|int }}%</span>
+                    {% else %}
+                      <span class="ai-score low">{{ score|int }}%</span>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div style="text-align:center;color:var(--muted)">N/A</div>
+                {% endif %}
+              </td>
+            </tr>
+
+            <!-- expanded details row -->
+            <tr class="expanded-row" aria-hidden="true">
+              <td></td>
+              <td></td>
+
+              <td style="white-space:normal; word-break:break-word;">{{ c.candidate_name or c.name or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.skillset or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}N/A{% endif %}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.it_experience or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.location or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.contact or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.relevant_experience or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.education or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.company or 'N/A' }}</td>
+
+              <td style="white-space:normal; word-break:break-word;">{% if c.resumelinks %}<a href="{{ c.resumelinks }}" target="_blank" rel="noopener noreferrer">Open resume</a>{% else %}N/A{% endif %}</td>
+
+              <td style="white-space:normal; word-break:break-word;">{{ c.clients or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.notice_period or 'N/A' }}</td>
+              <td style="white-space:normal; word-break:break-word;">{{ c.comment or 'N/A' }}</td>
+              
+              <td style="white-space:normal; word-break:break-word;">
+                <div class="notes-editable" data-candidate-id="{{ cid }}">
+                  <div class="notes-display" tabindex="0">
+                    {{ c.recruiter_notes or 'Click to add notes' }}
+                  </div>
+                  <textarea class="notes-edit" placeholder="Add recruiter notes here..." style="display:none;">{{ c.recruiter_notes or '' }}</textarea>
+                </div>
+              </td>
+
+              <td style="white-space:normal; word-break:break-word;">
+                {{ c.stage or 'N/A' }}
+              </td>
+              
+              <td style="white-space:normal; word-break:break-word; text-align:center;">
+                {% if c.ai_score is defined and c.ai_score != "N/A" %}
+                  {% set score = c.ai_score|float %}
+                  <div class="ai-score-container" data-candidate-id="{{ cid }}" data-explanation="{{ c.ai_explanation or 'No explanation available' }}">
+                    {% if score >= 80 %}
+                      <span class="ai-score high">{{ score|int }}%</span>
+                    {% elif score >= 60 %}
+                      <span class="ai-score medium">{{ score|int }}%</span>
+                    {% else %}
+                      <span class="ai-score low">{{ score|int }}%</span>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+            </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div style="padding:20px; text-align:center; color:var(--muted);">
+        <i class="bi bi-people" style="font-size:2rem; display:block; margin-bottom:10px;"></i>
+        No candidates linked to this JD yet.
+      </div>
+    {% endif %}
+  </div>
 </div>
 
-<style>
-    .table thead th {
-        vertical-align: middle;
-        text-align: center;
-    }
-    .table tbody td {
-        vertical-align: middle;
-    }
-    .stageDropdown {
-        min-width: 120px;
-    }
-</style>
+<!-- Progress overlay -->
+<div id="progressOverlay" class="progress-overlay" aria-hidden="true">
+  <div class="progress-box" role="status" aria-live="assertive">
+    <div class="spinner" aria-hidden="true"></div>
+    <div style="margin-left: 12px;">
+      <div style="font-weight:700; color:#0f172a;" id="progressTitle">Working</div>
+      <div style="color:var(--muted); font-size:0.95rem; margin-top:4px;" id="progressMessage">Please wait...</div>
+      <div id="progressCount" style="font-size:0.9rem; color:var(--muted); margin-top:6px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation dialog -->
+<div id="confirmationDialog" class="confirmation-dialog">
+  <div class="confirmation-content">
+    <div class="confirmation-title" id="confirmationTitle">Confirm Action</div>
+    <div class="confirmation-message" id="confirmationMessage"></div>
+    <div class="confirmation-buttons">
+      <button type="button" class="btn secondary" id="confirmationCancel">Cancel</button>
+      <button type="button" class="btn" id="confirmationConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Candidate Details Modal (added) -->
+<div id="candidateDetailsModal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="candidateDetailsTitle">Candidate Details</h3>
+      <button type="button" class="modal-close" id="candidateDetailsClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="candidateDetailsContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- AI Explanation Modal -->
+<div id="aiExplanationModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>AI Score Explanation</h3>
+      <button type="button" class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="aiExplanationContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer" class="toast-container"></div>
+<script src="{{ request.url_for('static', path='js/jd_candidates.js') }}"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.stageDropdown').forEach(function(dropdown){
-        dropdown.addEventListener('change', async function(){
-            const candidateId = this.dataset.candidate;
-            const stage = this.value;
-            const jdId = "{{ jd_id }}";
-            
-            try {
-                const res = await fetch('/candidates/update-stage', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({candidate_id: candidateId, jd_id: jdId, stage: stage})
-                });
-
-                if (!res.ok) throw new Error('Failed to update stage');
-            } catch (err) {
-                alert('Error updating stage: ' + err.message);
-            }
-        });
+  // Initialize the page with data from the backend
+  document.addEventListener('DOMContentLoaded', () => {
+    initJDCandidatesPage({
+      jdId: "{{ jd_id }}",
+      statusOptions: {{ status_options|tojson }},
+      candidates: {{ candidates|tojson }}
     });
-});
+  });
 </script>
-
 {% endblock %}

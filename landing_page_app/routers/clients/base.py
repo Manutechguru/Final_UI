@@ -7,6 +7,11 @@ from datetime import datetime
 from landing_page_app.database import get_db
 from landing_page_app.models.clients import Client
 from landing_page_app.models.jobs import Job
+from landing_page_app.models.candidate_status_history import CandidateJDMapping
+from zoneinfo import ZoneInfo
+from landing_page_app.routers.utils.clients_utils import toggle_client_status
+# Define IST timezone once
+IST = ZoneInfo("Asia/Kolkata")
 
 # ------------------------------
 # Router setup with prefix
@@ -53,7 +58,7 @@ def add_new_client(request: Request, client_name: str = Form(...), db: Session =
         else:
             new_client = Client(
                 client_name=client_name,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(IST),
                 status="active"
             )
             db.add(new_client)
@@ -71,13 +76,28 @@ def add_new_client(request: Request, client_name: str = Form(...), db: Session =
 # ------------------------------
 @router.post("/delete/{client_id}")
 def delete_client(client_id: int, db: Session = Depends(get_db)):
+    # Get client
     client = db.query(Client).filter(Client.client_id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    # Delete related jobs
-    db.query(Job).filter(Job.client_id == client_id).delete(synchronize_session=False)
+    # Step 1: Get all jobs related to this client via managers (adjust if needed)
+    jobs = db.query(Job).filter(Job.manager_id.in_(
+        [manager.manager_id for manager in client.managers]  # assuming Client -> Manager relationship
+    )).all()
+
+    # Step 2: Delete candidate mappings for these jobs
+    job_ids = [job.job_id for job in jobs]
+    if job_ids:
+        db.query(CandidateJDMapping).filter(CandidateJDMapping.jd_id.in_(job_ids)).delete(synchronize_session=False)
+
+    # Step 3: Delete jobs
+    if jobs:
+        db.query(Job).filter(Job.job_id.in_(job_ids)).delete(synchronize_session=False)
+
+    # Step 4: Delete client
     db.delete(client)
+
     db.commit()
 
     return JSONResponse(content={"message": f"Client '{client.client_name}' and related jobs deleted successfully!"})
@@ -86,14 +106,10 @@ def delete_client(client_id: int, db: Session = Depends(get_db)):
 # 4. Toggle Client Status
 # ------------------------------
 @router.post("/toggle/{client_id}")
-def toggle_client_status(client_id: int, db: Session = Depends(get_db)):
-    client = db.query(Client).filter(Client.client_id == client_id).first()
+def toggle_client_status_api(client_id: int, db: Session = Depends(get_db)):
+    client = toggle_client_status(db, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-
-    client.status = "inactive" if client.status == "active" else "active"
-    db.commit()
-    db.refresh(client)
 
     return {"client_id": client.client_id, "new_status": client.status}
 
@@ -127,3 +143,33 @@ def client_detail(request: Request, client_id: int, db: Session = Depends(get_db
         "client_jobs.html",
         {"request": request, "client": client, "jobs": jobs}
     )
+
+# ------------------------------
+# 6. Edit Client (without updated_by)
+# ------------------------------
+@router.post("/edit/{client_id}")
+def edit_client(
+    client_id: int,
+    new_name: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    client = db.query(Client).filter(Client.client_id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Check for duplicate client name
+    existing_client = db.query(Client).filter(
+        Client.client_name == new_name,
+        Client.client_id != client_id
+    ).first()
+    if existing_client:
+        raise HTTPException(status_code=400, detail=f"Client '{new_name}' already exists")
+
+    # Update fields
+    client.client_name = new_name
+    client.updated_at = datetime.now(IST)   # keep track of last update time
+
+    db.commit()
+    db.refresh(client)
+
+    return {"message": f"Client '{new_name}' updated successfully!"}

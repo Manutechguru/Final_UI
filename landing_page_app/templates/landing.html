@@ -9,7 +9,7 @@
 
 /* ----- Color System (block-driven) ----- */
 :root{
-  --bg-1: #0f1724;          /* deep backdrop (subtle) */
+  --bg-1: #0f1724;
   --bg-2: linear-gradient(180deg,#fbfdff,#f3f7fb);
   --text-1: #0b1b2b;
   --muted: #6b7b8c;
@@ -26,80 +26,50 @@
 
 /* ----- Layout ----- */
 body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-.container {
-  max-width: 1240px; margin: 22px auto 72px; padding: 18px;
-}
+.container { max-width: 1240px; margin: 22px auto 72px; padding: 18px; }
 .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
 .header-row h1 { font-family: Poppins, Inter; font-weight:800; font-size:1.6rem; margin:0; letter-spacing:.2px; color:#071226; }
+.btn-admin { background:#4f46e5; color:#fff; padding:8px 12px; border-radius:10px; font-weight:700; text-decoration:none; }
+.btn-admin:hover{ background:#4338ca; }
 
 /* ----- Grid ----- */
 .grid-4 { display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom:18px; }
 @media (max-width:1000px){ .grid-4 { grid-template-columns: repeat(2,1fr); } }
 @media (max-width:560px){ .grid-4 { grid-template-columns: 1fr; } }
 
-/* ----- KPI Block (Color-coded) ----- */
-.kpi {
-  border-radius: var(--radius);
-  padding:16px;
-  position:relative;
-  overflow:hidden;
-  box-shadow: var(--shadow-lg);
-  border:1px solid var(--border);
-  display:flex; gap:12px; align-items:center;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), #fff);
-  transition: transform .18s ease, box-shadow .18s ease;
-}
+/* ----- KPI Block ----- */
+.kpi { border-radius: var(--radius); padding:16px; position:relative; overflow:hidden; box-shadow: var(--shadow-lg); border:1px solid var(--border); display:flex; gap:12px; align-items:center; background: linear-gradient(180deg, rgba(255,255,255,0.98), #fff); transition: transform .18s ease, box-shadow .18s ease; }
 .kpi:focus-within, .kpi:hover { transform: translateY(-6px); box-shadow: 0 28px 60px rgba(12,24,40,0.12); outline: none; }
-
-/* icons area */
-.kpi .icon {
-  width:64px; height:64px; flex:0 0 64px; border-radius:12px; display:grid; place-items:center;
-  color:white; font-weight:700; box-shadow: 0 8px 28px rgba(12,24,40,0.08);
-}
-.kpi .meta {
-  flex:1 1 auto;
-}
+.kpi .icon { width:64px; height:64px; flex:0 0 64px; border-radius:12px; display:grid; place-items:center; color:white; font-weight:700; box-shadow: 0 8px 28px rgba(12,24,40,0.08); }
+.kpi .meta { flex:1 1 auto; }
 .kpi .meta h3 { margin:0; font-size:.92rem; color:var(--muted); font-weight:700; }
 .kpi .meta .value { font-weight:900; font-size:2.05rem; color:#071226; margin-top:6px; display:inline-block; min-width:84px; }
-
-/* small description line */
 .kpi .meta .hl { font-size:.78rem; margin-top:6px; color:#6b7280; }
 
-/* color variants (do not change text) */
 .kpi.clients { background-image: linear-gradient(120deg, rgba(79,70,229,0.06), rgba(14,165,164,0.03)); }
 .kpi.jobs    { background-image: linear-gradient(120deg, rgba(14,165,164,0.06), rgba(16,185,129,0.03)); }
 .kpi.active  { background-image: linear-gradient(120deg, rgba(16,185,129,0.06), rgba(251,113,133,0.02)); }
 .kpi.inactive{ background-image: linear-gradient(120deg, rgba(251,113,133,0.06), rgba(245,158,11,0.02)); }
 
-/* icon backgrounds (strong color) */
 .kpi .icon.clients { background: linear-gradient(180deg, var(--accent-indigo), #7c5cff); }
 .kpi .icon.jobs    { background: linear-gradient(180deg, var(--accent-teal), #2dd4bf); }
 .kpi .icon.active  { background: linear-gradient(180deg, var(--accent-emerald), #34d399); }
 .kpi .icon.inactive{ background: linear-gradient(180deg, var(--accent-rose), #fb7185); }
 
-/* little donut (CSS conic-gradient) */
-.kpi .donut {
-  width:44px; height:44px; border-radius:50%; background: conic-gradient(var(--donut-color, #ddd) calc(var(--pct,0) * 1%), #eee 0);
-  display:grid; place-items:center; color:#fff; font-weight:700; font-size:.78rem; box-shadow: inset 0 -6px 18px rgba(255,255,255,0.06);
-}
+.kpi .donut { width:44px; height:44px; border-radius:50%; background: conic-gradient(var(--donut-color, #ddd) calc(var(--pct,0) * 1%), #eee 0); display:grid; place-items:center; color:#fff; font-weight:700; font-size:.78rem; box-shadow: inset 0 -6px 18px rgba(255,255,255,0.06); }
 
-/* ----- Hiring pipeline block ----- */
-.panel {
-  background: #ffffff; border-radius: var(--radius); padding:16px; box-shadow: var(--shadow-lg); border:1px solid var(--border); margin-bottom:18px;
-}
+/* ----- Panels / Pipeline ----- */
+.panel { background: #ffffff; border-radius: var(--radius); padding:16px; box-shadow: var(--shadow-lg); border:1px solid var(--border); margin-bottom:18px; }
 .pipeline-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
 .pipeline-bar { height:12px; width:100%; border-radius:999px; background: #f3f6fb; overflow:hidden; display:flex; box-shadow: inset 0 -2px 8px rgba(12,24,40,0.02); border:1px solid rgba(15,27,43,0.02); }
 .pipeline-segment { height:100%; transition: width .6s cubic-bezier(.2,.9,.2,1); }
 
 /* chips */
 .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-.chip {
-  display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; font-weight:700; font-size:.9rem;
-  background:#fff; border:1px solid var(--border); box-shadow:0 6px 18px rgba(12,24,40,0.04); transition: transform .12s ease;
-}
+.chip { display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; font-weight:700; font-size:.9rem; background:#fff; border:1px solid var(--border); box-shadow:0 6px 18px rgba(12,24,40,0.04); transition: transform .12s ease; }
 .chip:hover { transform: translateY(-4px); }
 
-/* ----- Table styles (Time to Fill / Time to Hire) ----- */
+/* ----- Tables ----- */
 .table-wrap { margin-top:6px; overflow:auto; border-radius:12px; border:1px solid var(--border); background:#fff; box-shadow:var(--shadow-lg); }
 table { width:100%; border-collapse:collapse; min-width:760px; }
 thead th { text-align:left; padding:12px 14px; font-size:.88rem; color:#5b6777; background:#fbfdff; border-bottom:1px solid rgba(15,27,43,0.04); position:sticky; top:0; z-index:2; }
@@ -107,22 +77,15 @@ tbody td { padding:12px 14px; border-bottom:1px solid rgba(12,24,40,0.04); color
 tbody tr:nth-child(odd) { background: linear-gradient(90deg, rgba(250,252,255,0.8), rgba(248,249,250,0.8)); }
 tbody tr:hover { background: linear-gradient(90deg, rgba(243,248,255,0.95), rgba(245,247,250,0.95)); }
 
-/* status badge visuals (we will keep the exact text inside) */
-.status-badge {
-  display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.82rem; border:1px solid rgba(15,27,43,0.04);
-  background:#f8fafc; color:#0b1b2b;
-}
+/* status badges */
+.status-badge { display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.82rem; border:1px solid rgba(15,27,43,0.04); background:#f8fafc; color:#0b1b2b; }
 .status-ont { background: linear-gradient(90deg,#ecfdf5,#ecfeef); color:#064e3b; border-color:#bbf7d0; box-shadow: 0 6px 18px rgba(16,185,129,0.06); }
 .status-delay { background: linear-gradient(90deg,#fff1f2,#fff3f4); color:#9f1239; border-color:#fecaca; box-shadow: 0 6px 18px rgba(251,113,133,0.04); }
 
-/* small responsive helpers */
+/* helpers */
 .meta-line { display:flex; gap:10px; align-items:center; color:var(--muted); font-size:.86rem; }
 kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:700; font-size:.78rem; }
-
-/* accessibility focus */
 :where(.chip, .kpi):focus { box-shadow: 0 0 0 4px rgba(79,70,229,0.12); outline:none; }
-
-/* tiny loading fallback */
 .skeleton { width:76px; height:28px; border-radius:8px; background: linear-gradient(90deg,#f3f4f6,#eef2ff,#f3f4f6); background-size:200% 100%; animation: shimmer 1.2s infinite; display:inline-block; }
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 </style>
@@ -130,18 +93,24 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
 <div class="container">
   <div class="header-row">
     <h1>Welcome to Teetli Dashboard</h1>
-    <!-- small contextual hint - no text changes -->
     <div class="meta-line">
-      <span style="color:var(--muted);">Overview</span>
-      <kbd class="hint">Real-time</kbd>
+      <span style="color:var(--muted);"></span>
+      <kbd class="hint"></kbd>
+      <!-- Go to Admin (admins go in; others get redirected back with ?error=access_denied) -->
+      <a class="btn-admin" href="/admin/enter">Go to Admin</a>
     </div>
   </div>
 
-  <!-- KPI Grid (color-coded blocks) -->
+  {% if request.query_params.get('error') == 'access_denied' %}
+    <div class="p-3 mb-3 rounded border border-rose-200 bg-rose-50 text-rose-800">
+      Access denied – Admins only.
+    </div>
+  {% endif %}
+
+  <!-- KPI Grid -->
   <section class="grid-4" aria-label="Key performance indicators">
     <div class="kpi clients" tabindex="0" role="region" aria-labelledby="clients-label">
       <div class="icon clients" aria-hidden="true">
-        <!-- user icon -->
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/></svg>
       </div>
       <div class="meta">
@@ -156,7 +125,6 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
 
     <div class="kpi jobs" tabindex="0" role="region" aria-labelledby="jobs-label">
       <div class="icon jobs" aria-hidden="true">
-        <!-- briefcase -->
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/></svg>
       </div>
       <div class="meta">
@@ -171,7 +139,6 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
 
     <div class="kpi active" tabindex="0" role="region" aria-labelledby="active-label">
       <div class="icon active" aria-hidden="true">
-        <!-- check -->
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="meta">
@@ -186,7 +153,6 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
 
     <div class="kpi inactive" tabindex="0" role="region" aria-labelledby="inactive-label">
       <div class="icon inactive" aria-hidden="true">
-        <!-- pause -->
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/><path d="M10 8v8M14 8v8" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="meta">
@@ -200,17 +166,15 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
     </div>
   </section>
 
-  <!-- Hiring Pipeline (with proportional progress bar and colored chips) -->
+  <!-- Hiring Pipeline -->
   <section class="panel" aria-label="Hiring pipeline">
     <div class="pipeline-top">
       <h2 style="margin:0; font-size:1.02rem; color:#0b1b2b;">Hiring Pipeline</h2>
       <div style="color:var(--muted); font-weight:600;">Stage distribution</div>
     </div>
 
-    <!-- proportional bar -->
     <div class="pipeline-bar" id="pipeline-bar" aria-hidden="true"></div>
 
-    <!-- chips hold exact text (no textual changes) -->
     <div class="chips" id="chips-area">
       {% for stage in hiring_pipeline %}
         <div class="chip" data-stage="{{ stage.stage }}" data-count="{{ stage.count }}">{{ stage.stage }} ({{ stage.count }})</div>
@@ -278,7 +242,6 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
 
 {% block scripts %}
 <script>
-/* ---------- Utilities ---------- */
 function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
 function animateNumber(el, to, ms = 700){
   const start = 0; const t0 = performance.now();
@@ -291,16 +254,14 @@ function animateNumber(el, to, ms = 700){
   requestAnimationFrame(frame);
 }
 
-/* ---------- Fetch and render stats ---------- */
 document.addEventListener('DOMContentLoaded', function(){
-  // decorate table status cells (wrap exact text in styled badge, text preserved)
+  // decorate status cells
   document.querySelectorAll('td.status-cell').forEach(td => {
     const txt = (td.textContent || '').trim();
-    td.textContent = ''; // keep the text intact, but re-insert into badge
+    td.textContent = '';
     const span = document.createElement('span');
     span.className = 'status-badge';
-    span.textContent = txt; // exact text preserved
-    // color mapping (non-destructive text)
+    span.textContent = txt;
     const l = txt.toLowerCase();
     if (l.includes('on track') || l.includes('hired') || l.includes('ok') || l.includes('active')){
       span.classList.add('status-ont');
@@ -310,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function(){
     td.appendChild(span);
   });
 
-  // Prepare pipeline chips: read data-count attributes
+  // pipeline chips
   const chips = Array.from(document.querySelectorAll('#chips-area .chip'));
   const stageData = chips.map(c => {
     const stage = c.dataset.stage || c.textContent.trim();
@@ -318,25 +279,22 @@ document.addEventListener('DOMContentLoaded', function(){
     return { stage, count, node: c };
   });
 
-  // Color mapping for stages
   const colorMap = {
-    'screening': '#7c3aed',      // indigo
-    'submissions': '#0ea5a4',    // teal
-    'interview': '#f59e0b',      // amber
-    'offered': '#7c3aed',        // purple
-    'hired': '#10b981',          // emerald
-    'rejected': '#ef4444',       // red
-    'archived': '#94a3b8'        // slate
+    'screening': '#7c3aed',
+    'submissions': '#0ea5a4',
+    'interview': '#f59e0b',
+    'offered': '#7c3aed',
+    'hired': '#10b981',
+    'rejected': '#ef4444',
+    'archived': '#94a3b8'
   };
 
-  // Assign chip colors (applies visual accent, keeps text)
   stageData.forEach(sd => {
     const key = sd.stage.toLowerCase().trim();
     const color = colorMap[key] || '#60a5fa';
     sd.node.style.borderLeft = '4px solid ' + color;
     sd.node.style.background = 'linear-gradient(180deg, rgba(255,255,255,1), rgba(249,250,251,1))';
     sd.node.style.color = '#071226';
-    // small dot indicator
     const dot = document.createElement('span');
     dot.setAttribute('aria-hidden','true');
     dot.style.width = '10px'; dot.style.height = '10px'; dot.style.borderRadius = '50%';
@@ -344,12 +302,11 @@ document.addEventListener('DOMContentLoaded', function(){
     sd.node.insertBefore(dot, sd.node.firstChild);
   });
 
-  // Build pipeline proportional bar
+  // proportional bar
   const total = stageData.reduce((s, x) => s + (isFinite(x.count) ? x.count : 0), 0);
   const bar = document.getElementById('pipeline-bar');
   bar.innerHTML = '';
   if (total === 0) {
-    // visual fallback: small neutral segment
     const seg = document.createElement('div');
     seg.className = 'pipeline-segment'; seg.style.width = '100%'; seg.style.background = '#e6eef9';
     bar.appendChild(seg);
@@ -360,20 +317,18 @@ document.addEventListener('DOMContentLoaded', function(){
       const seg = document.createElement('div');
       seg.className = 'pipeline-segment';
       seg.style.width = '0%';
-      // choose color
       const key = sd.stage.toLowerCase().trim();
       const color = colorMap[key] || '#60a5fa';
       seg.style.background = color;
       seg.title = `${sd.stage}: ${sd.count} (${pct}%)`;
       bar.appendChild(seg);
-      // animate width slightly staggered
       setTimeout(()=> seg.style.width = pct + '%', 80);
     });
   }
 
-  // Fetch live stats for KPI cards (same endpoint used earlier)
+  // KPI stats from backend
   fetch('/clients/stats').then(r => {
-    if (!r.ok) throw new Error('Network response not ok ' + r.status);
+    if (!r.ok) throw new Error('Bad response ' + r.status);
     return r.json();
   }).then(stats => {
     const tc = Number(stats.total_clients || 0);
@@ -381,29 +336,23 @@ document.addEventListener('DOMContentLoaded', function(){
     const aj = Number(stats.active_jobs || 0);
     const ij = Number(stats.inactive_jobs || 0);
 
-    // animate numbers strongly
     animateNumber(document.getElementById('total-clients'), tc);
     animateNumber(document.getElementById('total-jobs'), tj);
     animateNumber(document.getElementById('active-jobs'), aj);
     animateNumber(document.getElementById('inactive-jobs'), ij);
 
-    // Donut percentages - example: relative parts of (active + inactive) for jobs
-    // For clients and jobs we compute dummy internal distribution for visual effect (safe)
     const jobsTotal = Math.max(1, aj + ij);
     const pctActive = Math.round((aj / jobsTotal) * 100);
     const pctInactive = Math.round((ij / jobsTotal) * 100);
 
-    // clients donut: if job count exists, ratio = clients / (jobs + clients) to produce a visually meaningful small metric
     const clientsDonutPct = Math.round((tc / Math.max(1, (tc + tj))) * 100);
 
-    // set CSS vars used by donuts
     function setDonut(id, color, pct){
       const el = document.getElementById(id);
       if (!el) return;
       el.style.setProperty('--donut-color', color);
       el.style.setProperty('--pct', pct);
       el.textContent = pct + '%';
-      // tiny animate background by forcing reflow then transition via CSS (already instant)
       el.animate([{ transform: 'rotate(-10deg)' }, { transform: 'rotate(0deg)'}], { duration: 420, easing: 'cubic-bezier(.2,.9,.2,1)' });
     }
 
@@ -411,22 +360,13 @@ document.addEventListener('DOMContentLoaded', function(){
     setDonut('donut-inactive', '#fb7185', pctInactive);
     setDonut('donut-clients', '#4f46e5', clientsDonutPct);
     setDonut('donut-jobs', '#06b6d4', Math.round((tj / Math.max(1, (tc + tj))) * 100));
-
-    // subtle highlight on KPI icons proportional to amounts
-    const kActive = document.querySelector('.kpi.active .icon');
-    const kInactive = document.querySelector('.kpi.inactive .icon');
-    if (kActive) kActive.style.filter = `drop-shadow(0 10px 30px rgba(16,185,129,0.18))`;
-    if (kInactive) kInactive.style.filter = `drop-shadow(0 10px 30px rgba(251,113,133,0.14))`;
   }).catch(err => {
     console.error('Failed to load stats', err);
-    // graceful fallback - remove skeletons but keep existing server-rendered values
     ['total-clients','total-jobs','active-jobs','inactive-jobs'].forEach(id=>{
       const el = document.getElementById(id);
       if(el && el.textContent.trim() === '') el.textContent = '0';
     });
-    // fallback pipeline: set kit sizes
   });
-
 });
 </script>
 {% endblock %}

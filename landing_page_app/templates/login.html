@@ -3,34 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
-
-  <!-- Link to static CSS -->
+  <title>Teetli Login</title>
   <link rel="stylesheet" href="/static/css/login.css">
 </head>
 <body>
-  <div class="login-container">
-    <h2>Welcome Back 👋</h2>
-    <form method="post" action="/login" class="login-form">
-      <div class="input-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+  <div class="container">
+    <div class="left-panel">
+      <h1 class="brand-title">Welcome to Teetli</h1>
+      <p class="brand-subtitle">Your secure gateway to success</p>
+    </div>
+
+    <div class="right-panel">
+      <div class="login-container">
+        <h2> Login</h2>
+        <p class="welcome-text">Welcome back! Please enter your credentials.</p>
+        
+        <form method="post" action="/login" class="login-form" id="loginForm">
+          <div class="input-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email" required>
+          </div>
+    
+          <div class="input-group">
+            <label for="password">Password</label>
+            <div class="password-wrapper">
+              <input type="password" id="password" name="password" placeholder="Enter your password" required>
+              <button type="button" class="password-toggle" id="passwordToggle">
+                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <div class="validation-message" id="passwordValidation">
+              ❌ Invalid credentials. Please try again.
+            </div>
+          </div>
+    
+          <button type="submit" class="btn">Login to Account</button>
+        </form>
+    
+        <p class="signup-text">
+          Don't have an account? <a href="/signup">Sign up here</a>
+        </p>
       </div>
-
-      <div class="input-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Enter your password" required>
-      </div>
-
-      <button type="submit" class="btn">Login</button>
-    </form>
-
-    <p class="signup-text">Don’t have an account? 
-      <a href="/signup">Sign up here</a>
-    </p>
+    </div>
   </div>
 
-  <!-- Link to static JS -->
   <script src="/static/js/login.js"></script>
 </body>
 </html>

@@ -21,3 +21,4 @@ class CandidateJDMapping(Base):
 
     updated_at = Column(DateTime, default=datetime.utcnow)
     ai_score = Column(Integer, nullable=True)
+   

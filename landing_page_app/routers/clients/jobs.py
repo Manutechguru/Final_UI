@@ -10,6 +10,7 @@ from landing_page_app.routers.utils.jobs_utils import (
     add_new_job,
     toggle_job_status,
     delete_job,
+    update_job,
 )
 from landing_page_app.models.jobs import Job
 
@@ -75,15 +76,31 @@ def add_job(
 # 3. Toggle Job Status
 # -----------------------------
 @router.post("/{manager_id}/toggle-job/{job_id}", name="toggle_job_status")
-def toggle_job_status_route(manager_id: int, job_id: int, db: Session = Depends(get_db)):
+def toggle_job_status_route(request: Request, manager_id: int, job_id: int, db: Session = Depends(get_db)):
     job = toggle_job_status(db, job_id, manager_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     message = f"Job '{job.job_title}' status updated!"
-    return RedirectResponse(
-        url=f"/managers/jobs/{manager_id}?message={message}",
-        status_code=status.HTTP_303_SEE_OTHER
-    )
+
+    # If the client requested JSON (AJAX), return JSON for better UX; otherwise keep redirect behaviour
+    content_type = request.headers.get("content-type", "").lower()
+    accept = request.headers.get("accept", "").lower()
+    xreq = request.headers.get("x-requested-with", "").lower()
+
+    if "application/json" in content_type or "application/json" in accept or xreq == "xmlhttprequest":
+        # return JSON data that client-side can use to update the UI
+        return {
+            "job_id": job.job_id,
+            "job_title": job.job_title,
+            "status": job.status,
+            "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+            "updated_by": job.updated_by
+        }
+    else:
+        return RedirectResponse(
+            url=f"/managers/jobs/{manager_id}?message={message}",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
 
 
 # -----------------------------
@@ -126,3 +143,61 @@ def job_candidates(job_id: int, db: Session = Depends(get_db)):
 
     # ✅ Redirect to the working JD candidates page
     return RedirectResponse(url=f"/candidates/jd-candidates/{job.job_id}")
+
+
+# -----------------------------
+# 7. Edit / Update Job (supports JSON/AJAX and regular form submit)
+# -----------------------------
+@router.post("/{manager_id}/edit-job/{job_id}", name="edit_job")
+async def edit_job(request: Request, manager_id: int, job_id: int, db: Session = Depends(get_db)):
+    manager = get_manager_by_id(db, manager_id)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Manager not found")
+
+    # Find the job
+    job = db.query(Job).filter(Job.job_id == job_id, Job.manager_id == manager_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    content_type = request.headers.get("content-type", "").lower()
+
+    # Support JSON body (AJAX) or form submit
+    if "application/json" in content_type:
+        body = await request.json()
+        new_title = (body.get("job_title") or "").strip()
+        new_description = (body.get("job_description") or "").strip()
+        updated_by = body.get("updated_by")
+    else:
+        form = await request.form()
+        new_title = (form.get("job_title") or "").strip()
+        new_description = (form.get("job_description") or "").strip()
+        updated_by = form.get("updated_by")
+
+    if not new_title:
+        message = "Job title is required!"
+        if "application/json" in content_type:
+            raise HTTPException(status_code=400, detail=message)
+        else:
+            redirect_url = str(request.url_for("manager_jobs_page", manager_id=manager_id)) + f"?message={message}"
+            return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+    updated_job = update_job(db, manager_id, job_id, new_title, new_description, updated_by)
+
+    if not updated_job:
+        raise HTTPException(status_code=404, detail="Job update failed")
+
+    message = f"Job '{new_title}' updated successfully!"
+
+    if "application/json" in content_type:
+        return {
+            "job_id": updated_job.job_id,
+            "job_title": updated_job.job_title,
+            "job_description": updated_job.job_description,
+            "updated_at": updated_job.updated_at.isoformat() if updated_job.updated_at else None,
+            "updated_by": updated_job.updated_by,
+            "status": updated_job.status,
+            "message": message
+        }
+    else:
+        redirect_url = str(request.url_for("manager_jobs_page", manager_id=manager_id)) + f"?message={message}"
+        return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)

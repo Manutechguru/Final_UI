@@ -1,20 +1,99 @@
 // static/js/managers.js
 document.addEventListener("DOMContentLoaded", () => {
-  const grid = document.getElementById('managersGrid');
+  // Vendor scoped namespace
+  const vendorScope = {
+    grid: document.getElementById('vendorScopedGrid'),
+    filterButtons: document.querySelectorAll('.vendor-scoped-filter-btn'),
+    toast: document.getElementById('vendorScopedToast'),
+    toastMessage: document.getElementById('vendorScopedToastMessage'),
+    toastClose: document.querySelector('.vendor-scoped-toast-close'),
+    confirmationDialog: document.getElementById('vendorScopedDialog'),
+    dialogTitle: document.getElementById('vendorScopedDialogTitle'),
+    dialogMessage: document.getElementById('vendorScopedDialogMessage'),
+    dialogCancel: document.getElementById('vendorScopedDialogCancel'),
+    dialogConfirm: document.getElementById('vendorScopedDialogConfirm'),
+    addVendorForm: document.getElementById('vendorScopedAddForm'),
+    pendingDelete: null
+  };
+
+  // Show toast notification
+  function showToast(message, isError = false) {
+    vendorScope.toastMessage.textContent = message;
+    vendorScope.toast.className = isError ? 'vendor-scoped-toast error' : 'vendor-scoped-toast';
+    vendorScope.toast.style.display = 'flex';
+    
+    // Auto hide after 4 seconds
+    setTimeout(() => {
+      hideToast();
+    }, 4000);
+  }
+
+  // Hide toast
+  function hideToast() {
+    vendorScope.toast.style.display = 'none';
+  }
+
+  // Show confirmation dialog
+  function showConfirmationDialog(title, message, confirmCallback) {
+    vendorScope.dialogTitle.textContent = title;
+    vendorScope.dialogMessage.textContent = message;
+    vendorScope.confirmationDialog.classList.add('active');
+    
+    // Set up event listeners
+    const confirmHandler = () => {
+      vendorScope.confirmationDialog.classList.remove('active');
+      confirmCallback();
+      vendorScope.dialogConfirm.removeEventListener('click', confirmHandler);
+      vendorScope.dialogCancel.removeEventListener('click', cancelHandler);
+    };
+    
+    const cancelHandler = () => {
+      vendorScope.confirmationDialog.classList.remove('active');
+      vendorScope.dialogConfirm.removeEventListener('click', confirmHandler);
+      vendorScope.dialogCancel.removeEventListener('click', cancelHandler);
+    };
+    
+    vendorScope.dialogConfirm.addEventListener('click', confirmHandler);
+    vendorScope.dialogCancel.addEventListener('click', cancelHandler);
+  }
+
+  // Close toast when clicked
+  vendorScope.toastClose.addEventListener('click', hideToast);
+
+  // Filter functionality
+  vendorScope.filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const status = button.dataset.status;
+      
+      // Update active button
+      vendorScope.filterButtons.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      
+      // Filter cards
+      const cards = document.querySelectorAll('.vendor-scoped-card');
+      cards.forEach(card => {
+        if (status === 'all') {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = card.dataset.status === status ? 'flex' : 'none';
+        }
+      });
+    });
+  });
 
   // close dropdowns helper
   function closeAllDropdowns() {
-    document.querySelectorAll('.dropdown-content').forEach(m => m.classList.remove('show'));
-    document.querySelectorAll('.three-dots-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    document.querySelectorAll('.vendor-scoped-menu-content').forEach(m => m.classList.remove('show'));
+    document.querySelectorAll('.vendor-scoped-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
 
   // attach dropdown handlers
-  document.querySelectorAll('.three-dots-btn').forEach(btn => {
+  document.querySelectorAll('.vendor-scoped-menu-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       closeAllDropdowns();
-      const parent = btn.closest('.three-dots');
-      const menu = parent.querySelector('.dropdown-content');
+      const parent = btn.closest('.vendor-scoped-menu');
+      const menu = parent.querySelector('.vendor-scoped-menu-content');
       const show = menu.classList.toggle('show');
       btn.setAttribute('aria-expanded', show ? 'true' : 'false');
     });
@@ -33,13 +112,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Delegated - toggle switches
-  grid.addEventListener('change', async (e) => {
+  vendorScope.grid.addEventListener('change', async (e) => {
     const el = e.target;
-    if (!el.classList.contains('toggle-switch')) return;
+    if (!el.classList.contains('vendor-scoped-toggle-input')) return;
 
     const toggleUrl = el.dataset.toggleUrl;
-    const managerCard = el.closest('.manager-card');
-    const statusBadge = managerCard ? managerCard.querySelector('.status-badge') : null;
+    const vendorName = el.dataset.name;
+    const managerCard = el.closest('.vendor-scoped-card');
+    const statusBadge = managerCard ? managerCard.querySelector('.vendor-scoped-status') : null;
 
     if (!toggleUrl) {
       console.error('Toggle URL missing', el);
@@ -48,12 +128,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const desired = el.checked ? 'active' : 'inactive';
-    console.log('[MANAGERS] Toggle request ->', toggleUrl, 'desired=', desired);
 
     try {
       const res = await fetch(toggleUrl, {
         method: 'POST',
-        credentials: 'same-origin',   // send session cookie
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
@@ -63,65 +142,92 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const parsed = await parseResponseSafely(res);
-      console.log('[MANAGERS] toggle response', parsed);
 
       if (!parsed.ok) {
-        const msg = parsed.json?.detail || parsed.json?.message || parsed.text || 'Status ${parsed.status}';
-        alert('Failed to toggle: ' + msg);
+        const msg = parsed.json?.detail || parsed.json?.message || parsed.text || `Status ${parsed.status}`;
+        showToast('Failed to toggle vendor status: ' + msg, true);
         el.checked = !el.checked;
         return;
       }
 
       const data = parsed.json || {};
       const newStatus = data.new_status || desired;
+      
+      // Update card status for filtering
+      managerCard.dataset.status = newStatus;
+      
       if (statusBadge) {
         statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
-        statusBadge.className = 'status-badge ' + (newStatus === 'active' ? 'active' : 'inactive');
+        statusBadge.className = 'vendor-scoped-status ' + (newStatus === 'active' ? 'active' : 'inactive');
       }
-
-      // update updated-by/time if provided
-      if (data.updated_by_name || data.updated_at) {
-        if (managerCard) {
-          const metaRows = managerCard.querySelectorAll('.card-meta .meta-row');
-          if (metaRows[1]) {
-            const val = metaRows[1].querySelector('.meta-value');
-            const ts = metaRows[1].querySelector('.meta-ts');
-            if (val && data.updated_by_name) val.textContent = data.updated_by_name;
-            if (ts && data.updated_at) ts.textContent = (data.updated_at.length ? data.updated_at.replace('T',' ').split('.')[0] : data.updated_at);
-          }
-        }
-      }
+      
+      showToast(`${vendorName} is now ${newStatus}`);
     } catch (err) {
       console.error('Network/error toggling status', err);
-      alert('Network error toggling status: ' + err.message);
+      showToast('Network error toggling status: ' + err.message, true);
       el.checked = !el.checked;
     }
   });
 
   // Delegated click for menu actions (delete/edit)
-  grid.addEventListener('click', async (e) => {
-    const del = e.target.closest('.menu-delete');
+  vendorScope.grid.addEventListener('click', async (e) => {
+    const del = e.target.closest('.vendor-scoped-menu-delete');
     if (del) {
       e.preventDefault();
       const url = del.dataset.deleteUrl;
-      if (!url) { alert('Delete URL missing'); return; }
-      if (!confirm('Delete this vendor and all its jobs?')) return;
-      try {
-        const res = await fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }});
-        const parsed = await parseResponseSafely(res);
-        if (!parsed.ok) { alert(parsed.json?.detail || parsed.text || 'Failed to delete'); return; }
-        const card = del.closest('.manager-card'); if (card) card.remove();
-      } catch (err) { alert('Error deleting vendor: ' + err.message); }
+      const vendorName = del.dataset.name;
+      
+      if (!url) { 
+        showToast('Delete URL missing', true);
+        return; 
+      }
+      
+      // Show confirmation dialog instead of using confirm()
+      showConfirmationDialog(
+        'Confirm Deletion', 
+        `Are you sure you want to delete "${vendorName}" and all its jobs? This action cannot be undone.`,
+        async () => {
+          try {
+            const res = await fetch(url, { 
+              method: 'POST', 
+              credentials: 'same-origin', 
+              headers: { 
+                'X-Requested-With': 'XMLHttpRequest', 
+                'Accept': 'application/json' 
+              }
+            });
+            
+            const parsed = await parseResponseSafely(res);
+            if (!parsed.ok) { 
+              showToast(parsed.json?.detail || parsed.text || 'Failed to delete vendor', true); 
+              return; 
+            }
+            
+            const card = del.closest('.vendor-scoped-card'); 
+            if (card) {
+              card.style.opacity = '0';
+              card.style.transition = 'opacity 0.3s';
+              setTimeout(() => card.remove(), 300);
+            }
+            
+            showToast(`${vendorName} has been deleted successfully`);
+          } catch (err) { 
+            showToast('Error deleting vendor: ' + err.message, true); 
+          }
+        }
+      );
+      
       return;
     }
 
-    const edt = e.target.closest('.menu-edit');
+    const edt = e.target.closest('.vendor-scoped-menu-edit');
     if (edt) {
       e.preventDefault();
       const editUrl = edt.dataset.editUrl;
-      const currentName = edt.dataset.name || edt.closest('.manager-card').querySelector('.card-title').textContent;
+      const currentName = edt.dataset.name || edt.closest('.vendor-scoped-card').querySelector('.vendor-scoped-card-title').textContent;
       const newName = prompt('Edit vendor name:', currentName);
       if (!newName || newName.trim() === '' || newName.trim() === currentName.trim()) return;
+      
       try {
         const body = new URLSearchParams({ manager_name: newName.trim() });
         const res = await fetch(editUrl, {
@@ -134,25 +240,64 @@ document.addEventListener("DOMContentLoaded", () => {
           },
           body: body.toString()
         });
+        
         const parsed = await parseResponseSafely(res);
-        if (!parsed.ok) { alert(parsed.json?.detail || parsed.text || 'Failed to update vendor'); return; }
-        const data = parsed.json || {};
-        const card = edt.closest('.manager-card');
-        if (card) {
-          const title = card.querySelector('.card-title');
-          if (title) title.textContent = data.manager_name || newName.trim();
-          const metaRows = card.querySelectorAll('.card-meta .meta-row');
-          if (data.updated_by_name && metaRows[1]) {
-            const val = metaRows[1].querySelector('.meta-value');
-            const ts = metaRows[1].querySelector('.meta-ts');
-            if (val) val.textContent = data.updated_by_name;
-            if (ts && data.updated_at) ts.textContent = (data.updated_at.length ? data.updated_at.replace('T',' ').split('.')[0] : data.updated_at);
-          }
+        if (!parsed.ok) { 
+          showToast(parsed.json?.detail || parsed.text || 'Failed to update vendor', true); 
+          return; 
         }
-        alert('Vendor updated');
-      } catch (err) { alert('Error updating vendor: ' + err.message); }
+        
+        const data = parsed.json || {};
+        const card = edt.closest('.vendor-scoped-card');
+        if (card) {
+          const title = card.querySelector('.vendor-scoped-card-title');
+          if (title) title.textContent = data.manager_name || newName.trim();
+          // Update the data-name attribute for future operations
+          edt.dataset.name = data.manager_name || newName.trim();
+          
+          // Also update the toggle switch data-name
+          const toggleSwitch = card.querySelector('.vendor-scoped-toggle-input');
+          if (toggleSwitch) toggleSwitch.dataset.name = data.manager_name || newName.trim();
+        }
+        
+        showToast(`Vendor name updated to "${data.manager_name || newName.trim()}"`);
+      } catch (err) { 
+        showToast('Error updating vendor: ' + err.message, true); 
+      }
       return;
     }
   });
 
+  // Handle form submission with feedback
+  if (vendorScope.addVendorForm) {
+    vendorScope.addVendorForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(vendorScope.addVendorForm);
+      const vendorName = formData.get('manager_name');
+      
+      try {
+        const response = await fetch(vendorScope.addVendorForm.action, {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+          showToast(`Vendor "${vendorName}" created successfully`);
+          // Clear the form
+          vendorScope.addVendorForm.reset();
+          // Reload the page to show the new vendor
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          const error = await response.text();
+          showToast('Failed to add vendor: ' + error, true);
+        }
+      } catch (err) {
+        showToast('Network error adding vendor: ' + err.message, true);
+      }
+    });
+  }
 });

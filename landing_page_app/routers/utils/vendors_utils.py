@@ -6,6 +6,10 @@ from landing_page_app.models.jobs import Job
 from landing_page_app.models.user import User
 from sqlalchemy import func
 from datetime import datetime
+from zoneinfo import ZoneInfo   # ✅ Added for IST timezone
+
+# Define IST timezone once
+IST = ZoneInfo("Asia/Kolkata")
 
 def get_manager_by_id(db: Session, manager_id: int) -> Optional[Manager]:
     return db.query(Manager).filter(Manager.manager_id == manager_id).first()
@@ -41,9 +45,9 @@ def add_manager(db: Session, client_id: int, manager_name: str, user_id: Optiona
         client_id=client_id,
         manager_name=manager_name,
         status="active",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(IST),   # ✅ Changed to IST
         created_by=user_id,
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.now(IST),   # ✅ Changed to IST
         updated_by=user_id
     )
     db.add(manager)
@@ -71,15 +75,23 @@ def delete_manager(db: Session, manager_id: int) -> bool:
     db.commit()
     return True
 
-def toggle_manager_status(db: Session, manager_id: int, user_id: Optional[int] = None, desired_status: Optional[str] = None) -> Optional[Dict]:
+
+def toggle_manager_status(
+    db: Session,
+    manager_id: int,
+    user_id: Optional[int] = None,
+    desired_status: Optional[str] = None
+) -> Optional[Dict]:
     """
     Set explicit status if desired_status provided ('active' or 'inactive'),
-    otherwise flip current status. Returns dict with new_status & updated_by_name.
+    otherwise flip current status. Cascade: Jobs always follow manager status.
+    Returns dict with new_status & updated_by_name.
     """
     manager = get_manager_by_id(db, manager_id)
     if not manager:
         return None
 
+    # Decide new status
     if isinstance(desired_status, str):
         desired = desired_status.strip().lower()
         if desired not in ("active", "inactive"):
@@ -88,12 +100,21 @@ def toggle_manager_status(db: Session, manager_id: int, user_id: Optional[int] =
     else:
         manager.status = "inactive" if manager.status == "active" else "active"
 
+    # Audit trail
     manager.updated_by = user_id
-    manager.updated_at = datetime.utcnow()
+    manager.updated_at = datetime.now(IST)
     db.commit()
     db.refresh(manager)
 
+    # Cascade: Jobs follow manager status
+    jobs = db.query(Job).filter(Job.manager_id == manager.manager_id).all()
+    for job in jobs:
+        job.status = manager.status
+    db.commit()
+
+    # Who updated
     updated_user = db.query(User).filter(User.id == user_id).first() if user_id else None
+
     return {
         "manager_id": manager.manager_id,
         "new_status": manager.status,
@@ -107,7 +128,7 @@ def edit_manager(db: Session, manager_id: int, manager_name: str, user_id: Optio
         return None
     manager.manager_name = manager_name
     manager.updated_by = user_id
-    manager.updated_at = datetime.utcnow()
+    manager.updated_at = datetime.now(IST)   # ✅ Changed to IST
     db.commit()
     db.refresh(manager)
 

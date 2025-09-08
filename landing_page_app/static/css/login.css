@@ -1,100 +1,224 @@
-/* Reset & base styles */
+/* Reset */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
 body {
+  min-height: 100vh;
+  display: flex;
+  background: linear-gradient(135deg, #4f46e5, #9333ea, #06b6d4);
+  background-size: 300% 300%;
+  animation: gradientBG 12s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Grid layout */
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+}
+
+/* Left panel */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  padding: 2rem;
+  text-align: center;
+}
+
+.brand-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.brand-subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+/* Right panel (form) */
+.right-panel {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  padding: 2rem;
 }
 
-/* Container */
 .login-container {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
   padding: 2.5rem;
   border-radius: 1.2rem;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
   text-align: center;
+  backdrop-filter: blur(12px);
   animation: fadeIn 0.8s ease-in-out;
 }
 
 .login-container h2 {
-  margin-bottom: 1.5rem;
-  color: #333;
-  font-size: 1.8rem;
+  margin-bottom: 1.2rem;
+  color: #2d3748;
+  font-size: 1.9rem;
+  font-weight: 700;
 }
 
-/* Input Groups */
+.welcome-text {
+  color: #718096;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+}
+
+/* Inputs */
 .input-group {
   text-align: left;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.3rem;
 }
 
 .input-group label {
   display: block;
-  margin-bottom: 0.4rem;
-  font-size: 0.95rem;
-  color: #555;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.password-wrapper {
+  position: relative;
 }
 
 .input-group input {
   width: 100%;
-  padding: 0.8rem;
-  border: 1.5px solid #ddd;
-  border-radius: 0.6rem;
+  padding: 1rem;
+  padding-right: 3rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.75rem;
   font-size: 1rem;
-  transition: border 0.3s;
+  transition: all 0.3s;
+  background: #f8fafc;
 }
 
 .input-group input:focus {
-  border-color: #2575fc;
+  border-color: #6366f1;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  background: #fff;
+}
+
+/* Password toggle */
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #a0aec0;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.password-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.eye-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Validation message */
+.validation-message {
+  color: #e53e3e;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  display: none;
+  text-align: left;
 }
 
 /* Button */
 .btn {
   width: 100%;
-  padding: 0.9rem;
-  background: #2575fc;
+  padding: 1rem;
+  background: linear-gradient(135deg, #4f46e5, #9333ea);
   border: none;
-  border-radius: 0.6rem;
+  border-radius: 0.75rem;
   color: #fff;
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s;
 }
 
 .btn:hover {
-  background: #1a5fd1;
+  background: linear-gradient(135deg, #4338ca, #7e22ce);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 /* Signup text */
 .signup-text {
-  margin-top: 1.2rem;
-  font-size: 0.9rem;
-  color: #666;
+  margin-top: 1.5rem;
+  font-size: 0.95rem;
+  color: #718096;
 }
 
 .signup-text a {
-  color: #2575fc;
+  color: #4f46e5;
+  font-weight: 600;
   text-decoration: none;
-  font-weight: 500;
 }
 
 .signup-text a:hover {
   text-decoration: underline;
+  color: #3730a3;
 }
 
-/* Animation */
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.input-error {
+  border-color: #e53e3e !important;
+  animation: shake 0.4s;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+  .left-panel {
+    display: none;
+  }
 }

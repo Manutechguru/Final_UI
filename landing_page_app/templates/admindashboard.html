@@ -5,21 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard</title>
 
-  <!-- Tailwind (optional; UI also works without it) -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Your app CSS -->
   <link rel="stylesheet" href="{{ url_for('static', path='css/admin.css') }}"/>
 
   <style>
-    /* ---------- Logs table spacing ---------- */
+    /* Keep the simple, original look */
     .user-logs table { width: 100%; border-collapse: separate; border-spacing: 28px 0; }
     .user-logs th, .user-logs td { padding: 6px 0; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; }
     .user-logs th { background: #f7f7f7; }
     .col-id { text-align: center; width: 80px; }
     .nowrap { white-space: nowrap; }
 
-    /* ---------- Pending users polished table ---------- */
     .list { width:100%; border-collapse:separate; border-spacing:0 8px; }
     .list thead th {
       font-size:.8rem; text-transform:uppercase; letter-spacing:.02em;
@@ -27,63 +23,102 @@
     }
     .row { background:#fff; border-radius:12px; }
     .row td { padding:12px 14px; vertical-align:middle; }
+
     .btn { display:inline-block; padding:6px 10px; border-radius:8px; font-weight:500; text-decoration:none; }
+    .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:32px; border-radius:8px; font-weight:800; font-size:16px; line-height:1; }
+    .sr-only { position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden; }
     .btn-approve { background:#10b981; color:#fff; } .btn-approve:hover { background:#0ea371; }
     .btn-reject  { background:#ef4444; color:#fff; } .btn-reject:hover  { background:#d63b3b; }
-    .empty { color:#6b7280; background:#f9fafb; border:1px dashed #e5e7eb; padding:16px; border-radius:10px; text-align:center; }
+    .empty { color:#6b7280; background:#f9fafb; border:1px dashed #e5e7eb; padding:16px; border-radius:12px; }
 
-    /* ---------- Tabs: active visual ---------- */
-    .tab-btn.active { background:#4f46e5; color:#fff; }
+    .pill { padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; color:#111827; }
+    .pill.active { background:#111827; color:#fff; border-color:#111827; }
+
+    .tab-content.hidden { display:none; }
+
+    /* Logs toggle buttons */
+    .toggle .active { background:#111827; color:#fff; }
   </style>
 </head>
-
-<body class="bg-gray-100 font-sans">
-  <!-- HEADER -->
-  <header class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md">
-    <h1 class="text-2xl font-bold">Admin Dashboard</h1>
-    <a href="/logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</a>
+<body class="bg-gray-50">
+  <!-- Classic blue header + keep eye icon for User View -->
+  <header class="bg-blue-600 text-white">
+    <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+      <h1 class="text-xl font-bold">Admin Dashboard</h1>
+      <div class="flex gap-2">
+        <a href="/templates"
+           class="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white px-3 py-1.5 rounded"
+           title="User View">
+          <!-- eye icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/>
+            <circle cx="12" cy="12" r="3" stroke-width="2" stroke="currentColor"/>
+          </svg>
+          <span>User View</span>
+        </a>
+        <a href="/logout"
+           class="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded"
+           title="Logout">
+          <!-- power icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 3v9m5.657-5.657A8 8 0 1 1 6.343 6.343"/>
+          </svg>
+          <span>Logout</span>
+        </a>
+      </div>
+    </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="p-6">
-    <!-- Tabs (use anchors so reload/bookmark keeps current tab) -->
-    <div class="mb-6 space-x-2">
-      <a href="/admin?tab=pending"   class="tab-btn px-4 py-2 rounded {{ 'active' if active_tab=='pending' else 'bg-gray-200' }}">Pending Users</a>
-      <a href="/admin?tab=logs"      class="tab-btn px-4 py-2 rounded {{ 'active' if active_tab=='logs' else 'bg-gray-200' }}">User Logs</a>
-      <a href="/admin?tab=allusers"  class="tab-btn px-4 py-2 rounded {{ 'active' if active_tab=='allusers' else 'bg-gray-200' }}">All Users</a>
-      <a href="/admin?tab=uploadcsv" class="tab-btn px-4 py-2 rounded {{ 'active' if active_tab=='uploadcsv' else 'bg-gray-200' }}">Upload CSV</a>
+  <main class="max-w-6xl mx-auto px-5 py-5">
+    <!-- TABS -->
+    <div class="flex gap-2 mb-4">
+      <a href="/admin?tab=pending"   class="pill {{ 'active' if active_tab=='pending'   else '' }}">Pending Users</a>
+      <a href="/admin?tab=logs&logs_view={{ logs_view|default('summary') }}" class="pill {{ 'active' if active_tab=='logs' else '' }}">User Logs</a>
+      <a href="/admin?tab=allusers"  class="pill {{ 'active' if active_tab=='allusers'  else '' }}">All Users</a>
+      <a href="/admin?tab=uploadcsv" class="pill {{ 'active' if active_tab=='uploadcsv' else '' }}">Upload CSV</a>
     </div>
 
-    <!-- ================== PENDING USERS ================== -->
-    <section id="pending" class="tab-content {{ '' if active_tab=='pending' else 'hidden' }}">
-      <h2 class="text-xl font-semibold mb-4">Pending Users</h2>
+    {% if msg %}
+      <div class="mb-4 p-3 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">{{ msg }}</div>
+    {% endif %}
+    {% if error %}
+      <div class="mb-4 p-3 rounded bg-rose-50 text-rose-800 border border-rose-200">{{ error }}</div>
+    {% endif %}
+
+    <!-- ========== PENDING USERS ========== -->
+    <section id="pending" class="tab-content {{ '' if active_tab=='pending' else 'hidden' }} ">
+      <h2 class="text-lg font-semibold mb-3">Pending Users</h2>
       {% if pending_users %}
-        <table class="list">
+        <table class="list w-full">
           <thead>
             <tr>
               <th>Name / ID</th>
               <th>Email</th>
-              <th style="width:180px;">Actions</th>
+              <th style="width:140px; text-align:right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {% for user in pending_users %}
-              <tr class="row shadow">
-                <td>
-                  <div class="font-semibold text-gray-800">{{ user.full_name }}</div>
-                  <div class="text-xs text-gray-500">ID: {{ user.id }}</div>
-                </td>
-                <td>{{ user.email }}</td>
-                <td>
-                  <form method="post" action="/admin/approve/{{ user.id }}" style="display:inline;">
-                    <button type="submit" class="btn btn-approve">Approve</button>
+          {% for user in pending_users %}
+            <tr class="row">
+              <td>
+                <div class="font-semibold">{{ user.full_name }}</div>
+                <div class="text-xs text-gray-500">ID: {{ user.id }}</div>
+              </td>
+              <td>{{ user.email }}</td>
+              <td>
+                <div class="flex items-center justify-end gap-2">
+                  <form method="post" action="/admin/approve/{{ user.id }}" onsubmit="return confirm('Approve {{ user.full_name }}?');">
+                    <button type="submit" class="icon-btn btn-approve" title="Approve">&#10003;<span class="sr-only">Approve</span></button>
                   </form>
-                  <form method="post" action="/admin/reject/{{ user.id }}" style="display:inline; margin-left:8px;">
-                    <button type="submit" class="btn btn-reject">Reject</button>
+                  <form method="post" action="/admin/reject/{{ user.id }}" onsubmit="return confirm('Reject {{ user.full_name }}? This will delete the user.');">
+                    <button type="submit" class="icon-btn btn-reject" title="Reject">&#10005;<span class="sr-only">Reject</span></button>
                   </form>
-                </td>
-              </tr>
-            {% endfor %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
           </tbody>
         </table>
       {% else %}
@@ -91,115 +126,306 @@
       {% endif %}
     </section>
 
-    <!-- ================== USER LOGS ================== -->
+    <!-- ========== USER LOGS ========== -->
     <section id="logs" class="tab-content {{ '' if active_tab=='logs' else 'hidden' }}">
-      <h2 class="text-xl font-semibold mb-4">User Logs (last 2 days)</h2>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">User Logs (last {{ log_days }} days)</h2>
+        <a class="px-3 py-1.5 rounded bg-gray-200 hover:bg-gray-300 text-sm" href="/admin/logs-export">Export CSV</a>
+      </div>
 
-      <div class="user-logs">
-        <table>
-          <thead>
-            <tr>
-              <th class="col-id">User<br/>ID</th>
-              <th>Username</th>
-              <th>Action</th>
-              <th>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if user_logs %}
-              {% for row in user_logs %}
-                <tr>
-                  <td class="col-id">{{ row.user_id }}</td>
-                  <td>{{ row.username }}</td>
-                  <td>{{ row.action }}</td>
-                  <td class="nowrap">{{ row.timestamp }}</td>
-                </tr>
-              {% endfor %}
-            {% else %}
+      <!-- Toggle buttons: Grouped vs Events -->
+      <div class="toggle flex gap-2 mb-4">
+        <button id="btn-summary" class="pill {{ 'active' if logs_view=='summary' else '' }}" type="button" onclick="showLogsView('summary')">Grouped by user</button>
+        <button id="btn-events"  class="pill {{ 'active' if logs_view=='events' else '' }}"  type="button" onclick="showLogsView('events')">All events</button>
+      </div>
+
+      <!-- Grouped (Summary) -->
+      <div id="logs-summary" class="{{ '' if logs_view=='summary' else 'hidden' }}">
+        {% if logs_summary %}
+          <table class="list w-full">
+            <thead>
               <tr>
-                <td colspan="4" style="text-align:center; padding:14px;">No logs in the last 2 days.</td>
+                <th>User</th>
+                <th class="nowrap">Last activity</th>
+                <th class="nowrap">Events</th>
+                <th style="width:140px; text-align:right">Details</th>
               </tr>
-            {% endif %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% for row in logs_summary %}
+              <tr class="row" id="row-{{ row.user_id }}">
+                <td>
+                  <div class="font-semibold">{{ row.username }}</div>
+                  <div class="text-xs text-gray-500">ID: {{ row.user_id }}</div>
+                </td>
+                <td class="nowrap">{{ row.last_ts }}</td>
+                <td class="nowrap">{{ row.events }}</td>
+                <td class="text-right">
+                  <button
+                    type="button"
+                    class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    onclick="toggleUserDetails({{ row.user_id }})"
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+              <!-- inline details expander -->
+              <tr id="details-{{ row.user_id }}" class="hidden">
+                <td colspan="4">
+                  <div id="details-body-{{ row.user_id }}" class="border border-gray-200 rounded-xl p-4 bg-white text-sm">
+                    <div class="text-gray-500">Loading…</div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
 
-        <!-- Load more (keeps you on logs tab) -->
-        <div class="text-center mt-3">
-          <form method="get" action="/admin">
-            <input type="hidden" name="tab" value="logs"/>
-            <input type="hidden" name="log_skip" value="{{ log_skip + log_limit }}"/>
-            <input type="hidden" name="log_limit" value="{{ log_limit }}"/>
-            <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Load more</button>
-          </form>
+          <!-- Pagination for summary -->
+          <div class="mt-3 flex items-center justify-center gap-3">
+            <div class="text-sm text-gray-500">
+              Showing {{ summary_skip + 1 if summary_total_users else 0 }}–{{ (summary_skip + summary_limit) if (summary_skip + summary_limit) < summary_total_users else summary_total_users }} of {{ summary_total_users }}
+            </div>
+            <div class="flex items-center gap-2">
+              {% if summary_skip > 0 %}
+              <form method="get" action="/admin">
+                <input type="hidden" name="tab" value="logs"/>
+                <input type="hidden" name="logs_view" value="summary"/>
+                <input type="hidden" name="summary_skip" value="{{ summary_skip - summary_limit if summary_skip - summary_limit > 0 else 0 }}"/>
+                <input type="hidden" name="summary_limit" value="{{ summary_limit }}"/>
+                <input type="hidden" name="log_days" value="{{ log_days }}"/>
+                {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
+                {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
+                <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Previous</button>
+              </form>
+              {% endif %}
+              {% if (summary_skip + summary_limit) < summary_total_users %}
+              <form method="get" action="/admin">
+                <input type="hidden" name="tab" value="logs"/>
+                <input type="hidden" name="logs_view" value="summary"/>
+                <input type="hidden" name="summary_skip" value="{{ summary_skip + summary_limit }}"/>
+                <input type="hidden" name="summary_limit" value="{{ summary_limit }}"/>
+                <input type="hidden" name="log_days" value="{{ log_days }}"/>
+                {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
+                {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
+                <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Next</button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+        {% else %}
+          <div class="empty">No activity in the selected window.</div>
+        {% endif %}
+      </div>
+
+      <!-- All events (original list) -->
+      <div id="logs-events" class="{{ '' if logs_view=='events' else 'hidden' }}">
+        <div class="user-logs">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-id">User ID</th>
+                <th>Username</th>
+                <th>Action</th>
+                <th class="nowrap">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for log in user_logs %}
+              <tr>
+                <td class="col-id">{{ log.user_id }}</td>
+                <td>{{ log.username }}</td>
+                <td>{{ log.action }}</td>
+                <td class="nowrap">{{ log.timestamp }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-3 flex items-center justify-center gap-3">
+          <div class="text-sm text-gray-500">Showing {{ display_start }}–{{ display_end }} of {{ total_count }}</div>
+          <div class="flex items-center gap-2">
+            {% if has_prev %}
+            <form method="get" action="/admin">
+              <input type="hidden" name="tab" value="logs"/>
+              <input type="hidden" name="logs_view" value="events"/>
+              <input type="hidden" name="log_skip" value="{{ prev_skip }}"/>
+              <input type="hidden" name="log_limit" value="{{ log_limit }}"/>
+              <input type="hidden" name="log_days" value="{{ log_days }}"/>
+              {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
+              {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
+              <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Previous</button>
+            </form>
+            {% endif %}
+            {% if has_next %}
+            <form method="get" action="/admin">
+              <input type="hidden" name="tab" value="logs"/>
+              <input type="hidden" name="logs_view" value="events"/>
+              <input type="hidden" name="log_skip" value="{{ next_skip }}"/>
+              <input type="hidden" name="log_limit" value="{{ log_limit }}"/>
+              <input type="hidden" name="log_days" value="{{ log_days }}"/>
+              {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
+              {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
+              <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Next</button>
+            </form>
+            {% endif %}
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ================== ALL USERS ================== -->
+    <!-- ========== ALL USERS ========== -->
     <section id="allusers" class="tab-content {{ '' if active_tab=='allusers' else 'hidden' }}">
-      <h2 class="text-xl font-semibold mb-4">All Users</h2>
-      {% if all_users %}
-        <ul class="space-y-3">
-          {% for user in all_users %}
-            <li class="bg-white p-4 rounded shadow flex justify-between items-center">
-              <div>
-                <span class="font-medium">{{ user.full_name }}</span> -
-                <span class="text-gray-600">{{ user.email }}</span> -
-                <span class="text-sm text-gray-400">{{ user.role }}</span>
-              </div>
-              <div>
-                <form method="post" action="/admin/remove/{{ user.id }}">
-                  <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Remove</button>
-                </form>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-500">No users available.</p>
-      {% endif %}
-    </section>
+      <h2 class="text-lg font-semibold mb-3">All Users</h2>
 
-    <!-- ================== UPLOAD CSV ================== -->
-    <section id="uploadcsv" class="tab-content {{ '' if active_tab=='uploadcsv' else 'hidden' }}">
-      <h2 class="text-xl font-semibold mb-4">Upload Candidates CSV</h2>
-
-      {% if msg %}
-        <p class="text-green-600 font-medium mb-4">{{ msg }}</p>
-      {% endif %}
-      {% if error %}
-        <p class="text-red-600 font-medium mb-4">{{ error }}</p>
-      {% endif %}
-
-      <form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="bg-white p-6 rounded shadow-md">
-        <input type="file" name="csv_file" accept=".csv" required class="border p-2 rounded w-full mb-4">
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Upload CSV</button>
+      <form method="get" class="mb-3 flex gap-2 items-center" action="/admin">
+        <input type="hidden" name="tab" value="allusers"/>
+        <input type="text" name="users_q" value="{{ users_q }}" placeholder="Search name or email…" class="border rounded px-3 py-2 w-72"/>
+        <button class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300" type="submit">Search</button>
       </form>
 
-      {% if duplicates %}
-        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 mt-4">
-          <p class="font-semibold">These candidates were skipped (already exist):</p>
-          <ul class="list-disc list-inside">
-            {% for name in duplicates %}
-              <li>{{ name }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
+      <table class="list w-full">
+        <thead>
+          <tr>
+            <th>Name / ID</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th style="width:140px; text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in all_users_page %}
+          <tr class="row">
+            <td>
+              <div class="font-semibold">{{ user.full_name }}</div>
+              <div class="text-xs text-gray-500">ID: {{ user.id }}</div>
+            </td>
+            <td>{{ user.email }}</td>
+            <td>
+              {% if user.is_active %}
+                <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-sm">Active</span>
+              {% else %}
+                <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-sm">Pending</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="flex justify-end">
+                <form method="post" action="/admin/remove/{{ user.id }}" onsubmit="return confirm('Remove {{ user.full_name }}? This deletes the account.');">
+                  <button class="px-3 py-1 rounded bg-rose-500 text-white hover:bg-rose-600" type="submit">Remove</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="mt-3 text-sm text-gray-600">
+        Page {{ users_page }} of {{ users_total_pages }} — {{ users_total }} users
+      </div>
     </section>
+
+    <!-- ========== UPLOAD CSV (working form) ========== -->
+    <section id="uploadcsv" class="tab-content {{ '' if active_tab=='uploadcsv' else 'hidden' }}">
+      <h2 class="text-lg font-semibold mb-3">Upload CSV</h2>
+      <form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="bg-white border border-gray-200 rounded-xl p-5 max-w-lg">
+        <div class="mb-3">
+          <label class="block text-sm font-medium mb-1">Select CSV file</label>
+          <input type="file" name="file" accept=".csv,text/csv" required class="block w-full border border-gray-300 rounded px-3 py-2"/>
+        </div>
+        <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Upload</button>
+        <p class="mt-2 text-xs text-gray-500">Your file will be saved on the server and the action will be logged.</p>
+      </form>
+    </section>
+
   </main>
 
-  <!-- Your app JS -->
-  <script src="{{ url_for('static', path='js/admin.js') }}"></script>
-
-  <!-- If you still use showTab() in admin.js, this keeps server-selected tab visible on load -->
   <script>
-    (function () {
-      var active = "{{ active_tab|default('pending') }}";
-      if (typeof showTab === "function") {
-        showTab(active);
+    // Toggle between grouped summary and all events + persist in URL
+    function showLogsView(which) {
+      const summary = document.getElementById('logs-summary');
+      const events  = document.getElementById('logs-events');
+      const b1 = document.getElementById('btn-summary');
+      const b2 = document.getElementById('btn-events');
+
+      const w = (which === 'events') ? 'events' : 'summary';
+
+      if (w === 'summary') {
+        summary.classList.remove('hidden');
+        events.classList.add('hidden');
+        b1.classList.add('active');
+        b2.classList.remove('active');
+      } else {
+        events.classList.remove('hidden');
+        summary.classList.add('hidden');
+        b2.classList.add('active');
+        b1.classList.remove('active');
       }
-    })();
+
+      // Persist selection in URL without reloading
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'logs');
+        url.searchParams.set('logs_view', w);
+        history.replaceState(null, '', url.toString());
+      } catch (e) {
+        /* noop if URL API not available */
+      }
+    }
+
+    // Expand/collapse a single user's recent events (lazy fetch JSON)
+    async function toggleUserDetails(userId) {
+      const row = document.getElementById('details-' + userId);
+      const body = document.getElementById('details-body-' + userId);
+
+      if (!row.classList.contains('hidden')) {
+        row.classList.add('hidden');
+        return;
+      }
+      row.classList.remove('hidden');
+      body.innerHTML = '<div class="text-gray-500">Loading…</div>';
+
+      try {
+        const resp = await fetch(`/admin/logs/user/${userId}.json?days={{ log_days }}&skip=0&limit=50`, { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        if (!data.items || data.items.length === 0) {
+          body.innerHTML = '<div class="text-gray-500">No events found for this user in the selected window.</div>';
+          return;
+        }
+        // Render list
+        let html = '<ul class="space-y-1">';
+        for (const it of data.items) {
+          html += `<li class="flex items-start gap-2">
+                    <span class="mt-1 inline-block h-2 w-2 rounded-full bg-gray-400"></span>
+                    <div><span class="font-medium">${escapeHtml(it.action)}</span>
+                    <span class="text-gray-500 ml-2">${escapeHtml(it.timestamp)}</span></div>
+                  </li>`;
+        }
+        html += '</ul>';
+        body.innerHTML = html;
+      } catch (err) {
+        body.innerHTML = '<div class="text-rose-600">Failed to load events.</div>';
+        console.error(err);
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str ?? '').toString()
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#39;');
+    }
+
+    // Initialize logs view from server-provided default
+    document.addEventListener('DOMContentLoaded', () => {
+      const initial = "{{ logs_view|default('summary') }}";
+      showLogsView(initial === 'events' ? 'events' : 'summary');
+    });
   </script>
 </body>
 </html>

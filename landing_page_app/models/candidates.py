@@ -18,3 +18,6 @@ class Candidate(Base):
     comment = Column(Text, nullable=True)
     clients = Column(Text, nullable=True)  # this is previous clients worked for
     notice_period = Column(String(50), nullable=True)
+    recruitment_notes = Column(String(250), nullable=True)
+    ai_score = Column(Integer, nullable=True)
+    ai_explanation = Column(Text, nullable=True)

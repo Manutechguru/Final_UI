@@ -1,62 +1,136 @@
 {% extends "base.html" %}
 
-{% block title %}New Arrivals - Clients{% endblock %}
+{% block title %}Client Management - New Arrivals{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/new_arrivals.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <div class="page-container">
     <div class="header-container">
-        <h1>Clients - New Arrivals</h1>
+        <div class="header-content">
+            <h1><i class="fas fa-users"></i> Client Management</h1>
+           
+        </div>
         <form id="addClientForm">
-            <input type="text" name="client_name" placeholder="Enter client name" required>
-            <button type="submit">➕ Add Client</button>
+            <div class="input-group">
+                <input type="text" name="client_name" placeholder="Enter client name" required>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-plus"></i> Add Client
+                </button>
+            </div>
         </form>
     </div>
 
-    <div id="message">{{ message if message else "" }}</div>
-    <div id="error"></div>
+    <div id="notification-toast"></div>
 
     <div class="summary-container">
         <div class="summary-card active">
-            <h2 id="activeCount">{{ active_count or 0 }}</h2>
-            <p>Active Clients</p>
+            <div class="card-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="card-content">
+                <h2 id="activeCount">{{ active_count or 0 }}</h2>
+                <p>Active Clients</p>
+            </div>
         </div>
         <div class="summary-card inactive">
-            <h2 id="inactiveCount">{{ inactive_count or 0 }}</h2>
-            <p>Inactive Clients</p>
+            <div class="card-icon">
+                <i class="fas fa-pause-circle"></i>
+            </div>
+            <div class="card-content">
+                <h2 id="inactiveCount">{{ inactive_count or 0 }}</h2>
+                <p>Inactive Clients</p>
+            </div>
         </div>
     </div>
 
-    <div class="search-card">
-        <input type="text" id="searchBox" placeholder="🔍 Search clients by name...">
-        <i class="fas fa-search"></i>
+    <div class="search-container">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchBox" placeholder="Search clients by name...">
+        </div>
     </div>
 
     <div class="clients-container" id="clientsContainer">
         {% for client in clients %}
         <div class="client-card" id="client-{{ client.client_id }}">
-            <h3>{{ client.client_name }}</h3>
-            <p><strong>ID:</strong> {{ client.client_id }}</p>
-            <p><strong>Created At:</strong> {% if client.created_at %} {{ client.created_at.strftime("%Y-%m-%d %H:%M:%S") }} {% else %} N/A {% endif %}</p>
-
-            <label class="switch">
-                <input type="checkbox" onchange="toggleActive('{{ client.client_id }}', this)" {% if client.status == 'active' %}checked{% endif %}>
-                <span class="slider"></span>
-            </label>
-            <span class="status-text">{{ 'Active' if client.status == 'active' else 'Inactive' }}</span>
-
-        
-            <a href="{{ url_for('list_managers', client_id=client.client_id) }}">View Vendors</a>
-
-            <div class="dropdown">
-                <button class="three-dots-btn">⋮</button>
-                <div class="dropdown-content">
-                    <a href="#" onclick="event.preventDefault(); deleteClient('{{ client.client_id }}');">Delete</a>
+            <div class="card-header">
+                <h3>{{ client.client_name }}</h3>
+                <div class="dropdown">
+                    <button class="three-dots-btn"><i class="fas fa-ellipsis-v"></i></button>
+                    <div class="dropdown-content">
+                        <a href="#" onclick="event.preventDefault(); showEditDialog('{{ client.client_id }}', '{{ client.client_name }}');">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="#" onclick="event.preventDefault(); showDeleteDialog('{{ client.client_id }}', '{{ client.client_name }}');">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </div>
                 </div>
+            </div>
+            
+            <div class="card-details">
+                <p><strong>ID:</strong> {{ client.client_id }}</p>
+                <p><strong>Created:</strong> {% if client.created_at %} {{ client.created_at.strftime("%Y-%m-%d %H:%M:%S") }} {% else %} N/A {% endif %}</p>
+            </div>
+
+            <div class="card-footer">
+                <div class="status-control">
+                    <label class="switch">
+                        <input type="checkbox" onchange="toggleActive('{{ client.client_id }}', this)" {% if client.status == 'active' %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="status-text">{{ 'Active' if client.status == 'active' else 'Inactive' }}</span>
+                </div>
+                
+                <a href="{{ url_for('list_managers', client_id=client.client_id) }}" class="view-vendors-btn">
+                    <i class="fas fa-store"></i> View Vendors
+                </a>
             </div>
         </div>
         {% endfor %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete client: <strong id="clientToDeleteName"></strong>?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Client Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Client Name</h3>
+            <span class="close-modal" onclick="closeEditModal()">&times;</span>
+        </div>
+        <form id="editClientForm">
+            <div class="modal-body">
+                <input type="hidden" id="clientToEditId">
+                <div class="form-group">
+                    <label for="newClientName">Client Name:</label>
+                    <input type="text" id="newClientName" required>
+                    <div id="editError" class="error-message" style="color: var(--danger); display: none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Update</button>
+            </div>
+        </form>
     </div>
 </div>
 

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from landing_page_app.models.clients import Client
 from landing_page_app.models.jobs import Job
+from landing_page_app.models.managers import Manager
 
 
 # -----------------------------
@@ -45,17 +46,29 @@ def delete_client(db: Session, client_id: int) -> bool:
     return True
 
 
-# -----------------------------
-# Toggle Client Status (Active/Inactive)
-# -----------------------------
+
 def toggle_client_status(db: Session, client_id: int) -> Optional[Client]:
     client = get_client_by_id(db, client_id)
     if not client:
         return None
 
+    # Toggle client status
     client.status = "inactive" if client.status == "active" else "active"
     db.commit()
     db.refresh(client)
+
+    # Cascade: make all managers & jobs match client status
+    managers = db.query(Manager).filter(Manager.client_id == client_id).all()
+    for manager in managers:
+        manager.status = client.status
+        db.commit()
+        db.refresh(manager)
+
+        jobs = db.query(Job).filter(Job.manager_id == manager.manager_id).all()
+        for job in jobs:
+            job.status = client.status
+    db.commit()
+
     return client
 
 
