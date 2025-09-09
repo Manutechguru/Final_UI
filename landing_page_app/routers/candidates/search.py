@@ -7,6 +7,7 @@ from sqlalchemy import or_, func
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
+import re
 from uuid import uuid4
 import threading
 import time
@@ -22,6 +23,7 @@ from landing_page_app.models.jobs import Job
 try:
     from landing_page_app.routers.utils.search_utils import (
         parse_experience_filter_input,
+        parse_text_experience_to_months,
         extract_jd_features,
         ai_match_jd_with_resumes,
         fetch_text_from_url,
@@ -32,6 +34,9 @@ except Exception:
     def extract_jd_features(x): return {"skills": "", "experience": "", "location": "", "summary": ""}
     def ai_match_jd_with_resumes(jd_text, candidates): return []
     def fetch_text_from_url(url): return url or ""
+    def parse_text_experience_to_months(x):
+        return 0
+
 
 templates = Jinja2Templates(directory="landing_page_app/templates")
 router = APIRouter(prefix="/candidates", tags=["candidates"])
@@ -91,11 +96,69 @@ def _candidate_to_row(cand: Candidate, mapping: Optional[CandidateJDMapping] = N
         "recruitment_notes": getattr(cand, "recruitment_notes", "") or "",
         "recruiter_notes": getattr(cand, "recruitment_notes", "") or "",
         "ai_score": ai_score,
+        "ai_explanation": getattr(cand, "ai_explanation", "") or "",
         "score": ai_score,
         "is_linked": bool(mapping) if mapping else False,
         "mapping_id": getattr(mapping, "id", None) or getattr(mapping, "mapping_id", None) if mapping else None,
         "mapping_jd_id": getattr(mapping, "jd_id", None) if mapping else None,
     }
+
+# -------------------------
+# Strict token-level location & experience helpers (ADDED)
+# -------------------------
+def _normalize_tokens(s: Optional[str]) -> List[str]:
+    if not s:
+        return []
+    parts = re.split(r"[,\|;/\-]+|\s+", str(s).lower())
+    return [p.strip() for p in parts if p and p.strip()]
+
+def _location_matches(candidate_location: Optional[str], query_location: Optional[str]) -> bool:
+    """Strict token-level location match.
+    - if query_location empty -> True (no filtering)
+    - if candidate_location empty -> False (candidate lacks location)
+    - require every token in query_location to be exactly present in candidate tokens.
+    """
+    if not query_location or not str(query_location).strip():
+        return True
+    if not candidate_location or not str(candidate_location).strip():
+        return False
+    q_tokens = _normalize_tokens(query_location)
+    c_tokens = _normalize_tokens(candidate_location)
+    for q in q_tokens:
+        if not any(q == c for c in c_tokens):
+            return False
+    return True
+
+def _candidate_experience_months(cand) -> int:
+    """Return candidate's best-parsed experience in months (max of common fields)."""
+    vals = []
+    for attr in ["relevant_experience", "it_experience", "experience"]:
+        try:
+            v = getattr(cand, attr, None) or ""
+            if v:
+                try:
+                    vals.append(parse_text_experience_to_months(v))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    return max(vals) if vals else 0
+
+def _filter_candidates_by_experience(candidates: List, min_months: Optional[int], max_months: Optional[int]) -> List:
+    out = []
+    for c in candidates:
+        cand_months = _candidate_experience_months(c)
+        if min_months is not None:
+            if cand_months == 0:
+                # candidate lacks parsable experience -> exclude when min requested
+                continue
+            if cand_months < min_months:
+                continue
+        if max_months is not None and cand_months > max_months:
+            continue
+        out.append(c)
+    return out
+
 
 # -------------------------
 # Manual search (UI)
@@ -106,6 +169,8 @@ async def search(request: Request,
                  location: Optional[str] = Query(None),
                  experience: Optional[str] = Query(None),
                  db: Session = Depends(get_db)):
+
+    min_m, max_m = None, None
 
     # --- EARLY RETURN (Reset/initial load) ---
     # If no manual filters are provided, render empty results so Reset clears the table.
@@ -156,6 +221,21 @@ async def search(request: Request,
         mapped_ids = set()
     candidates = [c for c in candidates if getattr(c, "candidates_id", None) not in mapped_ids]
 
+    # -------------------------
+    # Enforce strict token-level location & strict experience filtering
+    # -------------------------
+    if location and str(location).strip():
+        candidates = [c for c in candidates if _location_matches(getattr(c, 'location', '') or '', location)]
+
+    if experience and str(experience).strip():
+        try:
+            min_m, max_m = parse_experience_filter_input(experience)
+        except Exception:
+            min_m, max_m = None, None
+    if min_m is not None:
+        candidates = _filter_candidates_by_experience(candidates, min_m, max_m)
+
+
     # 3) Manual AI scoring — build a lightweight "JD" text from inputs and score with existing helper
     #    (This mirrors advanced_search behavior, without touching routes or templates.)
     #    If the helper is unavailable, we gracefully fall back to the prefiltered list.
@@ -200,6 +280,18 @@ async def search(request: Request,
                 try: setattr(c, "ai_explanation", expl_map.get(cid, ""))
                 except Exception: pass
 
+        # persist ai fields so explanation endpoint reads the same values
+        try:
+            for c in candidates:
+                cid = getattr(c, "candidates_id", None)
+                if cid in score_map:
+                    try:
+                        db.add(c)
+                    except Exception:
+                        pass
+            db.commit()
+        except Exception:
+            db.rollback()
         ranked = sorted([c for c in candidates if getattr(c, "candidates_id", None) in matched_ids],
                         key=lambda x: getattr(x, "ai_score", 0), reverse=True)
 
@@ -239,6 +331,8 @@ async def ai_search(request: Request,
                     experience: Optional[str] = Query(None),
                     db: Session = Depends(get_db)):
 
+    min_m, max_m = None, None
+
     # quick prefilter identical to /search
     q = db.query(Candidate)
     if skills:
@@ -272,6 +366,21 @@ async def ai_search(request: Request,
         mapped_ids = set()
     candidates = [c for c in candidates if getattr(c, "candidates_id", None) not in mapped_ids]
 
+    # -------------------------
+    # Enforce strict token-level location & strict experience filtering (AI quick search)
+    # -------------------------
+    if location and str(location).strip():
+        candidates = [c for c in candidates if _location_matches(getattr(c, 'location', '') or '', location)]
+
+    if experience and str(experience).strip():
+        try:
+            min_m, max_m = parse_experience_filter_input(experience)
+        except Exception:
+            min_m, max_m = None, None
+    if min_m is not None:
+        candidates = _filter_candidates_by_experience(candidates, min_m, max_m)
+
+
     jd_text = "\n".join([f"Required Skills: {skills}"] if skills else [])
     out = []
     if callable(ai_match_jd_with_resumes):
@@ -282,8 +391,33 @@ async def ai_search(request: Request,
                 out.append({
                     "candidate_id": cid,
                     "ai_score": row.get("ai_score") or row.get("score"),
-                    "ai_explanation": row.get("explanation") or row.get("reasons") or ""
+                    "ai_explanation": row.get("explanation") or row.get("reasons") or row.get("ai_explanation") or ""
                 })
+
+            # Persist quick ai_search results into Candidate rows for consistency
+            try:
+                ids = [r.get('candidate_id') for r in (scored or []) if r.get('candidate_id')]
+                if ids:
+                    objs = db.query(Candidate).filter(Candidate.candidates_id.in_(ids)).all()
+                    obj_map = {getattr(o, 'candidates_id', None): o for o in objs}
+                    for r in (scored or []):
+                        cid = r.get('candidate_id') or r.get('candidates_id') or r.get('id')
+                        if cid in obj_map:
+                            o = obj_map[cid]
+                            try:
+                                setattr(o, 'ai_score', r.get('ai_score') or r.get('score'))
+                            except Exception:
+                                pass
+                            try:
+                                setattr(o, 'ai_explanation', r.get('explanation') or r.get('reasons') or r.get('ai_explanation') or "")
+                            except Exception:
+                                pass
+                    try:
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+            except Exception:
+                logger.exception('Failed to persist ai_search quick results')
         except Exception as e:
             logger.exception("ai_search quick call failed: %s", e)
     return JSONResponse(out)
@@ -311,10 +445,36 @@ async def advanced_search(request: Request, jd_drive_link: str = Form(...), db: 
     pre_location = extracted.get("location", "") or ""
     pre_experience = extracted.get("experience", "") or ""
 
+    # initialize experience bounds
+    min_m, max_m = None, None
+
     clients = db.query(Client).order_by(getattr(Client, "client_name", "id")).all()
 
     # Score candidates in batches (10 at a time) using ai_match_jd_with_resumes
-    all_candidates = db.query(Candidate).order_by(getattr(Candidate, "candidates_id", Candidate)).all()
+    # PREFILTER candidates by extracted fields (only if those fields were actually extracted)
+    q = db.query(Candidate)
+    if pre_skills:
+        tokens = [t.strip() for t in pre_skills.split(',') if t.strip()]
+        if tokens:
+            filters = [func.lower(func.coalesce(Candidate.skillset, '')).like(f"%{t.lower()}%") for t in tokens]
+            q = q.filter(or_(*filters))
+    if pre_location:
+        q = q.filter(func.lower(func.coalesce(Candidate.location, '')).like(f"%{pre_location.strip().lower()}%"))
+
+    all_candidates = q.order_by(getattr(Candidate, 'candidates_id', Candidate)).all()
+
+    # Enforce strict token-level location & strict experience filtering (post-prefilter)
+    if pre_location:
+        all_candidates = [c for c in all_candidates if _location_matches(getattr(c, 'location', '') or '', pre_location)]
+
+    if pre_experience and str(pre_experience).strip():
+        try:
+            min_m, max_m = parse_experience_filter_input(pre_experience)
+        except Exception:
+            min_m, max_m = None, None
+        if min_m is not None:
+            all_candidates = _filter_candidates_by_experience(all_candidates, min_m, max_m)
+
     batch = 10
     matched_ids = set()
     score_map = {}
@@ -767,10 +927,36 @@ def _start_ai_worker(jd_link: str, job_id: str):
     pre_location = extracted.get("location", "") or ""
     pre_experience = extracted.get("experience", "") or ""
 
+    # initialize experience bounds
+    min_m, max_m = None, None
+
     AI_JOBS[job_id]["prefill"] = {"skills": pre_skills, "location": pre_location, "experience": pre_experience}
 
     # Score candidates in batches using existing helper
-    all_candidates = db.query(Candidate).order_by(getattr(Candidate, "candidates_id", Candidate)).all()
+    # PREFILTER candidates by extracted fields (only if those fields were actually extracted)
+    q = db.query(Candidate)
+    if pre_skills:
+        tokens = [t.strip() for t in pre_skills.split(',') if t.strip()]
+        if tokens:
+            filters = [func.lower(func.coalesce(Candidate.skillset, '')).like(f"%{t.lower()}%") for t in tokens]
+            q = q.filter(or_(*filters))
+    if pre_location:
+        q = q.filter(func.lower(func.coalesce(Candidate.location, '')).like(f"%{pre_location.strip().lower()}%"))
+
+    all_candidates = q.order_by(getattr(Candidate, 'candidates_id', Candidate)).all()
+
+    # Enforce strict token-level location & strict experience filtering (post-prefilter)
+    if pre_location:
+        all_candidates = [c for c in all_candidates if _location_matches(getattr(c, 'location', '') or '', pre_location)]
+
+    if pre_experience and str(pre_experience).strip():
+        try:
+            min_m, max_m = parse_experience_filter_input(pre_experience)
+        except Exception:
+            min_m, max_m = None, None
+        if min_m is not None:
+            all_candidates = _filter_candidates_by_experience(all_candidates, min_m, max_m)
+
     total = max(1, len(all_candidates))
     batch = 10
     matched_ids = set()
