@@ -62,6 +62,84 @@ def _first_column(cls, names: List[str]):
             return getattr(cls, n)
     return None
 
+
+# -------------------------
+# Active-state helpers (DB & Python) for dropdown filtering
+# -------------------------
+_ACTIVE_FIELD_NAMES = [
+    "status", "is_active", "active", "enabled", "is_enabled", "status_id", "state"
+]
+
+def _py_obj_is_active(obj) -> bool:
+    """
+    Python-side check for whether a model instance appears active.
+    Looks for common fields (status, is_active etc.) and handles strings, bools, ints.
+    Defaults to True if no known field exists to avoid accidental hiding.
+    """
+    for name in _ACTIVE_FIELD_NAMES:
+        if hasattr(obj, name):
+            try:
+                val = getattr(obj, name)
+            except Exception:
+                continue
+            if val is None:
+                return False
+            if isinstance(val, bool):
+                return bool(val)
+            if isinstance(val, (int, float)):
+                try:
+                    return int(val) == 1
+                except Exception:
+                    pass
+            s = str(val).strip().lower()
+            if not s:
+                return False
+            if s in ("1", "true", "yes", "active", "enabled", "on"):
+                return True
+            if s in ("0", "false", "no", "inactive", "off"):
+                return False
+            if "active" in s:
+                return True
+            return False
+    # If no active-like field found, default to True (do not hide)
+    return True
+
+def _apply_active_filter_to_query(q, cls):
+    """
+    Apply an SQLAlchemy filter to the query to only include 'active' rows if the model
+    exposes a known status/is_active column. If no known column exists, return the query unchanged.
+    """
+    # Prefer textual 'status' == 'active'
+    if hasattr(cls, "status"):
+        try:
+            return q.filter(getattr(cls, "status") == "active")
+        except Exception:
+            pass
+    # Then fallback to boolean-like fields
+    for name in ("is_active", "active", "enabled", "is_enabled"):
+        if hasattr(cls, name):
+            try:
+                return q.filter(getattr(cls, name) == True)
+            except Exception:
+                pass
+    # nothing applied
+    return q
+
+def _get_active_clients(db: Session) -> List:
+    """
+    Return clients ordered by name but filtered to active clients when possible.
+    """
+    try:
+        q = db.query(Client).order_by(getattr(Client, "client_name", "id"))
+        q = _apply_active_filter_to_query(q, Client)
+        return q.all()
+    except Exception:
+        # fallback: load all and filter in python
+        try:
+            rows = db.query(Client).order_by(getattr(Client, "client_name", "id")).all()
+            return [r for r in rows if _py_obj_is_active(r)]
+        except Exception:
+            return []
 # Safe mapping builders
 def _vendor_dict_from_manager(mgr):
     return {
@@ -175,7 +253,7 @@ async def search(request: Request,
     # --- EARLY RETURN (Reset/initial load) ---
     # If no manual filters are provided, render empty results so Reset clears the table.
     if not ((skills and skills.strip()) or (location and location.strip()) or (experience and experience.strip())):
-        clients = db.query(Client).order_by(getattr(Client, "client_name", "id")).all()
+        clients = _get_active_clients(db)
         return templates.TemplateResponse("search.html", {
             "request": request,
             "results": [],
@@ -311,7 +389,7 @@ async def search(request: Request,
 
     results = [_candidate_to_row(c, mappings_map.get(c.candidates_id)) for c in final_list]
 
-    clients = db.query(Client).order_by(getattr(Client, "client_name", "id")).all()
+    clients = _get_active_clients(db)
     return templates.TemplateResponse("search.html", {
         "request": request,
         "results": results,
@@ -448,7 +526,7 @@ async def advanced_search(request: Request, jd_drive_link: str = Form(...), db: 
     # initialize experience bounds
     min_m, max_m = None, None
 
-    clients = db.query(Client).order_by(getattr(Client, "client_name", "id")).all()
+    clients = _get_active_clients(db)
 
     # Score candidates in batches (10 at a time) using ai_match_jd_with_resumes
     # PREFILTER candidates by extracted fields (only if those fields were actually extracted)
@@ -537,7 +615,7 @@ async def advanced_search(request: Request, jd_drive_link: str = Form(...), db: 
         except Exception:
             db.rollback()
 
-    clients = db.query(Client).order_by(getattr(Client, "client_name", "id")).all()
+    clients = _get_active_clients(db)
     return templates.TemplateResponse("search.html", {
         "request": request,
         "results": results,
@@ -555,28 +633,34 @@ async def advanced_search(request: Request, jd_drive_link: str = Form(...), db: 
 # -------------------------
 # Cascading dropdown endpoints (client -> vendors -> jobs)
 # -------------------------
+
 @router.get("/get-vendors/{client_id}")
 async def get_vendors_by_client(client_id: int, db: Session = Depends(get_db)):
     """
     Robust vendor lookup: tolerant to different Manager model attribute names.
     Returns: [{"vendor_id":..., "vendor_name":...}, ...]
     """
-    # Try to use a column to filter; fallback to in-Python filtering if necessary
     client_cols = ["client_id", "client", "clientId", "clientid"]
     col = _first_column(Manager, client_cols)
     vendors = []
     try:
+        q = db.query(Manager)
         if col is not None:
-            rows = db.query(Manager).filter(col == client_id).all()
-            vendors = rows
-        else:
-            # fallback: fetch all and filter in Python
+            q = q.filter(col == client_id)
+        # apply SQL-level active filter when possible
+        q = _apply_active_filter_to_query(q, Manager)
+        vendors = q.all()
+    except Exception:
+        # fallback: fetch all and filter in python (also enforce active)
+        try:
             rows = db.query(Manager).all()
             for r in rows:
-                if str(_first_attr(r, ["client_id", "client", "clientId", "clientid"]) or "") == str(client_id):
+                if str(_first_attr(r, client_cols) or "") != str(client_id):
+                    continue
+                if _py_obj_is_active(r):
                     vendors.append(r)
-    except Exception:
-        vendors = []
+        except Exception:
+            vendors = []
 
     out = []
     for v in vendors:
@@ -588,6 +672,7 @@ async def get_vendors_by_client(client_id: int, db: Session = Depends(get_db)):
         out.append({"vendor_id": vid, "vendor_name": vname or ""})
     return JSONResponse(out)
 
+
 @router.get("/get-jobs/{vendor_id}")
 async def get_jds_by_vendor(vendor_id: int, db: Session = Depends(get_db)):
     """
@@ -598,15 +683,23 @@ async def get_jds_by_vendor(vendor_id: int, db: Session = Depends(get_db)):
     col = _first_column(Job, manager_cols)
     jobs = []
     try:
+        q = db.query(Job)
         if col is not None:
-            jobs = db.query(Job).filter(col == vendor_id).all()
-        else:
-            all_jobs = db.query(Job).all()
-            for j in all_jobs:
-                if str(_first_attr(j, ["manager_id", "manager", "managerId", "vendor_id"]) or "") == str(vendor_id):
-                    jobs.append(j)
+            q = q.filter(col == vendor_id)
+        # apply SQL-level active filter when possible
+        q = _apply_active_filter_to_query(q, Job)
+        jobs = q.all()
     except Exception:
-        jobs = []
+        # fallback: fetch all and filter in python (also enforce active)
+        try:
+            rows = db.query(Job).all()
+            for j in rows:
+                if str(_first_attr(j, manager_cols) or "") != str(vendor_id):
+                    continue
+                if _py_obj_is_active(j):
+                    jobs.append(j)
+        except Exception:
+            jobs = []
 
     out = []
     for j in jobs:
