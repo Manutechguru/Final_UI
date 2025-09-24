@@ -11,7 +11,7 @@
     --gray: #6c757d;
     --light-gray: #e9ecef;
     --white: #ffffff;
-    --border-radius: 12px;
+    --border-radius: 8px;
     --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     --transition: all 0.3s ease;
 }
@@ -84,22 +84,40 @@ button {
     background-color: #d11467;
 }
 
-.view-vendors-btn {
-    padding: 8px 12px;
-    background-color: var(--info);
-    color: var(--white);
-    border-radius: var(--border-radius);
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
+.btn-icon {
+    padding: 8px;
+    border-radius: 4px;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
     transition: var(--transition);
 }
 
-.view-vendors-btn:hover {
+.view-btn {
+    background-color: var(--info);
+    color: var(--white);
+}
+
+.view-btn:hover {
     background-color: #3a7bc8;
-    transform: translateY(-2px);
+}
+
+.edit-btn {
+    background-color: var(--warning);
+    color: var(--white);
+}
+
+.edit-btn:hover {
+    background-color: #e67e22;
+}
+
+.delete-btn {
+    background-color: var(--danger);
+    color: var(--white);
+}
+
+.delete-btn:hover {
+    background-color: #c0392b;
 }
 
 /* ====== CONTAINER ====== */
@@ -136,32 +154,6 @@ button {
 .header-content p {
     color: var(--gray);
     margin-top: 6px;
-}
-
-#addClientForm {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.input-group {
-    display: flex;
-    gap: 10px;
-}
-
-#addClientForm input {
-    padding: 10px 15px;
-    border: 1px solid var(--light-gray);
-    border-radius: var(--border-radius);
-    font-size: 14px;
-    transition: var(--transition);
-    min-width: 250px;
-}
-
-#addClientForm input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
 }
 
 /* ====== NOTIFICATION TOAST ====== */
@@ -221,10 +213,10 @@ button {
 
 .summary-card {
     flex: 1;
-    min-width: 220px;
+    min-width: 200px;
     background-color: var(--white);
     border-radius: var(--border-radius);
-    padding: 24px;
+    padding: 20px;
     box-shadow: var(--box-shadow);
     display: flex;
     align-items: center;
@@ -238,13 +230,13 @@ button {
 }
 
 .card-icon {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 20px;
 }
 
 .summary-card.active .card-icon {
@@ -257,8 +249,13 @@ button {
     color: var(--danger);
 }
 
+.summary-card.total .card-icon {
+    background-color: rgba(67, 97, 238, 0.2);
+    color: var(--primary);
+}
+
 .card-content h2 {
-    font-size: 32px;
+    font-size: 28px;
     margin: 0;
     color: var(--dark);
     font-weight: 700;
@@ -271,19 +268,22 @@ button {
     font-weight: 500;
 }
 
-/* ====== SEARCH BOX ====== */
-.search-container {
-    margin-bottom: 25px;
+/* ====== CONTROLS ====== */
+.controls-container {
+    background-color: var(--white);
+    border-radius: var(--border-radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--box-shadow);
 }
 
 .search-box {
     max-width: 500px;
-    background-color: var(--white);
+    background-color: var(--light);
     border-radius: 50px;
-    padding: 12px 20px;
+    padding: 10px 18px;
     display: flex;
     align-items: center;
-    box-shadow: var(--box-shadow);
     transition: var(--transition);
 }
 
@@ -292,7 +292,7 @@ button {
 }
 
 .search-box i {
-    font-size: 18px;
+    font-size: 16px;
     color: var(--primary);
     margin-right: 10px;
 }
@@ -301,7 +301,7 @@ button {
     flex: 1;
     padding: 8px 0;
     border: none;
-    font-size: 16px;
+    font-size: 15px;
     background: transparent;
 }
 
@@ -309,59 +309,52 @@ button {
     outline: none;
 }
 
-/* ====== CLIENT CARDS ====== */
-.clients-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.client-card {
+/* ====== TABLE ====== */
+.table-container {
     background-color: var(--white);
     border-radius: var(--border-radius);
-    padding: 20px;
     box-shadow: var(--box-shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    transition: var(--transition);
-    position: relative;
+    overflow: hidden;
 }
 
-.client-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+.clients-table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.client-card h3 {
-    margin: 0;
-    font-size: 18px;
+.clients-table th {
+    background-color: #f8f9fa;
+    padding: 16px 20px;
+    text-align: left;
     font-weight: 600;
     color: var(--dark);
-    flex: 1;
+    border-bottom: 2px solid var(--light-gray);
 }
 
-.card-details p {
-    margin: 6px 0;
-    font-size: 14px;
+.clients-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.clients-table tr:last-child td {
+    border-bottom: none;
+}
+
+.clients-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.client-name {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.client-id {
     color: var(--gray);
+    font-family: monospace;
 }
 
-.card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: auto;
-}
-
-.status-control {
+.status-cell {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -372,56 +365,18 @@ button {
     font-weight: 500;
 }
 
-/* Dropdown menu */
-.dropdown {
-    position: relative;
-}
-
-.three-dots-btn {
-    border: none;
-    background: none;
-    font-size: 16px;
+.created-date {
     color: var(--gray);
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 4px;
-    transition: var(--transition);
-}
-
-.three-dots-btn:hover {
-    background-color: var(--light-gray);
-    color: var(--dark);
-}
-
-.dropdown-content {
-    display: none;
-    position: absolute;
-    right: 0;
-    top: 30px;
-    background-color: var(--white);
-    border-radius: 8px;
-    min-width: 150px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    z-index: 10;
-}
-
-.dropdown-content a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
     font-size: 14px;
-    color: var(--dark);
-    transition: var(--transition);
 }
 
-.dropdown-content a:hover {
-    background-color: var(--light);
+.actions-cell {
+    width: 180px;
 }
 
-.dropdown.show .dropdown-content {
-    display: block;
+.action-buttons {
+    display: flex;
+    gap: 8px;
 }
 
 /* Toggle switch */
@@ -490,11 +445,15 @@ input:checked + .slider:before {
 
 .modal-content {
     background-color: var(--white);
-    margin: 10% auto;
+    margin: 5% auto;
     border-radius: var(--border-radius);
-    max-width: 500px;
+    max-width: 600px;
     box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
     animation: slideDown 0.3s ease;
+}
+
+.modal-content.large-modal {
+    max-width: 700px;
 }
 
 @keyframes slideDown {
@@ -514,6 +473,9 @@ input:checked + .slider:before {
     margin: 0;
     font-size: 20px;
     color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .close-modal {
@@ -530,6 +492,8 @@ input:checked + .slider:before {
 
 .modal-body {
     padding: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
 .modal-body p {
@@ -539,6 +503,7 @@ input:checked + .slider:before {
 .warning-text {
     color: var(--danger);
     font-weight: 500;
+    font-size: 14px;
 }
 
 .modal-footer {
@@ -549,10 +514,65 @@ input:checked + .slider:before {
     gap: 12px;
 }
 
+/* Form Styles */
+.form-section {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.form-section h4 {
+    margin-bottom: 16px;
+    color: var(--dark);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--light-gray);
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+.error-message {
+    margin-top: 8px;
+    font-size: 14px;
+}
+
 /* ====== RESPONSIVE ====== */
 @media (max-width: 1024px) {
-    .clients-container {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    .summary-card {
+        min-width: calc(50% - 20px);
     }
 }
 
@@ -563,16 +583,6 @@ input:checked + .slider:before {
         gap: 15px;
     }
     
-    .input-group {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    #addClientForm input {
-        min-width: unset;
-        width: 100%;
-    }
-    
     .summary-card {
         min-width: 100%;
     }
@@ -581,35 +591,31 @@ input:checked + .slider:before {
         margin: 10% 20px;
         width: auto;
     }
-}
-/* Edit Modal Specific Styles */
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-    color: var(--dark);
+    
+    .clients-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .action-buttons {
+        flex-wrap: wrap;
+    }
 }
 
-.form-group input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--light-gray);
-    border-radius: var(--border-radius);
-    font-size: 14px;
-    transition: var(--transition);
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
-}
-
-.error-message {
-    margin-top: 8px;
-    font-size: 14px;
+@media (max-width: 576px) {
+    .page-container {
+        padding: 15px;
+    }
+    
+    .modal-body {
+        padding: 16px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer button {
+        width: 100%;
+    }
 }

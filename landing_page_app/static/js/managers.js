@@ -16,6 +16,141 @@ document.addEventListener("DOMContentLoaded", () => {
     pendingDelete: null
   };
 
+  // Vendor Creation Dialog Elements
+  const vendorCreationDialog = document.getElementById('vendorCreationDialog');
+  const openVendorDialogBtn = document.getElementById('openVendorDialog');
+  const closeVendorDialogBtn = document.getElementById('closeVendorDialog');
+  const cancelVendorCreationBtn = document.getElementById('cancelVendorCreation');
+  const vendorCreationForm = document.getElementById('vendorCreationForm');
+  const jobsContainer = document.getElementById('jobsContainer');
+  const addAnotherJobBtn = document.getElementById('addAnotherJob');
+  let jobIndex = 0;
+
+  // Initialize vendor creation functionality
+  function initVendorCreationDialog() {
+    if (!vendorCreationDialog) return;
+    
+    // Open dialog
+    openVendorDialogBtn.addEventListener('click', () => {
+      vendorCreationDialog.classList.add('active');
+      // Reset form and job fields
+      vendorCreationForm.reset();
+      resetJobFields();
+      // Focus on vendor name field
+      document.getElementById('manager_name').focus();
+    });
+    
+    // Close dialog
+    function closeVendorDialog() {
+      vendorCreationDialog.classList.remove('active');
+    }
+    
+    closeVendorDialogBtn.addEventListener('click', closeVendorDialog);
+    cancelVendorCreationBtn.addEventListener('click', closeVendorDialog);
+    
+    // Close when clicking outside the dialog
+    vendorCreationDialog.addEventListener('click', (e) => {
+      if (e.target === vendorCreationDialog) {
+        closeVendorDialog();
+      }
+    });
+    
+    // Add job field
+    addAnotherJobBtn.addEventListener('click', addJobField);
+    
+    // Handle form submission
+    vendorCreationForm.addEventListener('submit', handleVendorCreation);
+  }
+  
+  // Reset job fields to initial state (one job field)
+  function resetJobFields() {
+    jobsContainer.innerHTML = '';
+    jobIndex = 0;
+    addJobField(); // Add the first job field
+  }
+  
+  // Add a new job field
+  function addJobField() {
+    const jobEntry = document.createElement('div');
+    jobEntry.className = 'vendor-scoped-job-entry';
+    jobEntry.setAttribute('data-job-index', jobIndex);
+    
+    jobEntry.innerHTML = `
+      <div class="vendor-scoped-form-group">
+        <label for="job_title_${jobIndex}">Job Title *</label>
+        <input type="text" name="job_title" id="job_title_${jobIndex}" placeholder="Enter Job Title" required>
+      </div>
+      <div class="vendor-scoped-form-group">
+        <label for="job_description_${jobIndex}">Job Description</label>
+        <textarea name="job_description" id="job_description_${jobIndex}" placeholder="Enter Job Description (Optional)"></textarea>
+      </div>
+      ${jobIndex > 0 ? '<button type="button" class="vendor-scoped-remove-job">Remove</button>' : ''}
+    `;
+    
+    jobsContainer.appendChild(jobEntry);
+    
+    // Add remove functionality for this job field (except the first one)
+    if (jobIndex > 0) {
+      const removeBtn = jobEntry.querySelector('.vendor-scoped-remove-job');
+      removeBtn.addEventListener('click', () => {
+        jobEntry.remove();
+        updateRemoveButtons();
+      });
+    }
+    
+    jobIndex++;
+    updateRemoveButtons();
+  }
+  
+  // Update remove buttons visibility (hide on first job field)
+  function updateRemoveButtons() {
+    const jobEntries = document.querySelectorAll('.vendor-scoped-job-entry');
+    jobEntries.forEach((entry, index) => {
+      const removeBtn = entry.querySelector('.vendor-scoped-remove-job');
+      if (removeBtn) {
+        removeBtn.style.display = index === 0 ? 'none' : 'block';
+      }
+    });
+  }
+  
+  // Handle vendor creation form submission
+  async function handleVendorCreation(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(vendorCreationForm);
+    const vendorName = formData.get('manager_name');
+    
+    // Validate at least one job title is provided
+    const jobTitles = formData.getAll('job_title').filter(title => title.trim() !== '');
+    if (jobTitles.length === 0) {
+      showToast('At least one job title is required!', true);
+      return;
+    }
+    
+    try {
+      const response = await fetch(vendorCreationForm.action, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+      });
+      
+      if (response.ok) {
+        showToast(`Vendor "${vendorName}" created successfully with ${jobTitles.length} job(s)`);
+        // Close the dialog
+        vendorCreationDialog.classList.remove('active');
+        // Reload the page to show the new vendor
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        const error = await response.text();
+        showToast('Failed to add vendor: ' + error, true);
+      }
+    } catch (err) {
+      showToast('Network error adding vendor: ' + err.message, true);
+    }
+  }
+
   // Show toast notification
   function showToast(message, isError = false) {
     vendorScope.toastMessage.textContent = message;
@@ -268,36 +403,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Handle form submission with feedback
-  if (vendorScope.addVendorForm) {
-    vendorScope.addVendorForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const formData = new FormData(vendorScope.addVendorForm);
-      const vendorName = formData.get('manager_name');
-      
-      try {
-        const response = await fetch(vendorScope.addVendorForm.action, {
-          method: 'POST',
-          body: formData,
-          credentials: 'same-origin'
-        });
-        
-        if (response.ok) {
-          showToast(`Vendor "${vendorName}" created successfully`);
-          // Clear the form
-          vendorScope.addVendorForm.reset();
-          // Reload the page to show the new vendor
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        } else {
-          const error = await response.text();
-          showToast('Failed to add vendor: ' + error, true);
-        }
-      } catch (err) {
-        showToast('Network error adding vendor: ' + err.message, true);
-      }
-    });
-  }
+  // Initialize vendor creation dialog
+  initVendorCreationDialog();
 });

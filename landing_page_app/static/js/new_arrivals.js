@@ -24,57 +24,45 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// ====== ADD CLIENT ======
-const form = document.getElementById('addClientForm');
-const clientsContainer = document.getElementById('clientsContainer');
-const activeCountEl = document.getElementById('activeCount');
-const inactiveCountEl = document.getElementById('inactiveCount');
-const searchBox = document.getElementById('searchBox');
+// ====== CREATE CLIENT MODAL ======
+function showCreateDialog() {
+    document.getElementById('createModal').style.display = 'block';
+}
 
-form.addEventListener('submit', async function(e){
+function closeCreateModal() {
+    document.getElementById('createModal').style.display = 'none';
+    document.getElementById('createClientForm').reset();
+}
+
+// Create form submission
+document.getElementById('createClientForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const clientName = form.client_name.value.trim();
-    if(!clientName){ 
+    
+    const formData = new FormData(this);
+    const clientName = formData.get('client_name').trim();
+    
+    if (!clientName) {
         showNotification("Client name is required!", "error");
-        return; 
+        return;
     }
-
-    try{
+    
+    try {
         const response = await fetch('/clients/new-arrivals', {
             method: 'POST',
-            headers: {'Content-Type':'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({client_name: clientName})
+            body: new URLSearchParams(formData)
         });
         
-        if(!response.ok){ 
-            const errorText = await response.text(); 
-            showNotification(errorText || "Error adding client.", "error");
-            return; 
+        if (!response.ok) {
+            const errorText = await response.text();
+            showNotification(errorText || "Error creating client.", "error");
+            return;
         }
-
-        const html = await response.text();
-        const doc = new DOMParser().parseFromString(html,'text/html');
-        clientsContainer.innerHTML = doc.querySelector('#clientsContainer').innerHTML;
         
-        // Update counts
-        const activeCount = doc.querySelector('#activeCount').textContent;
-        const inactiveCount = doc.querySelector('#inactiveCount').textContent;
-        activeCountEl.textContent = activeCount;
-        inactiveCountEl.textContent = inactiveCount;
-        
-        form.client_name.value = '';
-        showNotification(`Client "${clientName}" added successfully!`, "success");
-    }catch(err){ 
+        // Reload the page to show the new client
+        window.location.reload();
+    } catch(err) {
         showNotification("Something went wrong: " + err.message, "error");
     }
-});
-
-// ====== DROPDOWN ======
-document.addEventListener('click', e => {
-    document.querySelectorAll('.dropdown').forEach(dropdown => {
-        if(dropdown.contains(e.target)) dropdown.classList.toggle('show');
-        else dropdown.classList.remove('show');
-    });
 });
 
 // ====== DELETE CLIENT MODAL ======
@@ -104,8 +92,9 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async func
         const data = await response.json();
         showNotification(data.message, "success");
         
-        const clientCard = document.getElementById(`client-${clientToDeleteId}`);
-        if(clientCard) clientCard.remove();
+        // Remove the row from the table
+        const row = document.getElementById(`client-${clientToDeleteId}`);
+        if(row) row.remove();
         
         updateSummaryCounts();
         closeModal();
@@ -144,7 +133,6 @@ document.getElementById('editClientForm').addEventListener('submit', async funct
     try {
         const formData = new URLSearchParams();
         formData.append('new_name', newName);
-        formData.append('updated_by', 'admin'); // You might want to get this from your auth system
         
         const response = await fetch(`/clients/edit/${clientToEditId}`, {
             method: 'POST',
@@ -162,11 +150,11 @@ document.getElementById('editClientForm').addEventListener('submit', async funct
             throw new Error('Failed to update client');
         }
         
-        // Update the client name in the UI
-        const clientCard = document.getElementById(`client-${clientToEditId}`);
-        if (clientCard) {
-            const nameElement = clientCard.querySelector('h3');
-            nameElement.textContent = newName;
+        // Update the client name in the table
+        const row = document.getElementById(`client-${clientToEditId}`);
+        if (row) {
+            const nameCell = row.querySelector('.client-name');
+            nameCell.textContent = newName;
         }
         
         showNotification("Client name updated successfully!", "success");
@@ -174,19 +162,6 @@ document.getElementById('editClientForm').addEventListener('submit', async funct
     } catch(err) {
         errorElement.textContent = "Something went wrong: " + err.message;
         errorElement.style.display = 'block';
-    }
-});
-
-// Close modals when clicking outside
-window.addEventListener('click', function(e) {
-    const deleteModal = document.getElementById('deleteModal');
-    const editModal = document.getElementById('editModal');
-    
-    if (e.target === deleteModal) {
-        closeModal();
-    }
-    if (e.target === editModal) {
-        closeEditModal();
     }
 });
 
@@ -202,8 +177,11 @@ async function toggleActive(clientId, checkbox){
         }
         
         const data = await response.json();
-        const statusText = checkbox.parentElement.nextElementSibling;
-        statusText.textContent = data.new_status === "active" ? "Active" : "Inactive";
+        const row = document.getElementById(`client-${clientId}`);
+        if (row) {
+            const statusText = row.querySelector('.status-text');
+            statusText.textContent = data.new_status === "active" ? "Active" : "Inactive";
+        }
         
         updateSummaryCounts();
         showNotification(`Client status updated to ${data.new_status}`, "success");
@@ -215,24 +193,40 @@ async function toggleActive(clientId, checkbox){
 
 // ====== UPDATE COUNTS ======
 function updateSummaryCounts(){
-    const allCards = document.querySelectorAll('.client-card');
+    const allRows = document.querySelectorAll('.clients-table tbody tr');
     let active = 0, inactive = 0;
     
-    allCards.forEach(card => { 
-        card.querySelector('.switch input').checked ? active++ : inactive++; 
+    allRows.forEach(row => { 
+        const checkbox = row.querySelector('.switch input');
+        if (checkbox && checkbox.checked) active++; 
+        else inactive++;
     });
     
-    activeCountEl.textContent = active;
-    inactiveCountEl.textContent = inactive;
+    document.getElementById('activeCount').textContent = active;
+    document.getElementById('inactiveCount').textContent = inactive;
+    document.getElementById('totalCount').textContent = active + inactive;
 }
 
 // ====== SEARCH ======
-searchBox.addEventListener('input', function(){
+document.getElementById('searchBox').addEventListener('input', function(){
     const query = this.value.toLowerCase();
-    document.querySelectorAll('.client-card').forEach(card => {
-        const name = card.querySelector('h3').textContent.toLowerCase();
-        card.style.display = name.includes(query) ? 'flex' : 'none';
+    const rows = document.querySelectorAll('.clients-table tbody tr');
+    
+    rows.forEach(row => {
+        const name = row.querySelector('.client-name').textContent.toLowerCase();
+        row.style.display = name.includes(query) ? '' : 'none';
     });
+});
+
+// Close modals when clicking outside
+window.addEventListener('click', function(e) {
+    const createModal = document.getElementById('createModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const editModal = document.getElementById('editModal');
+    
+    if (e.target === createModal) closeCreateModal();
+    if (e.target === deleteModal) closeModal();
+    if (e.target === editModal) closeEditModal();
 });
 
 // Initialize the page

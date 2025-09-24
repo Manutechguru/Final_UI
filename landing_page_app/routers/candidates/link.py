@@ -11,7 +11,9 @@ from landing_page_app.routers.utils.link_utils import (
     link_candidates_to_jd_db,
     fetch_jd_candidates,
     remove_candidates_from_jd_db,
-    update_recruiter_notes
+    update_recruiter_notes,
+    update_candidate_ctc,
+    update_candidate_notice_period
 )
 
 # Import templates
@@ -134,6 +136,48 @@ def update_recruiter_notes_endpoint(
         raise HTTPException(status_code=404, detail="Candidate not found")
 
 # -----------------------------
+# UPDATE CTC
+# -----------------------------
+@router.post("/update-ctc")
+def update_candidate_ctc_endpoint(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    candidate_id = payload.get("candidate_id")
+    ctc = payload.get("ctc")
+    
+    if not candidate_id or ctc is None:
+        raise HTTPException(status_code=400, detail="Candidate ID and CTC are required")
+    
+    success = update_candidate_ctc(db, candidate_id, ctc)
+    
+    if success:
+        return JSONResponse({"message": "CTC updated successfully"})
+    else:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+# -----------------------------
+# UPDATE NOTICE PERIOD
+# -----------------------------
+@router.post("/update-notice-period")
+def update_candidate_notice_period_endpoint(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    candidate_id = payload.get("candidate_id")
+    notice_period = payload.get("notice_period")
+    
+    if not candidate_id or notice_period is None:
+        raise HTTPException(status_code=400, detail="Candidate ID and notice period are required")
+    
+    success = update_candidate_notice_period(db, candidate_id, notice_period)
+    
+    if success:
+        return JSONResponse({"message": "Notice period updated successfully"})
+    else:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+# -----------------------------
 # FETCH SINGLE CANDIDATE (for Edit)
 # -----------------------------
 @router.get("/{candidate_id}")
@@ -158,6 +202,7 @@ def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
             "comment": candidate.comment,
             "clients": candidate.clients,
             "notice_period": candidate.notice_period,
+            "ctc": candidate.ctc,
             "recruitment_notes": candidate.recruitment_notes,
             "recruiter_notes": candidate.recruitment_notes,
             "ai_score": candidate.ai_score,

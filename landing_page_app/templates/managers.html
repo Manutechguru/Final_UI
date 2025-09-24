@@ -8,18 +8,58 @@
 <div class="vendor-scoped">
   <div class="vendor-scoped-container">
     <div class="vendor-scoped-header">
-      <h1>Vendors Overview | {{ client.client_name }}</h1>
+      <h1>Client Managers| {{ client.client_name }}</h1>
       
       <div class="vendor-scoped-filter">
-        <button class="vendor-scoped-filter-btn active" data-status="all">All Vendors</button>
+        <button class="vendor-scoped-filter-btn active" data-status="all">All Managers</button>
         <button class="vendor-scoped-filter-btn" data-status="active">Active</button>
         <button class="vendor-scoped-filter-btn" data-status="inactive">Inactive</button>
       </div>
 
-      <form id="vendorScopedAddForm" action="{{ url_for('add_new_manager', client_id=client.client_id) }}" method="POST" class="vendor-scoped-form" aria-label="Add vendor">
-        <input type="text" name="manager_name" id="manager_name" placeholder="Enter Vendor Name" required>
-        <button type="submit" class="vendor-scoped-btn add">Add Vendor</button>
-      </form>
+      <!-- Updated: Button to open the vendor creation dialog -->
+      <button id="openVendorDialog" class="vendor-scoped-btn add">Add Manager</button>
+    </div>
+
+    <!-- Vendor Creation Dialog -->
+    <div class="vendor-scoped-dialog-overlay" id="vendorCreationDialog">
+      <div class="vendor-scoped-dialog-content">
+        <div class="vendor-scoped-dialog-header">
+          <h3>Create New Manager</h3>
+          <button class="vendor-scoped-dialog-close" id="closeVendorDialog">&times;</button>
+        </div>
+        
+        <form id="vendorCreationForm" action="{{ url_for('add_new_manager', client_id=client.client_id) }}" method="POST" class="vendor-scoped-form" aria-label="Add vendor with jobs">
+          <div class="vendor-scoped-form-group">
+            <label for="manager_name">Manager Name *</label>
+            <input type="text" name="manager_name" id="manager_name" placeholder="Enter Manager Name" required>
+          </div>
+          
+          <div class="vendor-scoped-jobs-section">
+            <h4>Jobs</h4>
+            <div id="jobsContainer">
+              <!-- Job fields will be added here dynamically -->
+              <div class="vendor-scoped-job-entry" data-job-index="0">
+                <div class="vendor-scoped-form-group">
+                  <label for="job_title_0">Job Title *</label>
+                  <input type="text" name="job_title" id="job_title_0" placeholder="Enter Job Title" required>
+                </div>
+                <div class="vendor-scoped-form-group">
+                  <label for="job_description_0">Job Description</label>
+                  <textarea name="job_description" id="job_description_0" placeholder="Enter Job Description (Optional)"></textarea>
+                </div>
+                <button type="button" class="vendor-scoped-remove-job" style="display: none;">Remove</button>
+              </div>
+            </div>
+            
+            <button type="button" id="addAnotherJob" class="vendor-scoped-btn secondary">Add Another Job</button>
+          </div>
+          
+          <div class="vendor-scoped-dialog-actions">
+            <button type="button" class="vendor-scoped-btn secondary" id="cancelVendorCreation">Cancel</button>
+            <button type="submit" class="vendor-scoped-btn add">Create Manager</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- Toast Notification Container -->
@@ -29,10 +69,10 @@
     </div>
 
     <!-- Confirmation Dialog -->
-    <div class="vendor-scoped-dialog" id="vendorScopedDialog">
+    <div class="vendor-scoped-dialog-overlay" id="vendorScopedDialog">
       <div class="vendor-scoped-dialog-content">
         <h3 id="vendorScopedDialogTitle">Confirm Deletion</h3>
-        <p id="vendorScopedDialogMessage">Are you sure you want to delete this vendor and all its jobs? This action cannot be undone.</p>
+        <p id="vendorScopedDialogMessage">Are you sure you want to delete this vendor and all its jobs? </p>
         <div class="vendor-scoped-dialog-actions">
           <button class="vendor-scoped-btn secondary" id="vendorScopedDialogCancel">Cancel</button>
           <button class="vendor-scoped-btn danger" id="vendorScopedDialogConfirm">Delete</button>
@@ -93,7 +133,7 @@
           </div>
         </div>
       {% else %}
-        <div class="vendor-scoped-empty">No vendors found for this client.</div>
+        <div class="vendor-scoped-empty">No Managers found for this client.</div>
       {% endfor %}
     </div>
   </div>

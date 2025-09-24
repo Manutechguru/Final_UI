@@ -79,23 +79,39 @@
 /* form */
 .vendor-scoped .vendor-scoped-form { 
   display: flex; 
-  gap: 12px; 
-  align-items: center; 
+  flex-direction: column;
+  gap: 16px; 
 }
-.vendor-scoped .vendor-scoped-form input { 
+.vendor-scoped .vendor-scoped-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vendor-scoped .vendor-scoped-form-group label {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--vs-text);
+}
+.vendor-scoped .vendor-scoped-form input,
+.vendor-scoped .vendor-scoped-form textarea { 
   padding: 10px 14px; 
   border-radius: 6px; 
   border: 1px solid var(--vs-border);
-  min-width: 240px; 
   font-size: 14px;
   transition: border 0.2s;
+  font-family: inherit;
 }
-.vendor-scoped .vendor-scoped-form input:focus {
+.vendor-scoped .vendor-scoped-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.vendor-scoped .vendor-scoped-form input:focus,
+.vendor-scoped .vendor-scoped-form textarea:focus {
   outline: none;
   border-color: var(--vs-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
-.vendor-scoped .vendor-scoped-form .vendor-scoped-btn.add { 
+.vendor-scoped .vendor-scoped-btn.add { 
   padding: 10px 16px; 
   background: var(--vs-primary); 
   color: #fff; 
@@ -106,8 +122,163 @@
   transition: background 0.2s;
   font-size: 14px;
 }
-.vendor-scoped .vendor-scoped-form .vendor-scoped-btn.add:hover {
+.vendor-scoped .vendor-scoped-btn.add:hover {
   background: var(--vs-primary-dark);
+}
+
+/* Vendor Creation Dialog */
+.vendor-scoped .vendor-scoped-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(2px);
+}
+
+.vendor-scoped .vendor-scoped-dialog-overlay.active {
+  display: flex;
+  animation: vendor-scoped-fadeIn 0.2s ease-out;
+}
+
+.vendor-scoped .vendor-scoped-dialog-content {
+  background: white;
+  border-radius: 8px;
+  padding: 0;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: vendor-scoped-scaleIn 0.2s ease-out;
+}
+
+.vendor-scoped .vendor-scoped-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--vs-border);
+}
+
+.vendor-scoped .vendor-scoped-dialog-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.vendor-scoped .vendor-scoped-dialog-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--vs-text-light);
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vendor-scoped .vendor-scoped-dialog-close:hover {
+  background: var(--vs-bg);
+}
+
+.vendor-scoped .vendor-scoped-dialog-body {
+  padding: 24px;
+}
+
+/* Jobs Section */
+.vendor-scoped .vendor-scoped-jobs-section {
+  border: 1px solid var(--vs-border);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.vendor-scoped .vendor-scoped-jobs-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: var(--vs-text);
+  font-weight: 600;
+}
+
+.vendor-scoped .vendor-scoped-job-entry {
+  padding: 12px;
+  border: 1px solid var(--vs-border);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.vendor-scoped .vendor-scoped-job-entry:last-child {
+  margin-bottom: 0;
+}
+
+.vendor-scoped .vendor-scoped-remove-job {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--vs-danger-light);
+  color: var(--vs-danger);
+  border: 1px solid var(--vs-danger);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.vendor-scoped .vendor-scoped-remove-job:hover {
+  background: var(--vs-danger);
+  color: white;
+}
+
+.vendor-scoped .vendor-scoped-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--vs-border);
+}
+
+.vendor-scoped .vendor-scoped-btn.secondary {
+  background: var(--vs-text-light);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.vendor-scoped .vendor-scoped-btn.secondary:hover {
+  background: #475569;
+}
+
+.vendor-scoped .vendor-scoped-btn.danger {
+  background: var(--vs-danger);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.vendor-scoped .vendor-scoped-btn.danger:hover {
+  background: #b91c1c;
 }
 
 /* Toast Notification */
@@ -378,85 +549,6 @@
   border: 1px dashed var(--vs-border);
 }
 
-/* Confirmation Dialog */
-.vendor-scoped .vendor-scoped-dialog {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-  backdrop-filter: blur(2px);
-}
-
-.vendor-scoped .vendor-scoped-dialog.active {
-  display: flex;
-  animation: vendor-scoped-fadeIn 0.2s ease-out;
-}
-
-.vendor-scoped .vendor-scoped-dialog-content {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  animation: vendor-scoped-scaleIn 0.2s ease-out;
-}
-
-.vendor-scoped .vendor-scoped-dialog-content h3 {
-  margin: 0 0 12px 0;
-  font-size: 18px;
-  color: #0f172a;
-  font-weight: 600;
-}
-
-.vendor-scoped .vendor-scoped-dialog-content p {
-  margin: 0 0 20px 0;
-  color: var(--vs-text);
-  line-height: 1.5;
-}
-
-.vendor-scoped .vendor-scoped-dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.vendor-scoped .vendor-scoped-btn.secondary {
-  background: var(--vs-text-light);
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.vendor-scoped .vendor-scoped-btn.secondary:hover {
-  background: #475569;
-}
-
-.vendor-scoped .vendor-scoped-btn.danger {
-  background: var(--vs-danger);
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.vendor-scoped .vendor-scoped-btn.danger:hover {
-  background: #b91c1c;
-}
-
 @keyframes vendor-scoped-fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -521,6 +613,19 @@
   
   .vendor-scoped .vendor-scoped-form input {
     min-width: auto;
+    width: 100%;
+  }
+  
+  .vendor-scoped .vendor-scoped-dialog-content {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .vendor-scoped .vendor-scoped-dialog-actions {
+    flex-direction: column;
+  }
+  
+  .vendor-scoped .vendor-scoped-dialog-actions button {
     width: 100%;
   }
 }
