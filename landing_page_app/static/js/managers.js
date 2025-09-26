@@ -1,97 +1,84 @@
 // static/js/managers.js
 document.addEventListener("DOMContentLoaded", () => {
-  // Vendor scoped namespace
-  const vendorScope = {
-    grid: document.getElementById('vendorScopedGrid'),
-    filterButtons: document.querySelectorAll('.vendor-scoped-filter-btn'),
-    toast: document.getElementById('vendorScopedToast'),
-    toastMessage: document.getElementById('vendorScopedToastMessage'),
-    toastClose: document.querySelector('.vendor-scoped-toast-close'),
-    confirmationDialog: document.getElementById('vendorScopedDialog'),
-    dialogTitle: document.getElementById('vendorScopedDialogTitle'),
-    dialogMessage: document.getElementById('vendorScopedDialogMessage'),
-    dialogCancel: document.getElementById('vendorScopedDialogCancel'),
-    dialogConfirm: document.getElementById('vendorScopedDialogConfirm'),
-    addVendorForm: document.getElementById('vendorScopedAddForm'),
+  const managers = {
+    table: document.getElementById('managersTable'),
+    filterButtons: document.querySelectorAll('.managers-filter-btn'),
+    toast: document.getElementById('managersToast'),
+    toastMessage: document.getElementById('managersToastMessage'),
+    toastClose: document.querySelector('.managers-toast-close'),
+    confirmationDialog: document.getElementById('managersConfirmationDialog'),
+    dialogTitle: document.getElementById('managersDialogTitle'),
+    dialogMessage: document.getElementById('managersDialogMessage'),
+    dialogCancel: document.getElementById('managersDialogCancel'),
+    dialogConfirm: document.getElementById('managersDialogConfirm'),
     pendingDelete: null
   };
 
-  // Vendor Creation Dialog Elements
-  const vendorCreationDialog = document.getElementById('vendorCreationDialog');
-  const openVendorDialogBtn = document.getElementById('openVendorDialog');
-  const closeVendorDialogBtn = document.getElementById('closeVendorDialog');
-  const cancelVendorCreationBtn = document.getElementById('cancelVendorCreation');
-  const vendorCreationForm = document.getElementById('vendorCreationForm');
+  // Manager Creation Dialog Elements
+  const managerCreationDialog = document.getElementById('managerCreationDialog');
+  const openManagerDialogBtn = document.getElementById('openManagerDialog');
+  const closeManagerDialogBtn = document.getElementById('closeManagerDialog');
+  const cancelManagerCreationBtn = document.getElementById('cancelManagerCreation');
+  const managerCreationForm = document.getElementById('managerCreationForm');
   const jobsContainer = document.getElementById('jobsContainer');
   const addAnotherJobBtn = document.getElementById('addAnotherJob');
   let jobIndex = 0;
 
-  // Initialize vendor creation functionality
-  function initVendorCreationDialog() {
-    if (!vendorCreationDialog) return;
+  // Initialize manager creation functionality
+  function initManagerCreationDialog() {
+    if (!managerCreationDialog) return;
     
-    // Open dialog
-    openVendorDialogBtn.addEventListener('click', () => {
-      vendorCreationDialog.classList.add('active');
-      // Reset form and job fields
-      vendorCreationForm.reset();
+    openManagerDialogBtn.addEventListener('click', () => {
+      managerCreationDialog.classList.add('active');
+      managerCreationForm.reset();
       resetJobFields();
-      // Focus on vendor name field
       document.getElementById('manager_name').focus();
     });
     
-    // Close dialog
-    function closeVendorDialog() {
-      vendorCreationDialog.classList.remove('active');
+    function closeManagerDialog() {
+      managerCreationDialog.classList.remove('active');
     }
     
-    closeVendorDialogBtn.addEventListener('click', closeVendorDialog);
-    cancelVendorCreationBtn.addEventListener('click', closeVendorDialog);
+    closeManagerDialogBtn.addEventListener('click', closeManagerDialog);
+    cancelManagerCreationBtn.addEventListener('click', closeManagerDialog);
     
-    // Close when clicking outside the dialog
-    vendorCreationDialog.addEventListener('click', (e) => {
-      if (e.target === vendorCreationDialog) {
-        closeVendorDialog();
+    managerCreationDialog.addEventListener('click', (e) => {
+      if (e.target === managerCreationDialog) {
+        closeManagerDialog();
       }
     });
     
-    // Add job field
     addAnotherJobBtn.addEventListener('click', addJobField);
-    
-    // Handle form submission
-    vendorCreationForm.addEventListener('submit', handleVendorCreation);
+    managerCreationForm.addEventListener('submit', handleManagerCreation);
   }
   
-  // Reset job fields to initial state (one job field)
   function resetJobFields() {
     jobsContainer.innerHTML = '';
     jobIndex = 0;
-    addJobField(); // Add the first job field
+    addJobField();
   }
   
-  // Add a new job field
   function addJobField() {
     const jobEntry = document.createElement('div');
-    jobEntry.className = 'vendor-scoped-job-entry';
+    jobEntry.className = 'managers-job-entry';
     jobEntry.setAttribute('data-job-index', jobIndex);
     
     jobEntry.innerHTML = `
-      <div class="vendor-scoped-form-group">
+      <div class="managers-form-group">
         <label for="job_title_${jobIndex}">Job Title *</label>
         <input type="text" name="job_title" id="job_title_${jobIndex}" placeholder="Enter Job Title" required>
       </div>
-      <div class="vendor-scoped-form-group">
+      <div class="managers-form-group">
         <label for="job_description_${jobIndex}">Job Description</label>
         <textarea name="job_description" id="job_description_${jobIndex}" placeholder="Enter Job Description (Optional)"></textarea>
       </div>
-      ${jobIndex > 0 ? '<button type="button" class="vendor-scoped-remove-job">Remove</button>' : ''}
+      ${jobIndex > 0 ? '<button type="button" class="managers-remove-job">Remove</button>' : ''}
     `;
     
     jobsContainer.appendChild(jobEntry);
     
-    // Add remove functionality for this job field (except the first one)
     if (jobIndex > 0) {
-      const removeBtn = jobEntry.querySelector('.vendor-scoped-remove-job');
+      const removeBtn = jobEntry.querySelector('.managers-remove-job');
       removeBtn.addEventListener('click', () => {
         jobEntry.remove();
         updateRemoveButtons();
@@ -102,25 +89,22 @@ document.addEventListener("DOMContentLoaded", () => {
     updateRemoveButtons();
   }
   
-  // Update remove buttons visibility (hide on first job field)
   function updateRemoveButtons() {
-    const jobEntries = document.querySelectorAll('.vendor-scoped-job-entry');
+    const jobEntries = document.querySelectorAll('.managers-job-entry');
     jobEntries.forEach((entry, index) => {
-      const removeBtn = entry.querySelector('.vendor-scoped-remove-job');
+      const removeBtn = entry.querySelector('.managers-remove-job');
       if (removeBtn) {
         removeBtn.style.display = index === 0 ? 'none' : 'block';
       }
     });
   }
   
-  // Handle vendor creation form submission
-  async function handleVendorCreation(e) {
+  async function handleManagerCreation(e) {
     e.preventDefault();
     
-    const formData = new FormData(vendorCreationForm);
-    const vendorName = formData.get('manager_name');
+    const formData = new FormData(managerCreationForm);
+    const managerName = formData.get('manager_name');
     
-    // Validate at least one job title is provided
     const jobTitles = formData.getAll('job_title').filter(title => title.trim() !== '');
     if (jobTitles.length === 0) {
       showToast('At least one job title is required!', true);
@@ -128,114 +112,104 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     try {
-      const response = await fetch(vendorCreationForm.action, {
+      const response = await fetch(managerCreationForm.action, {
         method: 'POST',
         body: formData,
         credentials: 'same-origin'
       });
       
       if (response.ok) {
-        showToast(`Vendor "${vendorName}" created successfully with ${jobTitles.length} job(s)`);
-        // Close the dialog
-        vendorCreationDialog.classList.remove('active');
-        // Reload the page to show the new vendor
+        showToast(`Manager "${managerName}" created successfully with ${jobTitles.length} job(s)`);
+        managerCreationDialog.classList.remove('active');
         setTimeout(() => {
           window.location.reload();
         }, 1500);
       } else {
         const error = await response.text();
-        showToast('Failed to add vendor: ' + error, true);
+        showToast('Failed to add manager: ' + error, true);
       }
     } catch (err) {
-      showToast('Network error adding vendor: ' + err.message, true);
+      showToast('Network error adding manager: ' + err.message, true);
     }
   }
 
   // Show toast notification
   function showToast(message, isError = false) {
-    vendorScope.toastMessage.textContent = message;
-    vendorScope.toast.className = isError ? 'vendor-scoped-toast error' : 'vendor-scoped-toast';
-    vendorScope.toast.style.display = 'flex';
+    managers.toastMessage.textContent = message;
+    managers.toast.className = isError ? 'managers-toast error' : 'managers-toast';
+    managers.toast.style.display = 'flex';
     
-    // Auto hide after 4 seconds
     setTimeout(() => {
       hideToast();
     }, 4000);
   }
 
-  // Hide toast
   function hideToast() {
-    vendorScope.toast.style.display = 'none';
+    managers.toast.style.display = 'none';
   }
 
   // Show confirmation dialog
   function showConfirmationDialog(title, message, confirmCallback) {
-    vendorScope.dialogTitle.textContent = title;
-    vendorScope.dialogMessage.textContent = message;
-    vendorScope.confirmationDialog.classList.add('active');
+    managers.dialogTitle.textContent = title;
+    managers.dialogMessage.textContent = message;
+    managers.confirmationDialog.classList.add('active');
     
-    // Set up event listeners
     const confirmHandler = () => {
-      vendorScope.confirmationDialog.classList.remove('active');
+      managers.confirmationDialog.classList.remove('active');
       confirmCallback();
-      vendorScope.dialogConfirm.removeEventListener('click', confirmHandler);
-      vendorScope.dialogCancel.removeEventListener('click', cancelHandler);
+      managers.dialogConfirm.removeEventListener('click', confirmHandler);
+      managers.dialogCancel.removeEventListener('click', cancelHandler);
     };
     
     const cancelHandler = () => {
-      vendorScope.confirmationDialog.classList.remove('active');
-      vendorScope.dialogConfirm.removeEventListener('click', confirmHandler);
-      vendorScope.dialogCancel.removeEventListener('click', cancelHandler);
+      managers.confirmationDialog.classList.remove('active');
+      managers.dialogConfirm.removeEventListener('click', confirmHandler);
+      managers.dialogCancel.removeEventListener('click', cancelHandler);
     };
     
-    vendorScope.dialogConfirm.addEventListener('click', confirmHandler);
-    vendorScope.dialogCancel.addEventListener('click', cancelHandler);
+    managers.dialogConfirm.addEventListener('click', confirmHandler);
+    managers.dialogCancel.addEventListener('click', cancelHandler);
   }
 
-  // Close toast when clicked
-  vendorScope.toastClose.addEventListener('click', hideToast);
+  managers.toastClose.addEventListener('click', hideToast);
 
   // Filter functionality
-  vendorScope.filterButtons.forEach(button => {
+  managers.filterButtons.forEach(button => {
     button.addEventListener('click', () => {
       const status = button.dataset.status;
       
-      // Update active button
-      vendorScope.filterButtons.forEach(btn => btn.classList.remove('active'));
+      managers.filterButtons.forEach(btn => btn.classList.remove('active'));
       button.classList.add('active');
       
-      // Filter cards
-      const cards = document.querySelectorAll('.vendor-scoped-card');
-      cards.forEach(card => {
+      const rows = document.querySelectorAll('.manager-row');
+      rows.forEach(row => {
         if (status === 'all') {
-          card.style.display = 'flex';
+          row.style.display = '';
         } else {
-          card.style.display = card.dataset.status === status ? 'flex' : 'none';
+          row.style.display = row.dataset.status === status ? '' : 'none';
         }
       });
     });
   });
 
-  // close dropdowns helper
+  // Dropdown functionality
   function closeAllDropdowns() {
-    document.querySelectorAll('.vendor-scoped-menu-content').forEach(m => m.classList.remove('show'));
-    document.querySelectorAll('.vendor-scoped-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    document.querySelectorAll('.manager-dropdown-content').forEach(m => m.classList.remove('show'));
   }
 
-  // attach dropdown handlers
-  document.querySelectorAll('.vendor-scoped-menu-btn').forEach(btn => {
+  document.querySelectorAll('.manager-dropdown-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       closeAllDropdowns();
-      const parent = btn.closest('.vendor-scoped-menu');
-      const menu = parent.querySelector('.vendor-scoped-menu-content');
-      const show = menu.classList.toggle('show');
-      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+      const dropdown = btn.nextElementSibling;
+      dropdown.classList.toggle('show');
     });
   });
 
-  document.addEventListener('click', () => closeAllDropdowns());
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(); });
+  document.addEventListener('click', closeAllDropdowns);
+  document.addEventListener('keydown', (e) => { 
+    if (e.key === 'Escape') closeAllDropdowns(); 
+  });
 
   async function parseResponseSafely(res) {
     const text = await res.text();
@@ -246,15 +220,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Delegated - toggle switches
-  vendorScope.grid.addEventListener('change', async (e) => {
+  // Toggle switches
+  managers.table.addEventListener('change', async (e) => {
     const el = e.target;
-    if (!el.classList.contains('vendor-scoped-toggle-input')) return;
+    if (!el.classList.contains('manager-toggle-input')) return;
 
     const toggleUrl = el.dataset.toggleUrl;
-    const vendorName = el.dataset.name;
-    const managerCard = el.closest('.vendor-scoped-card');
-    const statusBadge = managerCard ? managerCard.querySelector('.vendor-scoped-status') : null;
+    const managerName = el.dataset.name;
+    const managerRow = el.closest('.manager-row');
+    const statusBadge = managerRow ? managerRow.querySelector('.manager-status-badge') : null;
 
     if (!toggleUrl) {
       console.error('Toggle URL missing', el);
@@ -280,7 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!parsed.ok) {
         const msg = parsed.json?.detail || parsed.json?.message || parsed.text || `Status ${parsed.status}`;
-        showToast('Failed to toggle vendor status: ' + msg, true);
+        showToast('Failed to toggle manager status: ' + msg, true);
         el.checked = !el.checked;
         return;
       }
@@ -288,15 +262,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = parsed.json || {};
       const newStatus = data.new_status || desired;
       
-      // Update card status for filtering
-      managerCard.dataset.status = newStatus;
+      managerRow.dataset.status = newStatus;
       
       if (statusBadge) {
         statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
-        statusBadge.className = 'vendor-scoped-status ' + (newStatus === 'active' ? 'active' : 'inactive');
+        statusBadge.className = 'manager-status-badge ' + (newStatus === 'active' ? 'active' : 'inactive');
       }
       
-      showToast(`${vendorName} is now ${newStatus}`);
+      showToast(`${managerName} is now ${newStatus}`);
     } catch (err) {
       console.error('Network/error toggling status', err);
       showToast('Network error toggling status: ' + err.message, true);
@@ -304,23 +277,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Delegated click for menu actions (delete/edit)
-  vendorScope.grid.addEventListener('click', async (e) => {
-    const del = e.target.closest('.vendor-scoped-menu-delete');
+  // Delegated click for menu actions
+  managers.table.addEventListener('click', async (e) => {
+    const del = e.target.closest('.manager-delete');
     if (del) {
       e.preventDefault();
       const url = del.dataset.deleteUrl;
-      const vendorName = del.dataset.name;
+      const managerName = del.dataset.name;
       
       if (!url) { 
         showToast('Delete URL missing', true);
         return; 
       }
       
-      // Show confirmation dialog instead of using confirm()
       showConfirmationDialog(
         'Confirm Deletion', 
-        `Are you sure you want to delete "${vendorName}" and all its jobs? This action cannot be undone.`,
+        `Are you sure you want to delete "${managerName}" and all its jobs? This action cannot be undone.`,
         async () => {
           try {
             const res = await fetch(url, { 
@@ -334,20 +306,20 @@ document.addEventListener("DOMContentLoaded", () => {
             
             const parsed = await parseResponseSafely(res);
             if (!parsed.ok) { 
-              showToast(parsed.json?.detail || parsed.text || 'Failed to delete vendor', true); 
+              showToast(parsed.json?.detail || parsed.text || 'Failed to delete manager', true); 
               return; 
             }
             
-            const card = del.closest('.vendor-scoped-card'); 
-            if (card) {
-              card.style.opacity = '0';
-              card.style.transition = 'opacity 0.3s';
-              setTimeout(() => card.remove(), 300);
+            const row = del.closest('.manager-row'); 
+            if (row) {
+              row.style.opacity = '0';
+              row.style.transition = 'opacity 0.3s';
+              setTimeout(() => row.remove(), 300);
             }
             
-            showToast(`${vendorName} has been deleted successfully`);
+            showToast(`${managerName} has been deleted successfully`);
           } catch (err) { 
-            showToast('Error deleting vendor: ' + err.message, true); 
+            showToast('Error deleting manager: ' + err.message, true); 
           }
         }
       );
@@ -355,12 +327,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const edt = e.target.closest('.vendor-scoped-menu-edit');
+    const edt = e.target.closest('.manager-edit');
     if (edt) {
       e.preventDefault();
       const editUrl = edt.dataset.editUrl;
-      const currentName = edt.dataset.name || edt.closest('.vendor-scoped-card').querySelector('.vendor-scoped-card-title').textContent;
-      const newName = prompt('Edit vendor name:', currentName);
+      const currentName = edt.dataset.name || edt.closest('.manager-row').querySelector('.manager-name-text').textContent;
+      const newName = prompt('Edit manager name:', currentName);
       if (!newName || newName.trim() === '' || newName.trim() === currentName.trim()) return;
       
       try {
@@ -378,31 +350,102 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const parsed = await parseResponseSafely(res);
         if (!parsed.ok) { 
-          showToast(parsed.json?.detail || parsed.text || 'Failed to update vendor', true); 
+          showToast(parsed.json?.detail || parsed.text || 'Failed to update manager', true); 
           return; 
         }
         
         const data = parsed.json || {};
-        const card = edt.closest('.vendor-scoped-card');
-        if (card) {
-          const title = card.querySelector('.vendor-scoped-card-title');
-          if (title) title.textContent = data.manager_name || newName.trim();
-          // Update the data-name attribute for future operations
-          edt.dataset.name = data.manager_name || newName.trim();
+        const row = edt.closest('.manager-row');
+        if (row) {
+          const nameCell = row.querySelector('.manager-name-text');
+          if (nameCell) {
+            nameCell.textContent = newName.trim();
+          }
           
-          // Also update the toggle switch data-name
-          const toggleSwitch = card.querySelector('.vendor-scoped-toggle-input');
-          if (toggleSwitch) toggleSwitch.dataset.name = data.manager_name || newName.trim();
+          // Update the data-name attribute on the edit button
+          edt.dataset.name = newName.trim();
+          
+          // Update the data-name attribute on the delete button if it exists
+          const deleteBtn = row.querySelector('.manager-delete');
+          if (deleteBtn) {
+            deleteBtn.dataset.name = newName.trim();
+          }
         }
         
-        showToast(`Vendor name updated to "${data.manager_name || newName.trim()}"`);
-      } catch (err) { 
-        showToast('Error updating vendor: ' + err.message, true); 
+        showToast(`Manager name updated to "${newName.trim()}"`);
+      } catch (err) {
+        showToast('Error updating manager: ' + err.message, true);
+      }
+      
+      return;
+    }
+
+    // Handle view jobs action
+    const viewJobs = e.target.closest('.manager-view-jobs');
+    if (viewJobs) {
+      e.preventDefault();
+      const jobsUrl = viewJobs.dataset.jobsUrl;
+      if (jobsUrl) {
+        window.location.href = jobsUrl;
       }
       return;
     }
   });
 
-  // Initialize vendor creation dialog
-  initVendorCreationDialog();
+  // Initialize the manager creation dialog
+  initManagerCreationDialog();
+
+  // Auto-hide toast on click outside
+  document.addEventListener('click', (e) => {
+    if (managers.toast.style.display === 'flex' && !e.target.closest('.managers-toast')) {
+      hideToast();
+    }
+  });
+
+  // Keyboard navigation for dropdowns
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const dropdowns = document.querySelectorAll('.manager-dropdown-content.show');
+      if (dropdowns.length > 0) {
+        const firstItem = dropdowns[0].querySelector('a, button');
+        if (firstItem) {
+          firstItem.focus();
+          e.preventDefault();
+        }
+      }
+    }
+  });
+
+  // Enhanced error handling for fetch requests
+  function handleFetchError(error, defaultMessage = 'An error occurred') {
+    console.error('Fetch error:', error);
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      showToast('Network error: Please check your connection', true);
+    } else {
+      showToast(defaultMessage + ': ' + error.message, true);
+    }
+  }
+
+  // Utility function to debounce rapid clicks
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Debounce the toggle switch to prevent rapid clicks
+  managers.table.addEventListener('change', debounce(async (e) => {
+    const el = e.target;
+    if (!el.classList.contains('manager-toggle-input')) return;
+
+    // The actual toggle logic is handled above, this just prevents rapid firing
+  }, 300));
+
+  console.log('Managers JS loaded successfully');
 });

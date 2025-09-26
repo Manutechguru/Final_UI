@@ -289,16 +289,7 @@ async def search(request: Request,
 
     candidates = q.order_by(func.coalesce(Candidate.candidates_id, 0).desc()).limit(200).all()
 
-    # 2) Exclude any candidate already linked to any job (global)
-    mapped_ids = set()
-    try:
-        rows = db.query(CandidateJDMapping.candidate_id).distinct().all()
-        for r in rows:
-            mapped_ids.add(r[0] if isinstance(r, tuple) else getattr(r, "candidate_id", None))
-    except Exception:
-        mapped_ids = set()
-    candidates = [c for c in candidates if getattr(c, "candidates_id", None) not in mapped_ids]
-
+    
     # -------------------------
     # Enforce strict token-level location & strict experience filtering
     # -------------------------
@@ -314,80 +305,173 @@ async def search(request: Request,
         candidates = _filter_candidates_by_experience(candidates, min_m, max_m)
 
 
-    # 3) Manual AI scoring — build a lightweight "JD" text from inputs and score with existing helper
-    #    (This mirrors advanced_search behavior, without touching routes or templates.)
-    #    If the helper is unavailable, we gracefully fall back to the prefiltered list.
-    jd_lines = []
-    if skills and skills.strip():
-        jd_lines.append(f"Required Skills: {skills.strip()}")
-    if location and location.strip():
-        jd_lines.append(f"Preferred Location: {location.strip()}")
-    if experience and experience.strip():
-        jd_lines.append(f"Experience: {experience.strip()}")
-    jd_text = "\n".join(jd_lines) if jd_lines else ""
+    
+    # Manual AI scoring removed: manual searches do not run AI evaluation.
+    final_list = candidates
 
-    ranked = []
-    if jd_text and callable(ai_match_jd_with_resumes):
-        batch = 10
-        matched_ids = set()
-        score_map = {}
-        expl_map = {}
 
-        for i in range(0, len(candidates), batch):
-            chunk = candidates[i:i+batch]
-            try:
-                scored = ai_match_jd_with_resumes(jd_text, chunk)
-            except Exception as exc:
-                logger.exception("Manual AI scoring failed: %s", exc)
-                scored = []
-            for item in (scored or []):
-                cid = item.get("candidate_id") or item.get("candidates_id") or item.get("id")
-                if cid is None:
-                    continue
-                cid = int(cid)
-                matched_ids.add(cid)
-                score_map[cid] = item.get("ai_score") or item.get("score") or 0
-                expl_map[cid] = item.get("explanation") or item.get("reasons") or ""
 
-        # attach scores to candidate objects
-        for c in candidates:
-            cid = getattr(c, "candidates_id", None)
-            if cid in score_map:
-                try: setattr(c, "ai_score", score_map[cid])
-                except Exception: pass
-                try: setattr(c, "ai_explanation", expl_map.get(cid, ""))
-                except Exception: pass
-
-        # persist ai fields so explanation endpoint reads the same values
-        try:
-            for c in candidates:
-                cid = getattr(c, "candidates_id", None)
-                if cid in score_map:
-                    try:
-                        db.add(c)
-                    except Exception:
-                        pass
-            db.commit()
-        except Exception:
-            db.rollback()
-        ranked = sorted([c for c in candidates if getattr(c, "candidates_id", None) in matched_ids],
-                        key=lambda x: getattr(x, "ai_score", 0), reverse=True)
-
-    # If AI helper returned nothing, fall back to filtered candidates (no design change)
-    final_list = ranked if ranked else candidates
-
-    # 4) Map to rows for template
+    
+    # 4) Map to rows for template (attach mapping metadata -> is_linked, existing_jd_ids, mapping_display)
+    from collections import defaultdict
     cand_ids = [getattr(c, "candidates_id", None) for c in final_list if getattr(c, "candidates_id", None) is not None]
-    mappings_map = {}
+    mappings_by_cid = defaultdict(list)
+    mapping_info_map = {}
+
     if cand_ids:
         try:
             rows = db.query(CandidateJDMapping).filter(CandidateJDMapping.candidate_id.in_(cand_ids)).all()
             for r in rows:
-                mappings_map[getattr(r, "candidate_id")] = r
+                cid_key = getattr(r, "candidate_id", None)
+                if cid_key is not None:
+                    mappings_by_cid[cid_key].append(r)
         except Exception:
-            mappings_map = {}
+            mappings_by_cid = defaultdict(list)
 
-    results = [_candidate_to_row(c, mappings_map.get(c.candidates_id)) for c in final_list]
+    # build job/manager/client lookup maps so we can show "Client > Vendor > Job"
+    try:
+        all_job_ids = set()
+        for lst in mappings_by_cid.values():
+            for m in lst:
+                jid = getattr(m, "jd_id", None)
+                if jid is not None:
+                    try:
+                        all_job_ids.add(int(jid))
+                    except Exception:
+                        all_job_ids.add(jid)
+
+        job_map = {}
+        if all_job_ids:
+            id_col = _first_column(Job, ["job_id", "id", "jobId"])
+            if id_col is not None:
+                try:
+                    jobs = db.query(Job).filter(id_col.in_(list(all_job_ids))).all()
+                except Exception:
+                    jobs = []
+                for j in jobs:
+                    try:
+                        # Use the job id columns as the lookup key (job_id / id / jobId).
+                        job_id_val = _first_attr(j, ["job_id", "id", "jobId"])
+                        job_key = int(job_id_val) if isinstance(job_id_val, (int, str)) and str(job_id_val).isdigit() else job_id_val
+                        job_map[job_key] = j
+                    except Exception:
+                        continue
+
+        # collect manager (vendor) ids from jobs
+        manager_ids = set()
+        for j in job_map.values():
+            mid = _first_attr(j, ["manager_id", "managerId", "manager", "vendor_id"])
+            if mid is not None:
+                try:
+                    manager_ids.add(int(mid))
+                except Exception:
+                    manager_ids.add(mid)
+
+        manager_map = {}
+        if manager_ids:
+            mgr_col = _first_column(Manager, ["manager_id", "id", "vendor_id", "managerId"])
+            if mgr_col is not None:
+                try:
+                    managers = db.query(Manager).filter(mgr_col.in_(list(manager_ids))).all()
+                except Exception:
+                    managers = []
+                for m in managers:
+                    try:
+                        mid_val = _first_attr(m, ["manager_id", "id", "vendor_id", "managerId"])
+                        key = int(mid_val) if isinstance(mid_val, (int, str)) and str(mid_val).isdigit() else mid_val
+                        manager_map[key] = m
+                    except Exception:
+                        continue
+
+        # collect client ids from managers
+        client_ids = set()
+        for m in manager_map.values():
+            cid = _first_attr(m, ["client_id", "clientId", "client"])
+            if cid is not None:
+                try:
+                    client_ids.add(int(cid))
+                except Exception:
+                    client_ids.add(cid)
+
+        client_map = {}
+        if client_ids:
+            ccol = _first_column(Client, ["client_id", "id", "clientId"])
+            if ccol is not None:
+                try:
+                    clients = db.query(Client).filter(ccol.in_(list(client_ids))).all()
+                except Exception:
+                    clients = []
+                for cobj in clients:
+                    try:
+                        cid_val = _first_attr(cobj, ["client_id", "id", "clientId"])
+                        key = int(cid_val) if isinstance(cid_val, (int, str)) and str(cid_val).isdigit() else cid_val
+                        client_map[key] = cobj
+                    except Exception:
+                        continue
+
+        # now build mapping_info_map per candidate id
+        for cid_key, lst in mappings_by_cid.items():
+            info_list = []
+            for m in lst:
+                jid = getattr(m, "jd_id", None)
+                job = None
+                job_title = ""
+                vendor_name = ""
+                client_name = ""
+                try:
+                    jkey = int(jid) if isinstance(jid, (int, str)) and str(jid).isdigit() else jid
+                    job = job_map.get(jkey)
+                except Exception:
+                    job = None
+                if job:
+                    job_title = _first_attr(job, ["job_title", "title", "jobTitle"]) or ""
+                    mid = _first_attr(job, ["manager_id", "managerId", "manager", "vendor_id"])
+                    try:
+                        mkey = int(mid) if isinstance(mid, (int, str)) and str(mid).isdigit() else mid
+                    except Exception:
+                        mkey = mid
+                    manager = manager_map.get(mkey)
+                    if manager:
+                        vendor_name = _first_attr(manager, ["manager_name", "name", "vendor_name", "managerName"]) or ""
+                        client_id_ref = _first_attr(manager, ["client_id", "clientId", "client"])
+                        try:
+                            ck = int(client_id_ref) if isinstance(client_id_ref, (int, str)) and str(client_id_ref).isdigit() else client_id_ref
+                        except Exception:
+                            ck = client_id_ref
+                        client_obj = client_map.get(ck)
+                        if client_obj:
+                            client_name = _first_attr(client_obj, ["client_name", "name", "clientName"]) or ""
+                info_list.append({
+                    "jd_id": jid,
+                    "job_title": job_title or "",
+                    "vendor_name": vendor_name or "",
+                    "client_name": client_name or "",
+                    "mapping_id": getattr(m, "id", None) or getattr(m, "mapping_id", None)
+                })
+            mapping_info_map[cid_key] = info_list
+
+    except Exception:
+        mapping_info_map = {}
+
+    # produce final result rows (attach mapping metadata)
+    results = []
+    for c in final_list:
+        mapping_list = mappings_by_cid.get(getattr(c, "candidates_id", None)) or []
+        base_map = mapping_list[0] if mapping_list else None
+        row = _candidate_to_row(c, base_map)
+        cid_val = getattr(c, "candidates_id", None)
+        info = mapping_info_map.get(cid_val, [])
+        row["is_linked"] = bool(info)
+        row["existing_jd_ids"] = [i.get("jd_id") for i in info]
+        
+        try:
+            row["mapping_display"] = " | ".join([ (f"{(i.get('client_name') or '').strip() + (' > ' if (i.get('client_name') or '') else '')}{(i.get('vendor_name') or '')}{(' > ' if (i.get('vendor_name') or '') else '')}{(i.get('job_title') or '')}").strip(" > ") for i in info ]) or ""
+        except Exception:
+            row["mapping_display"] = ""
+
+            row["mapping_display"] = ""
+        results.append(row)
+
 
     clients = _get_active_clients(db)
     return templates.TemplateResponse("search.html", {
@@ -402,234 +486,9 @@ async def search(request: Request,
 # -------------------------
 # Manual AI endpoint (AJAX)
 # -------------------------
-@router.get("/ai-search")
-async def ai_search(request: Request,
-                    skills: Optional[str] = Query(None),
-                    location: Optional[str] = Query(None),
-                    experience: Optional[str] = Query(None),
-                    db: Session = Depends(get_db)):
-
-    min_m, max_m = None, None
-
-    # quick prefilter identical to /search
-    q = db.query(Candidate)
-    if skills:
-        tokens = [t.strip() for t in skills.split(",") if t.strip()]
-        if tokens:
-            filters = [func.lower(func.coalesce(Candidate.skillset, "")).like(f"%{t.lower()}%") for t in tokens]
-            q = q.filter(or_(*filters))
-    if location:
-        q = q.filter(func.lower(func.coalesce(Candidate.location, "")).like(f"%{location.strip().lower()}%"))
-    if experience:
-        try:
-            min_m, max_m = parse_experience_filter_input(experience)
-            if min_m is not None:
-                yrs = int(min_m / 12)
-                q = q.filter(or_(
-                    func.coalesce(Candidate.relevant_experience, "").like(f"%{yrs}%"),
-                    func.coalesce(Candidate.it_experience, "").like(f"%{yrs}%")
-                ))
-        except Exception:
-            pass
-
-    candidates = q.order_by(func.coalesce(Candidate.candidates_id, 0).desc()).limit(200).all()
-
-    # Exclude mapped
-    mapped_ids = set()
-    try:
-        rows = db.query(CandidateJDMapping.candidate_id).distinct().all()
-        for r in rows:
-            mapped_ids.add(r[0] if isinstance(r, tuple) else getattr(r, "candidate_id", None))
-    except Exception:
-        mapped_ids = set()
-    candidates = [c for c in candidates if getattr(c, "candidates_id", None) not in mapped_ids]
-
-    # -------------------------
-    # Enforce strict token-level location & strict experience filtering (AI quick search)
-    # -------------------------
-    if location and str(location).strip():
-        candidates = [c for c in candidates if _location_matches(getattr(c, 'location', '') or '', location)]
-
-    if experience and str(experience).strip():
-        try:
-            min_m, max_m = parse_experience_filter_input(experience)
-        except Exception:
-            min_m, max_m = None, None
-    if min_m is not None:
-        candidates = _filter_candidates_by_experience(candidates, min_m, max_m)
-
-
-    jd_text = "\n".join([f"Required Skills: {skills}"] if skills else [])
-    out = []
-    if callable(ai_match_jd_with_resumes):
-        try:
-            scored = ai_match_jd_with_resumes(jd_text, candidates)
-            for row in (scored or []):
-                cid = row.get("candidate_id") or row.get("candidates_id") or row.get("id")
-                out.append({
-                    "candidate_id": cid,
-                    "ai_score": row.get("ai_score") or row.get("score"),
-                    "ai_explanation": row.get("explanation") or row.get("reasons") or row.get("ai_explanation") or ""
-                })
-
-            # Persist quick ai_search results into Candidate rows for consistency
-            try:
-                ids = [r.get('candidate_id') for r in (scored or []) if r.get('candidate_id')]
-                if ids:
-                    objs = db.query(Candidate).filter(Candidate.candidates_id.in_(ids)).all()
-                    obj_map = {getattr(o, 'candidates_id', None): o for o in objs}
-                    for r in (scored or []):
-                        cid = r.get('candidate_id') or r.get('candidates_id') or r.get('id')
-                        if cid in obj_map:
-                            o = obj_map[cid]
-                            try:
-                                setattr(o, 'ai_score', r.get('ai_score') or r.get('score'))
-                            except Exception:
-                                pass
-                            try:
-                                setattr(o, 'ai_explanation', r.get('explanation') or r.get('reasons') or r.get('ai_explanation') or "")
-                            except Exception:
-                                pass
-                    try:
-                        db.commit()
-                    except Exception:
-                        db.rollback()
-            except Exception:
-                logger.exception('Failed to persist ai_search quick results')
-        except Exception as e:
-            logger.exception("ai_search quick call failed: %s", e)
-    return JSONResponse(out)
-
 # -------------------------
 # Advanced: Parse JD link and AI-match (UI)
 # -------------------------
-@router.post("/advanced-search")
-async def advanced_search(request: Request, jd_drive_link: str = Form(...), db: Session = Depends(get_db)):
-    # fetch JD text (works with Google drive/docs links via fetch_text_from_url helper)
-    try:
-        jd_text = fetch_text_from_url(jd_drive_link) if callable(fetch_text_from_url) else jd_drive_link
-        if not jd_text:
-            jd_text = jd_drive_link
-    except Exception:
-        jd_text = jd_drive_link
-
-    # extract prefill
-    try:
-        extracted = extract_jd_features(jd_text) or {}
-    except Exception:
-        extracted = {}
-
-    pre_skills = extracted.get("skills", "") or ""
-    pre_location = extracted.get("location", "") or ""
-    pre_experience = extracted.get("experience", "") or ""
-
-    # initialize experience bounds
-    min_m, max_m = None, None
-
-    clients = _get_active_clients(db)
-
-    # Score candidates in batches (10 at a time) using ai_match_jd_with_resumes
-    # PREFILTER candidates by extracted fields (only if those fields were actually extracted)
-    q = db.query(Candidate)
-    if pre_skills:
-        tokens = [t.strip() for t in pre_skills.split(',') if t.strip()]
-        if tokens:
-            filters = [func.lower(func.coalesce(Candidate.skillset, '')).like(f"%{t.lower()}%") for t in tokens]
-            q = q.filter(or_(*filters))
-    if pre_location:
-        q = q.filter(func.lower(func.coalesce(Candidate.location, '')).like(f"%{pre_location.strip().lower()}%"))
-
-    all_candidates = q.order_by(getattr(Candidate, 'candidates_id', Candidate)).all()
-
-    # Enforce strict token-level location & strict experience filtering (post-prefilter)
-    if pre_location:
-        all_candidates = [c for c in all_candidates if _location_matches(getattr(c, 'location', '') or '', pre_location)]
-
-    if pre_experience and str(pre_experience).strip():
-        try:
-            min_m, max_m = parse_experience_filter_input(pre_experience)
-        except Exception:
-            min_m, max_m = None, None
-        if min_m is not None:
-            all_candidates = _filter_candidates_by_experience(all_candidates, min_m, max_m)
-
-    batch = 10
-    matched_ids = set()
-    score_map = {}
-    expl_map = {}
-
-    for i in range(0, len(all_candidates), batch):
-        slice_batch = all_candidates[i:i+batch]
-        try:
-            scored = ai_match_jd_with_resumes(jd_text, slice_batch)
-        except Exception as exc:
-            logger.exception("ai_match_jd_with_resumes failed: %s", exc)
-            scored = []
-
-        for item in (scored or []):
-            # accept multiple key forms
-            cid = item.get("candidate_id") or item.get("candidates_id") or item.get("id")
-            score = item.get("ai_score") or item.get("score") or 0
-            expl = item.get("explanation") or item.get("reasons") or item.get("ai_explanation") or ""
-            if cid:
-                try:
-                    cid = int(cid)
-                    matched_ids.add(cid)
-                    score_map[cid] = int(score)
-                    if expl:
-                        expl_map[cid] = expl
-                except Exception:
-                    continue
-
-    results = []
-    if matched_ids:
-        # Exclude any candidate already linked to any job (consistent with manual search)
-        mapped_ids = set()
-        try:
-            rows_mapped = db.query(CandidateJDMapping.candidate_id).distinct().all()
-            for r in rows_mapped:
-                mapped_ids.add(r[0] if isinstance(r, tuple) else getattr(r, "candidate_id", None))
-        except Exception:
-            mapped_ids = set()
-
-        # Fetch found candidates but exclude already-mapped ones
-        found_q = db.query(Candidate).filter(Candidate.candidates_id.in_(list(matched_ids)))
-        if mapped_ids:
-            found_q = found_q.filter(~Candidate.candidates_id.in_(list(mapped_ids)))
-        found = found_q.all()
-        for c in found:
-            cid = getattr(c, "candidates_id", None)
-            if cid in score_map:
-                try:
-                    setattr(c, "ai_score", score_map[cid])
-                except Exception:
-                    pass
-            if cid in expl_map:
-                try:
-                    setattr(c, "ai_explanation", expl_map[cid])
-                except Exception:
-                    pass
-            results.append(_candidate_to_row(c, None))
-        try:
-            db.commit()
-        except Exception:
-            db.rollback()
-
-    clients = _get_active_clients(db)
-    return templates.TemplateResponse("search.html", {
-        "request": request,
-        "results": results,
-        "skills": pre_skills,
-        "location": pre_location,
-        "experience": pre_experience,
-        "prefill_skills": pre_skills,
-        "prefill_location": pre_location,
-        "prefill_experience": pre_experience,
-        "clients": clients,
-        "advanced_from_jd": True,
-        "jd_drive_link": jd_drive_link,
-    })
-
 # -------------------------
 # Cascading dropdown endpoints (client -> vendors -> jobs)
 # -------------------------
@@ -779,10 +638,10 @@ async def toggle_candidate_link(payload: dict = Body(...), db: Session = Depends
                     deleted = True
                 except Exception:
                     pass
-            try:
-                db.commit()
-            except Exception:
-                db.rollback()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
             return JSONResponse({"message": "Unlinked candidate", "deleted": deleted})
     except Exception as exc:
         db.rollback()
@@ -1180,3 +1039,192 @@ async def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
 # -------------------------
 # End of file
 # -------------------------
+
+
+# -------------------------
+# Dropdown AI search (uses selected Job's JD link to run AI matching)
+@router.post("/dropdown-ai-search")
+async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Session = Depends(get_db)):
+    """
+    Trigger AI matching by selecting a Job from the dropdowns.
+    This reads the job record, obtains the JD link, extracts features and runs the same
+    ai_match_jd_with_resumes batching logic used by advanced_search. Returns the search page.
+    """
+    # Resolve job record robustly (support multiple id column names)
+    job = None
+    try:
+        filters = []
+        if hasattr(Job, "job_id"):
+            try:
+                filters.append(getattr(Job, "job_id") == job_id)
+            except Exception:
+                pass
+        if hasattr(Job, "id"):
+            try:
+                # attempt numeric match if job_id looks like int
+                try:
+                    jid_int = int(job_id)
+                except Exception:
+                    jid_int = None
+                if jid_int is not None:
+                    filters.append(getattr(Job, "id") == jid_int)
+                else:
+                    filters.append(getattr(Job, "id") == job_id)
+            except Exception:
+                pass
+        if filters:
+            job = db.query(Job).filter(or_(*filters)).first()
+        else:
+            # fallback - attempt simple filter by job_id attribute if present
+            try:
+                job = db.query(Job).filter(getattr(Job, "job_id") == job_id).first()
+            except Exception:
+                job = None
+    except Exception:
+        job = None
+
+    if not job:
+        return templates.TemplateResponse("search.html", {
+            "request": request,
+            "results": [],
+            "skills": "",
+            "location": "",
+            "experience": "",
+            "clients": _get_active_clients(db),
+            "error": "Invalid job selected."
+        })
+
+    # find a JD link on the job object using common attribute names
+    jd_link = _first_attr(job, ["jd_link", "jd_drive_link", "job_link", "job_drive_link", "drive_link", "jd_url", "description_link"]) or ""
+    if not jd_link:
+        # some systems store JD text in a 'description' field - use that as fallback
+        jd_link = _first_attr(job, ["description", "job_description", "jd_text"]) or ""
+
+    # fetch JD text (helper handles docs/drive/pdf/docx/html)
+    try:
+        jd_text = fetch_text_from_url(jd_link) if callable(fetch_text_from_url) else (jd_link or "")
+        if not jd_text and jd_link and isinstance(jd_link, str):
+            # If fetch failed but jd_link looks like actual plain text, use it
+            jd_text = jd_link
+    except Exception:
+        jd_text = jd_link or ""
+
+    # extract prefill features
+    try:
+        extracted = extract_jd_features(jd_text) or {}
+    except Exception:
+        extracted = {}
+    pre_skills = extracted.get("skills", "") or ""
+    pre_location = extracted.get("location", "") or ""
+    pre_experience = extracted.get("experience", "") or ""
+
+    # Prefilter candidates (same approach as advanced_search)
+    q = db.query(Candidate)
+    if pre_skills:
+        tokens = [t.strip() for t in pre_skills.split(",") if t.strip()]
+        if tokens:
+            filters = [func.lower(func.coalesce(Candidate.skillset, "")).like(f"%{t.lower()}%") for t in tokens]
+            q = q.filter(or_(*filters))
+    if pre_location:
+        try:
+            q = q.filter(func.lower(func.coalesce(Candidate.location, "")).like(f"%{pre_location.strip().lower()}%"))
+        except Exception:
+            pass
+
+    all_candidates = q.order_by(getattr(Candidate, "candidates_id", Candidate)).all()
+
+    # enforce strict token-level location & experience
+    if pre_location:
+        all_candidates = [c for c in all_candidates if _location_matches(getattr(c, "location", "") or "", pre_location)]
+
+    min_m = max_m = None
+    if pre_experience and str(pre_experience).strip():
+        try:
+            min_m, max_m = parse_experience_filter_input(pre_experience)
+        except Exception:
+            min_m, max_m = None, None
+        if min_m is not None:
+            all_candidates = _filter_candidates_by_experience(all_candidates, min_m, max_m)
+
+    # Batch AI scoring (10 at a time, preserve existing behavior)
+    batch = 10
+    matched_ids = set()
+    score_map = {}
+    expl_map = {}
+
+    for i in range(0, len(all_candidates), batch):
+        slice_batch = all_candidates[i:i+batch]
+        try:
+            scored = ai_match_jd_with_resumes(jd_text, slice_batch)
+        except Exception:
+            scored = []
+        for item in (scored or []):
+            cid = item.get("candidate_id") or item.get("candidates_id") or item.get("id")
+            score = item.get("ai_score") or item.get("score") or 0
+            expl = item.get("explanation") or item.get("reasons") or item.get("ai_explanation") or ""
+            if cid:
+                try:
+                    cid = int(cid)
+                    matched_ids.add(cid)
+                    score_map[cid] = int(score)
+                    if expl:
+                        expl_map[cid] = expl
+                except Exception:
+                    continue
+
+    results = []
+    if matched_ids:
+        # Exclude any candidate already linked to any job (consistent)
+        mapped_ids = set()
+        try:
+            rows_mapped = db.query(CandidateJDMapping.candidate_id).distinct().all()
+            for r in rows_mapped:
+                mapped_ids.add(r[0] if isinstance(r, tuple) else getattr(r, "candidate_id", None))
+        except Exception:
+            mapped_ids = set()
+
+        found_q = db.query(Candidate).filter(Candidate.candidates_id.in_(list(matched_ids)))
+        if mapped_ids:
+            try:
+                found_q = found_q.filter(~Candidate.candidates_id.in_(list(mapped_ids)))
+            except Exception:
+                pass
+
+        found = found_q.all()
+        for c in found:
+            cid = getattr(c, "candidates_id", None)
+            if cid in score_map:
+                try:
+                    setattr(c, "ai_score", score_map[cid])
+                except Exception:
+                    pass
+            if cid in expl_map:
+                try:
+                    setattr(c, "ai_explanation", expl_map[cid])
+                except Exception:
+                    pass
+            results.append(_candidate_to_row(c, None))
+        
+        # --- sort AI-matched results by ai_score (descending) ---
+        try:
+            results.sort(key=lambda r: int(r.get('ai_score') or r.get('score') or 0), reverse=True)
+        except Exception:
+            pass
+
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    clients = _get_active_clients(db)
+    return templates.TemplateResponse("search.html", {
+        "request": request,
+        "results": results,
+        "skills": pre_skills,
+        "location": pre_location,
+        "experience": pre_experience,
+        "prefill_skills": pre_skills,
+        "prefill_location": pre_location,
+        "prefill_experience": pre_experience,
+        "clients": clients,
+    })
