@@ -11,6 +11,7 @@ router = APIRouter(tags=["Templates"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 
 
+# -------------------- ROOT PAGE --------------------
 @router.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     hiring_pipeline = [
@@ -41,6 +42,7 @@ async def root(request: Request):
     })
 
 
+# -------------------- SEARCH PAGE --------------------
 @router.get("/search", response_class=HTMLResponse)
 async def search_page(
     request: Request,
@@ -49,7 +51,13 @@ async def search_page(
     experience: str = Query(None)
 ):
     if not skills and not location and not experience:
-        return templates.TemplateResponse("search.html", {"request": request, "skills": skills, "location": location, "experience": experience, "results": []})
+        return templates.TemplateResponse("search.html", {
+            "request": request,
+            "skills": skills,
+            "location": location,
+            "experience": experience,
+            "results": []
+        })
 
     with SessionLocal() as db:
         query = db.query(Candidate)
@@ -106,9 +114,14 @@ async def search_page(
     })
 
 
-@router.get("/new-arrivals", response_class=HTMLResponse)
+# -------------------- NEW ARRIVALS PAGE --------------------
+@router.get("/new_arrivals", response_class=HTMLResponse)
 async def new_arrivals_page(request: Request):
+    """Show latest clients in descending order by creation date"""
     with SessionLocal() as db:
-        clients_data = db.query(Client).order_by(Client.created_at.desc()).all()
+        clients_data = db.query(Client).order_by(Client.created_at.desc()).limit(10).all()
 
-    return templates.TemplateResponse("new_arrivals.html", {"request": request, "clients": clients_data})
+    return templates.TemplateResponse("new_arrivals.html", {
+        "request": request,
+        "clients": clients_data
+    })

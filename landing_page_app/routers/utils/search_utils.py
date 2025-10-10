@@ -72,7 +72,7 @@ def _collect_api_keys() -> List[str]:
     return out
 
 API_KEYS: List[str] = _collect_api_keys()
-GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL", os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash"))
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL", os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash-lite"))
 JD_MATCH_THRESHOLD = int(os.getenv("JD_MATCH_THRESHOLD", "70"))
 GEMINI_PER_KEY_RETRIES = int(os.getenv("GEMINI_PER_KEY_RETRIES", "2"))
 GEMINI_DEBUG = os.getenv("GEMINI_DEBUG", "0").lower() in ("1","true","yes")

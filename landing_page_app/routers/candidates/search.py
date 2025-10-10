@@ -263,52 +263,38 @@ async def search(request: Request,
             "clients": clients,
         })
 
-    # 1) Start from candidates that match basic keywords (fast prefilter)
+    # 1) Start from all candidates
     q = db.query(Candidate)
 
+    # skills filter
     if skills:
         tokens = [t.strip() for t in skills.split(",") if t.strip()]
         if tokens:
             filters = [func.lower(func.coalesce(Candidate.skillset, "")).like(f"%{t.lower()}%") for t in tokens]
             q = q.filter(or_(*filters))
 
+    # location prefilter
     if location:
         q = q.filter(func.lower(func.coalesce(Candidate.location, "")).like(f"%{location.strip().lower()}%"))
 
-    if experience:
-        try:
-            min_m, max_m = parse_experience_filter_input(experience)
-            if min_m is not None:
-                yrs = int(min_m / 12)
-                q = q.filter(or_(
-                    func.coalesce(Candidate.relevant_experience, "").like(f"%{yrs}%"),
-                    func.coalesce(Candidate.it_experience, "").like(f"%{yrs}%")
-                ))
-        except Exception:
-            pass
+    # fetch candidates (without wrong LIKE on years)
+    candidates = q.order_by(func.coalesce(Candidate.candidates_id, 0).desc()).limit(500).all()
 
-    candidates = q.order_by(func.coalesce(Candidate.candidates_id, 0).desc()).limit(200).all()
-
-    
-    # -------------------------
-    # Enforce strict token-level location & strict experience filtering
-    # -------------------------
+    # strict location match
     if location and str(location).strip():
         candidates = [c for c in candidates if _location_matches(getattr(c, 'location', '') or '', location)]
 
+    # experience filter using months
     if experience and str(experience).strip():
         try:
             min_m, max_m = parse_experience_filter_input(experience)
         except Exception:
             min_m, max_m = None, None
-    if min_m is not None:
+
+    if min_m is not None or max_m is not None:
         candidates = _filter_candidates_by_experience(candidates, min_m, max_m)
 
-
-    
-    # Manual AI scoring removed: manual searches do not run AI evaluation.
     final_list = candidates
-
 
 
     

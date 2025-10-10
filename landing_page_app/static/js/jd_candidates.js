@@ -424,3 +424,19 @@ document.addEventListener('change', async (e) => {
     }
   }
 });
+
+// Hide specific columns completely
+function hideColumns(cols) {
+  const table = document.querySelector('table.candidates');
+  if (!table) return;
+
+  table.querySelectorAll('tr').forEach(row => {
+    cols.forEach(c => {
+      const cell = row.children[c - 1]; // columns are 1-indexed
+      if (cell) cell.style.display = 'none';
+    });
+  });
+}
+
+// call it
+hideColumns([1, 4, 7, 9, 10, 11, 13, 16]);

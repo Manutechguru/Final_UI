@@ -7,73 +7,103 @@
 <div class="nxg-container" style="max-width:1180px; margin:18px auto;">
 
   <!-- TOP HERO / SEARCH AREA -->
-  <div class="hero-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:18px;">
-    <div class="card-manual" style="background:#fff; border-radius:12px; padding:14px; box-shadow:0 8px 20px rgba(14,30,37,0.04); border:1px solid rgba(14,30,37,0.04);">
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <div style="font-weight:800; font-size:16px; color:#0f172a;">Manual Search</div>
-        <div style="font-size:13px; color:#6b7280;">Quick filters</div>
+  <div class="hero-row" style="display:grid; grid-template-columns: 1fr; gap:16px; margin-bottom:18px;">
+  <div class="hero-row" style="display:grid; grid-template-columns: 1fr; gap:16px; margin-bottom:18px;">
+  <div class="card-manual" style="background:#fff; border-radius:12px; padding:14px; box-shadow:0 4px 10px rgba(14,30,37,0.06); border:1px solid rgba(14,30,37,0.06);">
+    
+    <!-- Header Row -->
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-weight:800; font-size:16px; color:#0f172a;">Manual Search</div>
+      <div style="font-size:13px; color:#6b7280;">Quick filters</div>
+    </div>
+
+    <!-- Manual Search Form -->
+    <form id="searchForm" method="GET" action="/candidates/search" style="display:grid; gap:12px; margin-top:10px;">
+
+      <!-- Row 1: Skills (full width) -->
+      <div>
+        <label style="font-size:12px; color:#6b7280;">Skills</label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="bi bi-stars" style="color:#2563eb; font-size:18px;"></i>
+          <input name="skills" value="{{ skills or '' }}" placeholder="e.g. SQL, Python, AWS" 
+                 class="form-control" 
+                 style="border-radius:8px; padding:10px 12px; border:1px solid #e6eefc; width:100%;">
+        </div>
       </div>
 
-      <form id="searchForm" method="GET" action="/candidates/search" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-        <div>
-          <label style="font-size:12px; color:#6b7280;">Skills</label>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <i class="bi bi-stars" style="color:#2563eb; font-size:18px;"></i>
-            <input name="skills" value="{{ skills or '' }}" placeholder="e.g. SQL, Python, AWS" class="form-control" style="border-radius:8px; padding:8px 10px; border:1px solid #e6eefc;">
-          </div>
-        </div>
+      <!-- Row 2: Location | Experience | Buttons -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr auto auto; gap:10px; align-items:end;">
 
+        <!-- Location -->
         <div>
           <label style="font-size:12px; color:#6b7280;">Location</label>
           <div style="display:flex; align-items:center; gap:8px;">
             <i class="bi bi-geo-alt" style="color:#2563eb; font-size:18px;"></i>
-            <input name="location" value="{{ location or '' }}" placeholder="City or Region" class="form-control" style="border-radius:8px; padding:8px 10px; border:1px solid #e6eefc;">
+            <input name="location" value="{{ location or '' }}" placeholder="City or Region" 
+                   class="form-control" 
+                   style="border-radius:8px; padding:10px 12px; border:1px solid #e6eefc;">
           </div>
         </div>
 
+        <!-- Experience -->
         <div>
           <label style="font-size:12px; color:#6b7280;">Experience</label>
           <div style="display:flex; align-items:center; gap:8px;">
             <i class="bi bi-briefcase" style="color:#2563eb; font-size:18px;"></i>
-            <input name="experience" value="{{ experience or '' }}" placeholder="e.g. 4 or 3-5 or 4y 6m" class="form-control" style="border-radius:8px; padding:8px 10px; border:1px solid #e6eefc;">
+            <input name="experience" value="{{ experience or '' }}" placeholder="e.g. 4 or 3-5 or 4y 6m" 
+                   class="form-control" 
+                   style="border-radius:8px; padding:10px 12px; border:1px solid #e6eefc;">
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="display:flex; gap:8px; width:100%;">
-            <button type="submit" class="btn btn-primary" style="flex:1; border-radius:8px; padding:9px 12px;">Search</button>
-            <a href="/candidates/search" class="btn btn-outline-secondary reset-btn" style="flex:1; border-radius:8px; padding:9px 12px;">Reset</a>
-          </div>
+        <!-- Search button -->
+        <div>
+          <button type="submit" class="btn btn-primary manual-action" 
+                  style="border-radius:8px">Search</button>
         </div>
-      </form>
 
-      <div style="display:flex; gap:8px; margin-top:12px; align-items:center;">
-        <select id="clientSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
-          <option value="">Select Client</option>
-          {% for client in clients %}
-            <option value="{{ client.client_id }}">{{ client.client_name }}</option>
-          {% endfor %}
-        </select>
+        <!-- Reset button -->
+        <div>
+          <a href="/candidates/search" class="btn btn-outline-secondary reset-btn manual-action" 
+             style="border-radius:8px">Reset</a>
+        </div>
 
-        <select id="vendorSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
-          <option value="">Select Manager</option>
-        </select>
-
-        <select id="jdSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
-          <option value="">Select Job</option>
-        </select>
       </div>
-      <!-- Dropdown AI Proceed button: posts selected job_id to backend -->
-      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-        <form id="dropdownAiForm" method="POST" action="/candidates/dropdown-ai-search" style="display:flex; gap:10px;">
-          <input type="hidden" name="job_id" id="selectedJobInput" />
-          <button type="submit" class="btn proceed-btn" style="background:#10b981; color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:700;">
-            <i class="bi bi-magic me-1"></i> Proceed
-          </button>
-        </form>
-      </div>
+    </form>
 
-      
+    <!-- NEW Advanced Search Heading -->
+    <div style="margin-top:18px; font-weight:800; font-size:16px; color:#0f172a;">
+      Filter Candidates using JD
+    </div>
+<!-- Advanced Search -->
+<div class="advanced-search-section">
+  <label class="fw-bold mb-2 d-block"></label>
+
+  <div class="advanced-search-row">
+    <select id="clientSelect" class="form-select">
+      <option value="">Select Client</option>
+      {% for client in clients %}
+        <option value="{{ client.client_id }}">{{ client.client_name }}</option>
+      {% endfor %}
+    </select>
+
+    <select id="vendorSelect" class="form-select">
+      <option value="">Select Manager</option>
+    </select>
+
+    <select id="jdSelect" class="form-select">
+      <option value="">Select Job</option>
+    </select>
+
+    <form id="dropdownAiForm" method="POST" action="/candidates/dropdown-ai-search">
+      <input type="hidden" name="job_id" id="selectedJobInput" />
+      <button type="submit" class="btn proceed-btn">
+        Proceed
+      </button>
+    </form>
+  </div>
+</div>
+
 
 <script>
 (function(){
@@ -133,32 +163,14 @@
     </div>
   </div>
 
-  {% if results is defined and results %}
-  <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
-    <div style="background:#fff; border:1px solid #eef2f7; border-radius:10px; padding:10px 14px;">
-      <div style="font-weight:800; font-size:18px;">{{ results|length }}</div>
-      <div style="font-size:12px; color:#6b7280;">Total Candidates</div>
-    </div>
-    <div style="background:#fff; border:1px solid #eef2f7; border-radius:10px; padding:10px 14px;">
-      <div id="kpiSelected" style="font-weight:800; font-size:18px;">0</div>
-      <div style="font-size:12px; color:#6b7280;">Selected</div>
-    </div>
-    <div style="background:#fff; border:1px solid #eef2f7; border-radius:10px; padding:10px 14px;">
-      <div style="font-weight:800; font-size:18px;">{{ clients|length }}</div>
-      <div style="font-size:12px; color:#6b7280;">Clients</div>
-    </div>
-    <div style="flex:1"></div>
-  </div>
-  {% endif %}
-
-  <div style="background:#fff; border:1px solid #eef4fb; border-radius:10px; overflow:hidden;">
-    <div style="padding:14px;">
+  <div class="results-block" style="background:#fff; border:1px solid #eef4fb; border-radius:10px; overflow:hidden;">
+  <div class="results-inner" style="padding:12px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div style="font-weight:700; font-size:15px;">Search Results</div>
         <div style="color:#6b7280; font-size:13px;">Showing <strong id="visibleCountLabel">{% if results is defined and results %}{{ results|length }}{% else %}0{% endif %}</strong> candidates</div>
       </div>
 
-      <table class="clean-table" style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+      <table class="clean-table compact-results" style="width:100%; border-collapse:collapse; font-size:0.90rem;">
         <thead style="background:#fff; border-bottom:1px solid #eef2f7;">
           <tr style="text-align:left; color:#374151; font-weight:700;">
             <th style="width:56px; padding:12px;"></th>
@@ -215,12 +227,11 @@
                     <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
                       <span class="ai-score-cell" data-id="{{ cid }}" style="font-weight:800;">{{ (candidate.score | default(candidate.ai_score)) }}</span>
                       <button type="button" class="ai-explain-btn" data-id="{{ cid }}" title="Explain" style="border:1px solid #e5e7eb; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button>
-                      <button type="button" class="ai-reset-btn" data-id="{{ cid }}" title="Reset" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px; color:#b91c1c;">Reset</button>
                     </div>
                   </td>
                   <td style="padding:12px; vertical-align:middle;">
                     {% if candidate.resumelinks %}
-                      <a href="{{ candidate.resumelinks }}" target="_blank" style="color:#2563eb; text-decoration:none;">View <i class="bi bi-paperclip"></i></a>
+                      <a href="{{ candidate.resumelinks }}" target="_blank" style="color:#2563eb; text-decoration:none;"><i class="bi bi-paperclip"></i></a>
                     {% else %}
                       <span style="color:#6b7280;">N/A</span>
                     {% endif %}
@@ -269,7 +280,7 @@
           We couldn't find any candidates matching your search criteria. Try relaxing filters (remove location or reduce required skills), or click Reset to start over.
         </div>
         <div style="margin-top:10px;">
-          <a href="/candidates/search" class="btn btn-outline-secondary reset-btn" style="border-radius:8px; padding:8px 12px;">Reset</a>
+          <a href="/candidates/search" class="btn btn-outline-secondary reset-btn manual-action" style="border-radius:8px">Reset</a>
         </div>
       </div>
     </div>
@@ -338,7 +349,7 @@
   <div class="ai-progress-box" role="status" aria-live="polite" aria-atomic="true">
     <div class="ai-spinner" aria-hidden="true"></div>
     <div class="ai-progress-text">
-      <div id="aiProgressTitle" style="font-weight:800; font-size:16px; color:#0f172a;">AI is evaluating candidates</div>
+      <div id="aiProgressTitle" style="font-weight:800; font-size:16px; color:#0f172a;">Searching</div>
       <div id="aiProgressSubtitle" style="font-size:13px; color:#6b7280; margin-top:6px;">Extracting keywords and matching resumes — this may take a moment.</div>
     </div>
   </div>
@@ -372,6 +383,262 @@
 .rich-toast.success { background: linear-gradient(90deg,#10b981,#059669); }
 
 #richToastContainer { position: fixed; right: 12px; top: 12px; display:flex; flex-direction:column; gap:12px; z-index:40001; }
+
+.candidate-details-box {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 0.9rem;
+}
+
+.candidate-header {
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 10px;
+}
+
+.candidate-main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.candidate-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #111827;
+}
+
+.candidate-meta {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.candidate-ai {
+  font-size: 0.9rem;
+  margin: 0;
+}
+.candidate-ai span {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.resume-link {
+  font-size: 0.85rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+.resume-missing {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 18px;
+}
+
+.candidate-grid label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.candidate-grid p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #111827;
+  word-break: break-word;
+}
+
+.candidate-grid .full-width {
+  grid-column: 1 / 3;
+}
+
+.notes-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.notes-box label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.notes-box textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e6eefc;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+.notes-box small {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+/* --- Advanced Search Inline Layout --- */
+.advanced-search-section {
+  margin-top: 10px;
+}
+
+.advanced-search-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap; /* responsive for smaller screens */
+}
+
+/* Keep original design but reduce height slightly */
+.advanced-search-row select.form-select {
+  flex: 1;
+  min-width: 180px;
+  height: 36px;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #dbe2f1;
+  box-shadow: none;
+}
+
+/* Proceed button styling consistent with Teetli */
+.advanced-search-row .proceed-btn {
+  background-color: #10b981;
+  color: #fff;
+  font-weight: 600;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  height: 36px;
+  transition: all 0.2s ease-in-out;
+}
+
+.advanced-search-row .proceed-btn:hover {
+  background-color: #0ea772;
+  transform: translateY(-1px);
+}
+
+/* --- Compact Manual Search Card --- */
+.card-manual {
+  padding: 14px 20px !important;      /* reduced inner padding */
+  border-radius: 10px !important;
+  box-shadow: 0 4px 12px rgba(14,30,37,0.04) !important;
+}
+
+/* Reduce spacing between form fields */
+.card-manual .form-group,
+.card-manual .col,
+.card-manual .row {
+  margin-bottom: 8px !important;      /* less vertical space */
+}
+
+/* Compact input and select fields */
+.card-manual input.form-control,
+.card-manual select.form-select {
+  height: 36px !important;            /* reduce height */
+  padding: 4px 8px !important;        /* tighter inner spacing */
+  font-size: 14px !important;         /* slightly smaller text */
+}
+
+/* Compact buttons inside the manual search */
+.card-manual button {
+  height: 36px !important;
+  padding: 0 14px !important;
+  font-size: 14px !important;
+}
+
+/* Adjust Advanced Search row spacing */
+.advanced-search-section {
+  margin-top: 6px !important;
+}
+
+.advanced-search-row {
+  gap: 8px !important;
+  margin-top: 6px !important;
+}
+
+/* Proceed button height matches selects */
+.advanced-search-row .proceed-btn {
+  height: 36px !important;
+  padding: 0 14px !important;
+}
+
+
+
+/* ---------- unify Search / Reset button sizing in Manual Search (non-invasive) ---------- */
+/* apply to both <button> and <a> when we add class="manual-action" */
+.card-manual .manual-action {
+  height: 36px !important;              /* same height as compact inputs */
+  padding: 0 12px !important;           /* consistent horizontal padding */
+  min-width: 120px;                     /* ensures a sensible visible width */
+  box-sizing: border-box;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px !important;
+  border-radius: 8px !important;        /* keep your existing rounded corners */
+}
+
+/* ensure reset links elsewhere that use reset-btn also align */
+.reset-btn.manual-action {
+  height: 36px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+
+
+/* ADD THIS: make Manual Search static & make Search Results scrollable */
+/* Minimal, non-invasive overrides */
+.card-manual {
+  /* keep your existing compact styling but make it sticky so it remains visible */
+  position: sticky !important;
+  top: 18px !important;
+  z-index: 40 !important;
+  max-width: 100% !important;
+}
+
+/* Results container: outer box limits overall height; inner box becomes the scrolling area */
+.results-block {
+  max-height: calc(100vh - 140px); /* leave room for header + manual card */
+  overflow: hidden !important;
+}
+.results-inner {
+  max-height: calc(100vh - 180px);
+  overflow: auto !important; /* only the results area scrolls */
+  padding: 12px !important;  /* slightly reduced padding for compactness */
+}
+
+/* Slightly tighten table cells to reduce the visual size of the block */
+.clean-table th,
+.clean-table td {
+  padding: 10px !important;
+}
+.compact-results {
+  font-size: 0.88rem !important;
+}
+
+/* Controls compactness */
+#records-per-page {
+  padding: 6px 8px !important;
+  height: 34px !important;
+}
+
+/* Mobile fallback: disable sticky for very small screens so layout remains natural */
+@media (max-width: 720px) {
+  .card-manual { position: static !important; top: auto !important; }
+  .results-block { max-height: 52vh !important; }
+  .results-inner { max-height: 48vh !important; }
+}
+
 </style>
 
 <div id="richToastContainer" aria-live="polite" aria-atomic="true"></div>
@@ -468,7 +735,7 @@ function showToast(msg, type='default', time=3200) {
     const vendorSelect = vendorSelectEl();
     const jdSelect = jdSelectEl();
     if (!vendorSelect || !jdSelect) return;
-    vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
+    vendorSelect.innerHTML = '<option value="">Select Manager</option>';
     jdSelect.innerHTML = '<option value="">Select Job</option>';
     if (!clientId) { saveDropdownState(); applyLinkedIds(); return; }
     try {
@@ -533,7 +800,7 @@ function showToast(msg, type='default', time=3200) {
             clearDropdownState();
             const c = clientSelectEl(); const v = vendorSelectEl(); const j = jdSelectEl();
             if (c) c.value = '';
-            if (v) v.innerHTML = '<option value="">Select Vendor</option>';
+            if (v) v.innerHTML = '<option value="">Select Manager</option>';
             if (j) j.innerHTML = '<option value="">Select Job</option>';
             sessionStorage.setItem(RESET_FLAG, Date.now().toString());
           } catch(e){}
@@ -665,9 +932,8 @@ try {
       const tbodyEl = document.getElementById('search-results-body');
       if (!tbodyEl) return;
       const trs = Array.from(tbodyEl.querySelectorAll('tr.candidate-row'));
-      const filtered = trs.filter(tr => { const cb = tr.querySelector('.candidate-link-checkbox'); return !(cb && cb.checked); });
-      if (!filtered.length) { localStorage.removeItem(STORAGE_KEY); return; }
-      const results = filtered.map(tr => {
+      if (!trs.length) { localStorage.removeItem(STORAGE_KEY); return; }
+      const results = trs.map(tr => {
         const cid = tr.getAttribute('data-candidate-id') || '';
         const name = (tr.querySelector('td:nth-child(2)')?.innerText || '').trim();
         const skillElems = Array.from(tr.querySelectorAll('td:nth-child(3) span')).map(s=>s.innerText.trim());
@@ -678,7 +944,11 @@ try {
         const score = (tr.querySelector('.ai-score-cell')?.innerText || '').trim();
         const resumelink = tr.querySelector('td:nth-child(8) a') ? tr.querySelector('td:nth-child(8) a').href : '';
         const location = (tr.querySelector('td:nth-child(9)')?.innerText || '').trim();
-        return { candidates_id: cid, candidate_name: name, skillset, email, contact, it_experience, score, resumelinks: resumelink, location, is_linked: false };
+        const cb = tr.querySelector('.candidate-link-checkbox');
+        const is_linked = !!((cb && cb.checked) || String(tr.dataset.linked) === 'true');
+        const existing_jd_ids = tr.dataset.existingJdIds || tr.getAttribute('data-existing-jd-ids') || '';
+        const mapping_display = tr.dataset.mappingDisplay || tr.getAttribute('data-mapping-display') || '';
+        return { candidates_id: cid, candidate_name: name, skillset, email, contact, it_experience, score, resumelinks: resumelink, location, is_linked: !!is_linked, existing_jd_ids: existing_jd_ids, mapping_display: mapping_display };
       });
       const clientSelect = clientSelectEl(); const vendorSelect = vendorSelectEl(); const jdSelect = jdSelectEl();
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ ts: Date.now(), results, clientId: clientSelect ? clientSelect.value : '', vendorId: vendorSelect ? vendorSelect.value : '', jobId: jdSelect ? jdSelect.value : '' }));
@@ -712,7 +982,7 @@ try {
           const rv = await fetch(`/candidates/get-vendors/${encodeURIComponent(store.clientId)}`).catch(()=>null);
           if (rv && rv.ok) {
             const vendors = await rv.json().catch(()=>[]);
-            vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
+            vendorSelect.innerHTML = '<option value="">Select Manager</option>';
             vendors.forEach(v => { const o = document.createElement('option'); o.value = v.vendor_id; o.textContent = v.vendor_name; vendorSelect.appendChild(o); });
             if (store.vendorId) {
               vendorSelect.value = store.vendorId;
@@ -748,12 +1018,12 @@ try {
     const contact = candidate.contact || 'N/A';
     const itExp = candidate.it_experience || candidate.it_exp || 'N/A';
     const score = candidate.score || candidate.ai_score || '';
-    const resume = candidate.resumelinks ? `<a href="${escapeHtml(candidate.resumelinks)}" target="_blank" style="color:#2563eb; text-decoration:none;">View <i class="bi bi-paperclip"></i></a>` : '<span style="color:#6b7280;">N/A</span>';
+    const resume = candidate.resumelinks ? `<a href="${escapeHtml(candidate.resumelinks)}" target="_blank" style="color:#2563eb; text-decoration:none;"><i class="bi bi-paperclip"></i></a>` : '<span style="color:#6b7280;">N/A</span>';
     const loc = candidate.location || 'N/A';
     return `
-      <tr class="candidate-row" data-candidate-id="${escapeHtml(cid)}" data-existing-jd-ids="${escapeHtml(candidate.existing_jd_ids || '')}" data-mapping-display="${escapeHtml(candidate.mapping_display || '')}">
+      <tr class="candidate-row" data-candidate-id="${escapeHtml(cid)}" data-linked="${candidate.is_linked ? 'true' : 'false'}" data-existing-jd-ids="${escapeHtml(candidate.existing_jd_ids || '')}" data-mapping-display="${escapeHtml(candidate.mapping_display || '')}">
         <td style="padding:8px 12px; text-align:center; vertical-align:middle;">
-          <input type="checkbox" id="link_cb_${escapeHtml(cid)}" class="candidate-link-checkbox" data-candidate="${escapeHtml(cid)}" style="position:absolute; left:-9999px;">
+          <input type="checkbox" id="link_cb_${escapeHtml(cid)}" class="candidate-link-checkbox" data-candidate="${escapeHtml(cid)}" style="position:absolute; left:-9999px;" ${candidate.is_linked ? 'checked' : ''}>
           <label for="link_cb_${escapeHtml(cid)}" class="link-btn" style="display:inline-block; width:36px; height:36px; border-radius:10px; border:1px solid #d1d5db; background:#fff; text-align:center; line-height:36px; cursor:pointer;">🔗</label>
         </td>
         <td style="padding:12px;"><div style="font-weight:700; color:#111827;">${escapeHtml(name)}</div></td>
@@ -761,7 +1031,7 @@ try {
         <td style="padding:12px; color:#374151;">${escapeHtml(email)}</td>
         <td style="padding:12px; color:#374151;">${escapeHtml(contact)}</td>
         <td style="padding:12px; color:#374151;">${escapeHtml(itExp)}</td>
-        <td style="padding:12px; text-align:center;"><div style="display:flex; gap:8px; align-items:center; justify-content:center;"><span class="ai-score-cell" data-id="${escapeHtml(cid)}" style="font-weight:800;">${escapeHtml(score)}</span><button type="button" class="ai-explain-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #e5e7eb; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button><button type="button" class="ai-reset-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px; color:#b91c1c;">Reset</button></div></td>
+        <td style="padding:12px; text-align:center;"><div style="display:flex; gap:8px; align-items:center; justify-content:center;"><span class="ai-score-cell" data-id="${escapeHtml(cid)}" style="font-weight:800;">${escapeHtml(score)}</span><button type="button" class="ai-explain-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #e5e7eb; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button><button type="button" class="ai-reset-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Reset</button></div></td>
         <td style="padding:12px;">${resume}</td>
         <td style="padding:12px; color:#374151;">${escapeHtml(loc)}</td>
       </tr>
@@ -774,6 +1044,82 @@ try {
     if (!tbodyEl) return;
     if (tbodyEl._nxgBound === '1') return;
     tbodyEl._nxgBound = '1';
+
+  // --- capture-phase click interception on label.link-btn to show mapping-warning immediately (prevents checkbox flicker) ---
+  tbodyEl.addEventListener('click', function (e) {
+    try {
+      const label = e.target.closest && e.target.closest('label.link-btn');
+      if (!label) return;
+      // derive checkbox
+      let checkbox = null;
+      const forAttr = label.getAttribute && label.getAttribute('for');
+      if (forAttr) checkbox = document.getElementById(forAttr);
+      if (!checkbox) checkbox = label.closest('td') ? label.closest('td').querySelector('.candidate-link-checkbox') : null;
+      if (!checkbox) return;
+
+      const row = checkbox.closest('tr.candidate-row');
+      const candidateId = Number(checkbox.dataset && checkbox.dataset.candidate);
+      const jd = jdSelectEl && jdSelectEl();
+      const jobId = jd && jd.value ? String(jd.value) : null;
+      if (!jobId) return; // require JD selected for mapping checks
+
+      const existingIdsRaw = (row && row.dataset && row.dataset.existingJdIds) ? (row.dataset.existingJdIds || '') : '';
+      const existingIds = existingIdsRaw.split(',').map(s=>s.trim()).filter(Boolean);
+      // If candidate already mapped elsewhere (one or more ids exist) AND selected job is different -> intercept
+      if (existingIds.length > 0 && !existingIds.includes(String(jobId))) {
+        // prevent default label toggle and further handlers
+        try { e.preventDefault(); e.stopImmediatePropagation(); } catch(err) {}
+        // Build and display mapping modal (reuse same DOM nodes as handleToggleLink)
+        try {
+          const mappingDisplayRaw = (row && row.dataset && row.dataset.mappingDisplay) ? row.dataset.mappingDisplay : '';
+          const mappingDisplayDecoded = (typeof decodeHtmlEntities === 'function') ? decodeHtmlEntities(mappingDisplayRaw || '') : mappingDisplayRaw;
+          const titleEl = document.getElementById('mappingWarningTitle');
+          const bodyEl = document.getElementById('mappingWarningBody');
+          const modal = document.getElementById('mappingWarningModal');
+          if (titleEl && bodyEl && modal) {
+            let mappingItems = [];
+            if (mappingDisplayDecoded && mappingDisplayDecoded.trim()) {
+              mappingItems = mappingDisplayDecoded.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
+            } else if (existingIds.length) {
+              mappingItems = existingIds.map(id => `Job ID: ${id}`);
+            }
+            // Build HTML lines
+            let linesHtml = '';
+            try {
+              if (mappingItems.length && existingIds.length && mappingItems.length === existingIds.length) {
+                linesHtml = mappingItems.map((item, idx) => {
+                  const jid = existingIds[idx];
+                  if (jid) {
+                    const href = `/candidates/jd/${encodeURIComponent(jid)}?highlight=${encodeURIComponent(candidateId)}`;
+                    return `<div style="margin-top:8px; font-weight:700;"><a href="${escapeHtml(href)}" style="color:#1d4ed8; text-decoration:underline;">${escapeHtml(item)}</a></div>`;
+                  }
+                  return `<div style="margin-top:8px; font-weight:700;">${escapeHtml(item)}</div>`;
+                }).join('');
+              } else if (existingIds.length) {
+                linesHtml = existingIds.map(jid => {
+                  const href = `/candidates/jd/${encodeURIComponent(jid)}?highlight=${encodeURIComponent(candidateId)}`;
+                  return `<div style="margin-top:8px; font-weight:700;"><a href="${escapeHtml(href)}" style="color:#1d4ed8; text-decoration:underline;">Job ID: ${escapeHtml(String(jid))}</a></div>`;
+                }).join('');
+              } else {
+                linesHtml = mappingItems.map(item => `<div style="margin-top:8px; font-weight:700;">${escapeHtml(item)}</div>`).join('');
+              }
+            } catch (e) {
+              linesHtml = mappingItems.map(item => `<div style="margin-top:8px; font-weight:700;">${escapeHtml(item)}</div>`).join('');
+            }
+            titleEl.textContent = 'Candidate already linked';
+            bodyEl.innerHTML = `<div>This candidate is already linked under:</div>${linesHtml}<div style="margin-top:12px;">Do you want to also link the candidate to the selected job?</div>`;
+            // set pending toggle with prevChecked recorded (current visual state)
+            window._nxg_pending_toggle = { checkbox, candidateId, jobId: Number(jobId), linked: true, row, prevChecked: !!checkbox.checked };
+            modal.style.display = 'flex';
+            try { document.body.style.overflow = 'hidden'; } catch (e) {}
+            return;
+          }
+        } catch (err) {
+          // fallback to default behavior if modal build fails
+        }
+      }
+    } catch (err) { /* ignore */ }
+  }, true);
 
     // click: open modal or explain/reset
     tbodyEl.addEventListener('click', async function (e) {
@@ -798,25 +1144,7 @@ try {
         return;
       }
 
-      const resetBtn = e.target.closest('.ai-reset-btn');
-      if (resetBtn) {
-        e.preventDefault();
-        const cid = resetBtn.dataset.id;
-        if (!cid) return;
-        if (!confirm('Reset AI score for this candidate?')) return;
-        try {
-          showAiProgress({ title:'Resetting score', subtitle:'Please wait...' });
-          const res = await fetch('/candidates/ai-reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ candidate_id: Number(cid) })});
-          const data = await res.json().catch(()=>null);
-          hideAiProgress();
-          if (!res.ok) throw new Error(data?.message || 'Reset failed');
-          const scoreEl = document.querySelector('.ai-score-cell[data-id="'+cid+'"]');
-          if (scoreEl) scoreEl.innerText = '';
-          serializeSnapshot();
-          alert('AI score reset.');
-        } catch(err){ hideAiProgress(); alert('Failed to reset AI score: ' + (err.message || err)); }
-        return;
-      }
+      
 
       // ignore clicks on inputs/labels/buttons/anchors
       if (e.target.closest('input, label, a, button, textarea, select')) return;
@@ -929,7 +1257,7 @@ if (isLinkingToDifferent) {
                                 ${linesHtml}
                                 <div style="margin-top:12px;">Proceed to unlink?</div>`;
           }
-          _nxg_pending_toggle = { checkbox, candidateId, jobId, linked, row };
+          _nxg_pending_toggle = { checkbox, candidateId, jobId, linked, row, prevChecked: !linked };
           modal.style.display = 'flex';
           try { document.body.style.overflow = 'hidden'; } catch(e){}
           return; // wait for modal confirm/cancel
@@ -965,8 +1293,13 @@ if (isLinkingToDifferent) {
     modal.style.display = 'none';
     try { document.body.style.overflow = ''; } catch(e){}
     if (_nxg_pending_toggle && revertCheckbox && _nxg_pending_toggle.checkbox) {
-      // revert checkbox to prior state (user cancelled)
-      try { _nxg_pending_toggle.checkbox.checked = !_nxg_pending_toggle.linked; } catch(e){}
+      try {
+        if (typeof _nxg_pending_toggle.prevChecked !== 'undefined') {
+          _nxg_pending_toggle.checkbox.checked = !!_nxg_pending_toggle.prevChecked;
+        } else {
+          _nxg_pending_toggle.checkbox.checked = !_nxg_pending_toggle.linked;
+        }
+      } catch(e){}
     }
     _nxg_pending_toggle = null;
   }
@@ -975,6 +1308,7 @@ if (isLinkingToDifferent) {
     confirmBtn.addEventListener('click', async function () {
       if (!_nxg_pending_toggle) { closeModalAndRestore(true); return; }
       const pending = _nxg_pending_toggle;
+      try { if (pending && pending.checkbox) pending.checkbox.checked = !!pending.linked; } catch (e) {}
       closeModalAndRestore(false);
       // perform the toggle action
       await _nxg_perform_toggle(pending);
@@ -1143,41 +1477,40 @@ if (!jobId) { applyLinkedIds(); return; }
       const mapping_jd_id = c.mapping_jd_id || c.mapping || '';
 
       const body = document.getElementById('candidateModalBody');
-      body.innerHTML = `
-        <div style="display:flex; gap:14px; align-items:flex-start;">
-          <div style="flex:0 0 220px; padding:12px; border-right:1px solid #eef4fb;">
-            <div style="font-weight:800; font-size:18px; color:#111827;">${escapeHtml(name)}</div>
-            <div style="margin-top:8px; font-weight:700; font-size:14px; color:#111827;">AI Score: <span style="font-weight:900; color:#0f172a;">${escapeHtml(aiScore)}</span></div>
-            <div style="margin-top:12px;">${resume ? `<a href="${escapeHtml(resume)}" target="_blank" style="color:#2563eb; text-decoration:none;">View resume <i class="bi bi-paperclip"></i></a>` : '<span style="color:#6b7280;">No resume</span>'}</div>
-            <div style="margin-top:12px; color:#6b7280;">${escapeHtml(company)}</div>
-            <div style="margin-top:6px; color:#6b7280;">${escapeHtml(location)}</div>
-          </div>
+body.innerHTML = `
+  <div class="candidate-details-box">
+    <div class="candidate-header">
+      <div class="candidate-main-info">
+        <h2 class="candidate-name">${escapeHtml(name)}</h2>
+        <p class="candidate-meta">${escapeHtml(company)} • ${escapeHtml(location)}</p>
+        <p class="candidate-ai">AI Score: <span>${escapeHtml(aiScore)}</span></p>
+        ${resume ? `<a href="${escapeHtml(resume)}" target="_blank" class="resume-link">View Resume <i class="bi bi-paperclip"></i></a>` : '<span class="resume-missing">No resume</span>'}
+      </div>
+    </div>
 
-          <div style="flex:1; padding:8px 6px;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-              <div><strong>Skills</strong><div style="margin-top:6px;">${escapeHtml(skills)}</div></div>
-              <div><strong>Relevant Exp</strong><div style="margin-top:6px;">${escapeHtml(relExp)}</div></div>
+    <div class="candidate-grid">
+      <div><label>Skills</label><p>${escapeHtml(skills)}</p></div>
+      <div><label>Relevant Exp</label><p>${escapeHtml(relExp)}</p></div>
 
-              <div><strong>Email</strong><div style="margin-top:6px;">${escapeHtml(email)}</div></div>
-              <div><strong>Contact</strong><div style="margin-top:6px;">${escapeHtml(contact)}</div></div>
+      <div><label>Email</label><p>${escapeHtml(email)}</p></div>
+      <div><label>Contact</label><p>${escapeHtml(contact)}</p></div>
 
-              <div><strong>IT Exp</strong><div style="margin-top:6px;">${escapeHtml(itExp)}</div></div>
-              <div><strong>Education</strong><div style="margin-top:6px;">${escapeHtml(education)}</div></div>
+      <div><label>IT Exp</label><p>${escapeHtml(itExp)}</p></div>
+      <div><label>Education</label><p>${escapeHtml(education)}</p></div>
 
-              <div><strong>Clients</strong><div style="margin-top:6px;">${escapeHtml(c.clients || '')}</div></div>
-              <div><strong>Notice</strong><div style="margin-top:6px;">${escapeHtml(notice)}</div></div>
+      <div><label>Clients</label><p>${escapeHtml(c.clients || '')}</p></div>
+      <div><label>Notice</label><p>${escapeHtml(notice)}</p></div>
 
-              <div style="grid-column:1/3;"><strong>Comment</strong><div style="margin-top:6px;">${escapeHtml(comment)}</div></div>
-            </div>
+      <div class="full-width"><label>Comment</label><p>${escapeHtml(comment)}</p></div>
+    </div>
 
-            <div style="margin-top:12px;">
-              <label style="font-weight:700;">Recruitment Notes</label>
-              <textarea id="modalRecruitmentNotes" rows="5" style="width:100%; padding:8px; border:1px solid #e6eefc; border-radius:6px; margin-top:6px;">${escapeHtml(notes)}</textarea>
-              <div style="font-size:12px; color:#6b7280; margin-top:6px;">Notes are stored for this candidate; if later linked to a Job they may be associated with the mapping.</div>
-            </div>
-          </div>
-        </div>
-      `;
+    <div class="notes-box">
+      <label>Recruitment Notes</label>
+      <textarea id="modalRecruitmentNotes" rows="2">${escapeHtml(notes)}</textarea>
+    </div>
+  </div>
+`;
+
 
       const backdrop = document.getElementById('candidateModalBackdrop');
       backdrop.dataset.candidateId = candidateId;
@@ -1267,7 +1600,7 @@ if (!jobId) { applyLinkedIds(); return; }
         const skillsVal = skillsEl && skillsEl.value ? skillsEl.value.trim() : '';
         const expVal = expEl && expEl.value ? expEl.value.trim() : '';
         const locVal = locEl && locEl.value ? locEl.value.trim() : '';
-        if (skillsVal || expVal || locVal) showAiProgress({ title:'AI is evaluating candidates', subtitle:'Preparing search results — please wait.' });
+        if (skillsVal || expVal || locVal) showAiProgress({ title:'Searching', subtitle:'Preparing search results — please wait.' });
       } catch(e){}
     });
   }

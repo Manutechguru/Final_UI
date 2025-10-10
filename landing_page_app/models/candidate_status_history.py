@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String
 from landing_page_app.database import Base
 from datetime import datetime
+from sqlalchemy.orm import relationship
+
 
 # The only allowed statuses for the new column
 STATUS_OPTIONS = (
@@ -22,3 +24,4 @@ class CandidateJDMapping(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
     ai_score = Column(Integer, nullable=True)
    
+    candidate = relationship("Candidate", backref="jd_mappings")

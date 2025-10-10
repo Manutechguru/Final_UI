@@ -207,9 +207,10 @@
   background: var(--danger);
 }
 
-/* Actions Column */
+/* Actions Column - UPDATED FOR DROPDOWN VISIBILITY */
 .managers-container .manager-actions {
-  width: 150px;
+  width: 80px;
+  position: relative;
 }
 
 .managers-container .manager-action-buttons {
@@ -234,19 +235,26 @@
   background: var(--primary-dark);
 }
 
+/* DROPDOWN STYLES - UPDATED FOR BETTER VISIBILITY */
 .managers-container .manager-dropdown {
   position: relative;
+  display: inline-block;
 }
 
 .managers-container .manager-dropdown-btn {
   background: transparent;
   border: 1px solid var(--border);
-  padding: 6px 8px;
+  padding: 6px 10px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
   color: var(--text);
   transition: all 0.2s;
+  width: 36px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .managers-container .manager-dropdown-btn:hover {
@@ -262,9 +270,12 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  min-width: 120px;
-  z-index: 100;
+  min-width: 140px;
+  z-index: 1000;
   display: none;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 /* Fix for last row dropdown visibility */
@@ -280,25 +291,60 @@
 .managers-container .manager-dropdown-content button {
   display: block;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: none;
   border: none;
   text-align: left;
   cursor: pointer;
   font-size: 13px;
   transition: background 0.2s;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.managers-container .manager-dropdown-content button:last-child {
+  border-bottom: none;
 }
 
 .managers-container .manager-dropdown-content button:hover {
   background: var(--bg);
 }
 
+/* Add Job Button Style */
+.managers-container .manager-add-job {
+  color: var(--success);
+  font-weight: 500;
+}
+
+.managers-container .manager-add-job:hover {
+  background: var(--success-light) !important;
+}
+
 .managers-container .manager-edit {
   color: var(--primary);
+  font-weight: 500;
+}
+
+.managers-container .manager-edit:hover {
+  background: var(--primary-light) !important;
 }
 
 .managers-container .manager-delete {
   color: var(--danger);
+  font-weight: 500;
+}
+
+.managers-container .manager-delete:hover {
+  background: var(--danger-light) !important;
+}
+
+/* Ensure table container doesn't clip dropdowns */
+.managers-container .managers-table-container {
+  overflow: visible !important;
+}
+
+.managers-container .managers-table {
+  position: relative;
 }
 
 /* Empty State */
@@ -567,7 +613,16 @@
     width: 95%;
     margin: 20px;
   }
+  
+  /* Mobile dropdown adjustments */
+  .managers-container .manager-dropdown-content {
+    right: auto;
+    left: 0;
+    min-width: 120px;
+  }
 }
+
+
 
 @media (max-width: 480px) {
   .managers-container .managers-header h1 {

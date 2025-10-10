@@ -57,7 +57,7 @@ table.candidates th:nth-child(1),
 table.candidates td:nth-child(1) { width: 4%; } /* Expander */
 
 table.candidates th:nth-child(2),
-table.candidates td:nth-child(2) { width: 4%; } /* Checkbox */
+table.candidates td:nth-child(2) { width: 3%; } /* Checkbox */
 
 table.candidates th:nth-child(3),
 table.candidates td:nth-child(3) { width: 7%; } /* Name */
@@ -667,4 +667,24 @@ table.candidates tbody tr.main-row.expanded + tr.expanded-row{ display:table-row
 .candidate-details-grid .value{
   color:#111827;
   overflow-wrap:anywhere;
+}
+
+/* Hide columns 4, 17, 19 (Skills, Recruiter Notes, AI Score) */
+.candidates th:nth-child(1),
+.candidates td:nth-child(1),
+.candidates th:nth-child(4),
+.candidates td:nth-child(4),
+.candidates th:nth-child(7),
+.candidates td:nth-child(7),
+.candidates th:nth-child(9),
+.candidates td:nth-child(9),
+.candidates th:nth-child(10),
+.candidates td:nth-child(10),
+.candidates th:nth-child(11),
+.candidates td:nth-child(11),
+.candidates th:nth-child(13),
+.candidates td:nth-child(13)
+.candidates th:nth-child(16),
+.candidates td:nth-child(16), {
+  display: none;
 }

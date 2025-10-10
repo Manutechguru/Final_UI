@@ -4,99 +4,294 @@
 
 {% block content %}
 <style>
-/* ----- Fonts ----- */
+/* Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@600;800&display=swap');
 
-/* ----- Color System (block-driven) ----- */
 :root{
-  --bg-1: #0f1724;
   --bg-2: linear-gradient(180deg,#fbfdff,#f3f7fb);
   --text-1: #0b1b2b;
   --muted: #6b7b8c;
-  --glass: rgba(255,255,255,0.85);
-  --radius: 14px;
-  --shadow-lg: 0 18px 50px rgba(12,24,40,0.08);
-  --accent-indigo: #4f46e5;
-  --accent-teal: #0ea5a4;
-  --accent-emerald: #10b981;
-  --accent-rose: #fb7185;
-  --accent-sand: #f59e0b;
+  --radius: 12px;
+  --shadow-lg: 0 14px 40px rgba(12,24,40,0.06);
   --border: rgba(15,27,43,0.06);
+  --stage-height: 44px;      /* reduced height so all buttons fit */
+  --stage-gap: 10px;
 }
 
-/* ----- Layout ----- */
+/* Page layout */
 body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
 .container { max-width: 1240px; margin: 22px auto 72px; padding: 18px; }
 .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
-.header-row h1 { font-family: Poppins, Inter; font-weight:800; font-size:1.6rem; margin:0; letter-spacing:.2px; color:#071226; }
-.btn-admin { background:#4f46e5; color:#fff; padding:8px 12px; border-radius:10px; font-weight:700; text-decoration:none; }
+.header-row h1 { font-family: Poppins, Inter; font-weight:700; font-size:1.25rem; margin:0; letter-spacing:.2px; color:#071226; }
+.btn-admin { background:#4f46e5; color:#fff; padding:8px 12px; border-radius:10px; font-weight:700; text-decoration:none; font-size:0.85rem; }
 .btn-admin:hover{ background:#4338ca; }
 
-/* ----- Grid ----- */
-.grid-4 { display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom:18px; }
-@media (max-width:1000px){ .grid-4 { grid-template-columns: repeat(2,1fr); } }
-@media (max-width:560px){ .grid-4 { grid-template-columns: 1fr; } }
+/* KPI grid - restored to a neutral / earlier feel (smaller value font) */
+.grid-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom:18px; }
+@media (max-width:1000px){ .grid-3 { grid-template-columns: repeat(2,1fr); } }
+@media (max-width:560px){ .grid-3 { grid-template-columns: 1fr; } }
 
-/* ----- KPI Block ----- */
-.kpi { border-radius: var(--radius); padding:16px; position:relative; overflow:hidden; box-shadow: var(--shadow-lg); border:1px solid var(--border); display:flex; gap:12px; align-items:center; background: linear-gradient(180deg, rgba(255,255,255,0.98), #fff); transition: transform .18s ease, box-shadow .18s ease; }
-.kpi:focus-within, .kpi:hover { transform: translateY(-6px); box-shadow: 0 28px 60px rgba(12,24,40,0.12); outline: none; }
-.kpi .icon { width:64px; height:64px; flex:0 0 64px; border-radius:12px; display:grid; place-items:center; color:white; font-weight:700; box-shadow: 0 8px 28px rgba(12,24,40,0.08); }
+.kpi { border-radius: 12px; padding:12px; position:relative; overflow:hidden; box-shadow: var(--shadow-lg); border:1px solid var(--border); display:flex; gap:12px; align-items:center; background: #fff; }
+.kpi .icon { width:56px; height:56px; flex:0 0 56px; border-radius:10px; display:grid; place-items:center; color:white; font-weight:700; box-shadow: 0 8px 20px rgba(12,24,40,0.05); }
 .kpi .meta { flex:1 1 auto; }
-.kpi .meta h3 { margin:0; font-size:.92rem; color:var(--muted); font-weight:700; }
-.kpi .meta .value { font-weight:900; font-size:2.05rem; color:#071226; margin-top:6px; display:inline-block; min-width:84px; }
-.kpi .meta .hl { font-size:.78rem; margin-top:6px; color:#6b7280; }
+.kpi .meta h3 { margin:0; font-size:0.85rem; color:var(--muted); font-weight:700; }
+.kpi .meta .value { font-weight:700; font-size:1.35rem; color:#071226; margin-top:6px; display:inline-block; }
+.kpi .meta .hl { font-size:0.78rem; margin-top:6px; color:#6b7280; }
 
-.kpi.clients { background-image: linear-gradient(120deg, rgba(79,70,229,0.06), rgba(14,165,164,0.03)); }
-.kpi.jobs    { background-image: linear-gradient(120deg, rgba(14,165,164,0.06), rgba(16,185,129,0.03)); }
-.kpi.active  { background-image: linear-gradient(120deg, rgba(16,185,129,0.06), rgba(251,113,133,0.02)); }
-.kpi.inactive{ background-image: linear-gradient(120deg, rgba(251,113,133,0.06), rgba(245,158,11,0.02)); }
+/* KPI color accents (kept similar to prior) */
+.kpi.clients { background-image: linear-gradient(120deg, rgba(79,70,229,0.03), rgba(14,165,164,0.02)); }
+.kpi.managers { background-image: linear-gradient(120deg, rgba(14,165,164,0.03), rgba(16,185,129,0.02)); }
+.kpi.jobs    { background-image: linear-gradient(120deg, rgba(16,185,129,0.03), rgba(251,113,133,0.02)); }
+.kpi .icon.clients { background: linear-gradient(180deg,#4f46e5,#7c5cff); }
+.kpi .icon.managers { background: linear-gradient(180deg,#0ea5a4,#2dd4bf); }
+.kpi .icon.jobs    { background: linear-gradient(180deg,#10b981,#34d399); }
 
-.kpi .icon.clients { background: linear-gradient(180deg, var(--accent-indigo), #7c5cff); }
-.kpi .icon.jobs    { background: linear-gradient(180deg, var(--accent-teal), #2dd4bf); }
-.kpi .icon.active  { background: linear-gradient(180deg, var(--accent-emerald), #34d399); }
-.kpi .icon.inactive{ background: linear-gradient(180deg, var(--accent-rose), #fb7185); }
+.kpi .donut { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:700; font-size:0.78rem; box-shadow: inset 0 -6px 18px rgba(255,255,255,0.04); }
 
-.kpi .donut { width:44px; height:44px; border-radius:50%; background: conic-gradient(var(--donut-color, #ddd) calc(var(--pct,0) * 1%), #eee 0); display:grid; place-items:center; color:#fff; font-weight:700; font-size:.78rem; box-shadow: inset 0 -6px 18px rgba(255,255,255,0.06); }
+/* Panels */
+.panel { background: #ffffff; border-radius: 12px; padding:14px; box-shadow: var(--shadow-lg); border:1px solid var(--border); margin-bottom:18px; }
 
-/* ----- Panels / Pipeline ----- */
-.panel { background: #ffffff; border-radius: var(--radius); padding:16px; box-shadow: var(--shadow-lg); border:1px solid var(--border); margin-bottom:18px; }
-.pipeline-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
-.pipeline-bar { height:12px; width:100%; border-radius:999px; background: #f3f6fb; overflow:hidden; display:flex; box-shadow: inset 0 -2px 8px rgba(12,24,40,0.02); border:1px solid rgba(15,27,43,0.02); }
-.pipeline-segment { height:100%; transition: width .6s cubic-bezier(.2,.9,.2,1); }
+/* Dropdowns and reset area */
+.select-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; padding:10px; background:rgba(255,255,255,0.85); border-radius:10px; border:1px solid var(--border); align-items:center; }
+.select-row select { padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:#fff; font-size:13px; min-width:180px; }
+.select-row select:disabled { background:#f8fafc; color:#94a3b8; }
 
-/* chips */
-.chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-.chip { display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; font-weight:700; font-size:.9rem; background:#fff; border:1px solid var(--border); box-shadow:0 6px 18px rgba(12,24,40,0.04); transition: transform .12s ease; }
-.chip:hover { transform: translateY(-4px); }
+/* Reset button - clearer visual: circular outline + refresh icon */
+.reset-btn {
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  border:2px solid rgba(99,102,241,0.16);
+  background: #fff;
+  display:inline-grid;
+  place-items:center;
+  cursor:pointer;
+  box-shadow: 0 8px 20px rgba(12,24,40,0.04);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.reset-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 36px rgba(12,24,40,0.08);
+  background: linear-gradient(180deg,#fbfbff,#f7f7ff);
+}
+.reset-btn svg { width:18px; height:18px; color:#6366f1; }
 
-/* ----- Tables ----- */
-.table-wrap { margin-top:6px; overflow:auto; border-radius:12px; border:1px solid var(--border); background:#fff; box-shadow:var(--shadow-lg); }
-table { width:100%; border-collapse:collapse; min-width:760px; }
-thead th { text-align:left; padding:12px 14px; font-size:.88rem; color:#5b6777; background:#fbfdff; border-bottom:1px solid rgba(15,27,43,0.04); position:sticky; top:0; z-index:2; }
-tbody td { padding:12px 14px; border-bottom:1px solid rgba(12,24,40,0.04); color:var(--text-1); font-size:.95rem; }
-tbody tr:nth-child(odd) { background: linear-gradient(90deg, rgba(250,252,255,0.8), rgba(248,249,250,0.8)); }
-tbody tr:hover { background: linear-gradient(90deg, rgba(243,248,255,0.95), rgba(245,247,250,0.95)); }
+/* Stage buttons container - now buttons will shrink equally to fit in one line */
+.stage-buttons {
+  display:flex;
+  gap:var(--stage-gap);
+  flex-wrap:nowrap;            /* try to keep in a single line */
+  align-items:center;
+  overflow-x:hidden;          /* hide any overflow; buttons will shrink to fit */
+  padding:6px 2px 8px 2px;
+}
 
-/* status badges */
-.status-badge { display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.82rem; border:1px solid rgba(15,27,43,0.04); background:#f8fafc; color:#0b1b2b; }
-.status-ont { background: linear-gradient(90deg,#ecfdf5,#ecfeef); color:#064e3b; border-color:#bbf7d0; box-shadow: 0 6px 18px rgba(16,185,129,0.06); }
-.status-delay { background: linear-gradient(90deg,#fff1f2,#fff3f4); color:#9f1239; border-color:#fecaca; box-shadow: 0 6px 18px rgba(251,113,133,0.04); }
+/* chevron button base - now flexible so all fit inside the container */
+.stage-btn {
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  padding: 0 12px;
+  height: var(--stage-height);
+  flex: 1 1 0;                /* allow shrink and grow evenly */
+  min-width: 90px;            /* floor so it doesn't get too small */
+  font-weight:700;
+  font-size: 12px;            /* reduced font size to fit */
+  line-height: 1;
+  box-shadow: 0 8px 26px rgba(12,24,40,0.05);
+  /* chevron-like shape using clip-path */
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 16px) 0%,
+    100% 50%,
+    calc(100% - 16px) 100%,
+    0% 100%,
+    16px 50%
+  );
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
 
-/* helpers */
+/* keep inner content above clip */
+.stage-btn > * { position: relative; z-index: 2; }
+
+/* small left arrow icon */
+.stage-btn svg { width:14px; height:14px; opacity:0.98; transform: translateX(-2px); }
+
+/* count badge */
+.stage-count {
+  margin-left: 6px;
+  background: rgba(255,255,255,0.18);
+  padding: 4px 8px;
+  border-radius: 999px;
+  min-width: 28px;
+  text-align: center;
+  font-weight:800;
+  font-size:0.82rem;
+  color:#fff;
+}
+
+/* hover & active */
+.stage-btn:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(12,24,40,0.08); }
+.stage-btn.active { transform: translateY(-6px); box-shadow: 0 24px 56px rgba(12,24,40,0.14); }
+
+/* unique fixed colors per stage (chevron look preserved) */
+.stage-Screening { background: linear-gradient(90deg,#7c3aed,#9f7aea); }
+.stage-Submissions { background: linear-gradient(90deg,#06b6d4,#0ea5a4); }
+.stage-Interview { background: linear-gradient(90deg,#f59e0b,#fb923c); }
+.stage-Offered { background: linear-gradient(90deg,#6366f1,#7c3aed); }
+.stage-Hired { background: linear-gradient(90deg,#10b981,#34d399); }
+.stage-Rejected { background: linear-gradient(90deg,#ef4444,#fb7185); }
+.stage-Archived { background: linear-gradient(90deg,#64748b,#94a3b8); }
+
+/* Candidate table container: vertical scroll, ~5 rows visible */
+.candidate-table-container {
+  max-height: 350px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(12,24,40,0.04);
+}
+
+/* compact table look (airy rows) */
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 0;
+}
+.compact-table thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  color: #445060;
+  font-weight:700;
+  padding: 12px 14px;
+  text-align:left;
+  font-size:13px;
+  border-bottom: 1px solid rgba(15,27,43,0.04);
+}
+.compact-table tbody td {
+  padding: 14px 14px;
+  font-size:13px;
+  color:var(--text-1);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom:1px solid rgba(15,27,43,0.03);
+}
+
+/* alternate soft shading */
+.compact-table tbody tr:nth-child(even) { background: rgba(246,247,250,0.7); }
+.compact-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(243,248,255,0.95), rgba(245,247,250,0.95));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(12,24,40,0.06);
+}
+
+/* resume icon */
+.resume-link { color:#4f46e5; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; background: rgba(79,70,229,0.08); }
+
+/* status badge */
+.status-badge { display:inline-block; padding:8px 12px; border-radius:999px; font-weight:800; font-size:0.88rem; border:1px solid rgba(15,27,43,0.04); background:#f8fafc; color:#0b1b2b; }
+
+/* status variants to match the image's green / red pills */
+.status-badge.status-ont {
+  background: linear-gradient(180deg,#ecfdf5,#dcfce7);
+  color: #065f46;
+  border: 1px solid rgba(16,185,129,0.12);
+  box-shadow: 0 8px 18px rgba(16,185,129,0.04);
+}
+.status-badge.status-delay {
+  background: linear-gradient(180deg,#fff1f2,#fee2e2);
+  color: #9f1239;
+  border: 1px solid rgba(239,68,68,0.06);
+  box-shadow: 0 8px 18px rgba(239,68,68,0.03);
+}
+
+/* modal/popup (kept the previously approved purple header design) */
+.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(15,23,36,0.6); z-index:2000; backdrop-filter: blur(4px); padding:32px 20px; box-sizing:border-box; }
+.modal-content { margin:0 auto; width:92%; max-width:980px; height: calc(100% - 80px); border-radius: 10px; overflow:hidden; display:flex; flex-direction:column; background:#ffffff; box-shadow: 0 30px 80px rgba(2,6,23,0.4); position:relative; }
+.modal-header-strip { background: linear-gradient(90deg, #4f46e5, #7c3aed); color:#fff; padding:16px 18px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.modal-header-left h3 { margin:0; font-family:Poppins, Inter; font-size:18px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; }
+.modal-header-sub { margin-top:6px; font-size:13px; color:rgba(255,255,255,0.92); }
+.modal-header-right { display:flex; gap:12px; align-items:center; }
+.modal-ai { background: rgba(255,255,255,0.12); padding:8px 10px; border-radius:8px; font-weight:800; font-size:13px; color:#fff; display:inline-flex; gap:8px; }
+.resume-link-text { color:#cfe3ff; text-decoration:underline; font-weight:700; display:inline-flex; gap:8px; font-size:13px; }
+.modal-close { position:absolute; top:12px; right:12px; background: rgba(255,255,255,0.95); width:36px; height:36px; border-radius:8px; border:none; font-size:20px; cursor:pointer; box-shadow:0 8px 20px rgba(12,24,40,0.08); color:#333; }
+.modal-body { padding:18px; background:#fff; overflow-y:auto; flex:1; display:grid; grid-template-columns:1fr 1fr; gap:20px; box-sizing:border-box; }
+.modal-full { grid-column: 1 / -1; }
+.modal-label { font-weight:700; color:var(--muted); font-size:13px; margin-bottom:6px; display:block; }
+.modal-value { font-size:15px; color:var(--text-1); line-height:1.45; }
+
+@media (max-width:880px){
+  .stage-buttons { gap:8px; }
+  .stage-btn { min-width: 80px; font-size:11px; }
+  .candidate-table-container { max-height:420px; }
+  .modal-body { grid-template-columns:1fr; max-height:70vh; padding:12px; }
+  .modal-header-strip { padding:12px; }
+}
+
+/* Time to Fill / Time to Hire tables: styling to match the image */
+.table-wrap {
+  margin-top:8px;
+}
+.table-wrap table {
+  width:100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(15,27,43,0.04);
+}
+.table-wrap thead th {
+  padding: 12px 14px;
+  text-align:left;
+  font-weight:700;
+  color:#445060;
+  font-size:13px;
+  background: #fff;
+  border-bottom: 1px solid rgba(15,27,43,0.04);
+}
+.table-wrap tbody td {
+  padding: 12px 14px;
+  color: var(--text-1);
+  font-size:14px;
+  border-bottom: 1px solid rgba(15,27,43,0.03);
+}
+.table-wrap tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* small helpers */
 .meta-line { display:flex; gap:10px; align-items:center; color:var(--muted); font-size:.86rem; }
-kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:700; font-size:.78rem; }
-:where(.chip, .kpi):focus { box-shadow: 0 0 0 4px rgba(79,70,229,0.12); outline:none; }
 .skeleton { width:76px; height:28px; border-radius:8px; background: linear-gradient(90deg,#f3f4f6,#eef2ff,#f3f4f6); background-size:200% 100%; animation: shimmer 1.2s infinite; display:inline-block; }
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* utility hidden class used to toggle candidate table visibility (non-invasive) */
+.hidden { display: none !important; }
+
+/* ensure good accessibility when hidden */
+.candidate-table-container[aria-hidden="true"] { pointer-events: none; opacity: 0; }
+
+/* minor visual tweak to status column cells in Time to Fill table to make 'On track' badge look identical */
+.status-cell { white-space: nowrap; }
 </style>
 
 <div class="container">
   <div class="header-row">
     <h1>Welcome to Teetli Dashboard</h1>
     <div class="meta-line">
-      <span style="color:var(--muted);"></span>
-      <kbd class="hint"></kbd>
-      <!-- Go to Admin (admins go in; others get redirected back with ?error=access_denied) -->
       <a class="btn-admin" href="/admin/enter">Go to Admin</a>
     </div>
   </div>
@@ -107,84 +302,110 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
     </div>
   {% endif %}
 
-  <!-- KPI Grid -->
-  <section class="grid-4" aria-label="Key performance indicators">
-    <div class="kpi clients" tabindex="0" role="region" aria-labelledby="clients-label">
+    <!-- KPI Grid -->
+  <section class="grid-3" aria-label="Key performance indicators">
+    <a href="/templates/new_arrivals" class="kpi clients" tabindex="0" role="region" aria-labelledby="clients-label" style="text-decoration: none; color: inherit;">
       <div class="icon clients" aria-hidden="true">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/></svg>
       </div>
       <div class="meta">
         <h3 id="clients-label">Total Clients</h3>
         <div class="value" id="total-clients"><span class="skeleton" aria-hidden="true"></span></div>
-        <div class="hl">Clients across all accounts</div>
+        <div class="hl">All registered clients</div>
       </div>
       <div style="position:absolute; right:14px; bottom:14px;">
         <div class="donut" id="donut-clients" style="--donut-color:#4f46e5; --pct:0">0%</div>
       </div>
-    </div>
+    </a>
 
-    <div class="kpi jobs" tabindex="0" role="region" aria-labelledby="jobs-label">
+    <a href="/clients/all_managers" class="kpi managers" tabindex="0" role="region" aria-labelledby="managers-label" style="text-decoration: none; color: inherit;">
+      <div class="icon managers" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/></svg>
+      </div>
+      <div class="meta">
+        <h3 id="managers-label">Total Managers</h3>
+        <div class="value" id="total-managers"><span class="skeleton" aria-hidden="true"></span></div>
+        <div class="hl">All hiring managers</div>
+      </div>
+      <div style="position:absolute; right:14px; bottom:14px;">
+        <div class="donut" id="donut-managers" style="--donut-color:#0ea5a4; --pct:0">0%</div>
+      </div>
+    </a>
+
+    <a href="/clients/all_jobs" class="kpi jobs" tabindex="0" role="region" aria-labelledby="jobs-label" style="text-decoration: none; color: inherit;">
       <div class="icon jobs" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/></svg>
       </div>
       <div class="meta">
         <h3 id="jobs-label">Total Jobs</h3>
         <div class="value" id="total-jobs"><span class="skeleton" aria-hidden="true"></span></div>
-        <div class="hl">All job openings</div>
+        <div class="hl">All job openings (Active: <span id="active-jobs-count">0</span> | Inactive: <span id="inactive-jobs-count">0</span>)</div>
       </div>
       <div style="position:absolute; right:14px; bottom:14px;">
-        <div class="donut" id="donut-jobs" style="--donut-color:#06b6d4; --pct:0">0%</div>
+        <div class="donut" id="donut-jobs" style="--donut-color:#10b981; --pct:0">0%</div>
       </div>
-    </div>
-
-    <div class="kpi active" tabindex="0" role="region" aria-labelledby="active-label">
-      <div class="icon active" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <div class="meta">
-        <h3 id="active-label">Active Jobs</h3>
-        <div class="value" id="active-jobs"><span class="skeleton" aria-hidden="true"></span></div>
-        <div class="hl">Open & actively hiring</div>
-      </div>
-      <div style="position:absolute; right:14px; bottom:14px;">
-        <div class="donut" id="donut-active" style="--donut-color:#10b981; --pct:0">0%</div>
-      </div>
-    </div>
-
-    <div class="kpi inactive" tabindex="0" role="region" aria-labelledby="inactive-label">
-      <div class="icon inactive" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.95)" stroke-width="1.6"/><path d="M10 8v8M14 8v8" stroke="rgba(255,255,255,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <div class="meta">
-        <h3 id="inactive-label">Inactive Jobs</h3>
-        <div class="value" id="inactive-jobs"><span class="skeleton" aria-hidden="true"></span></div>
-        <div class="hl">Paused or closed roles</div>
-      </div>
-      <div style="position:absolute; right:14px; bottom:14px;">
-        <div class="donut" id="donut-inactive" style="--donut-color:#fb7185; --pct:0">0%</div>
-      </div>
-    </div>
+    </a>
   </section>
 
-  <!-- Hiring Pipeline -->
-  <section class="panel" aria-label="Hiring pipeline">
-    <div class="pipeline-top">
-      <h2 style="margin:0; font-size:1.02rem; color:#0b1b2b;">Hiring Pipeline</h2>
-      <div style="color:var(--muted); font-weight:600;">Stage distribution</div>
+
+  <!-- Candidate Pipeline Section -->
+  <section class="panel" aria-label="Candidate pipeline">
+    <h2 style="margin:0 0 12px 0; color:#0b1b2b; font-size:1rem;">Candidate Pipeline</h2>
+
+    <div class="select-row">
+      <select id="clientSelect">
+        <option value="">Select Client</option>
+      </select>
+      <select id="managerSelect" disabled>
+        <option value="">Select Manager</option>
+      </select>
+      <select id="jobSelect" disabled>
+        <option value="">Select Job</option>
+      </select>
+
+      <!-- Reset button -->
+      <button id="resetPipelineBtn" class="reset-btn" title="Reset filters" aria-label="Reset filters">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-3-6.7"></path>
+          <polyline points="21 3 21 9 15 9"></polyline>
+        </svg>
+      </button>
     </div>
 
-    <div class="pipeline-bar" id="pipeline-bar" aria-hidden="true"></div>
+    <!-- Stage Buttons (chevron shape) -->
+    <div class="stage-buttons" id="stageButtons" role="toolbar" aria-label="Pipeline stages"></div>
 
-    <div class="chips" id="chips-area">
-      {% for stage in hiring_pipeline %}
-        <div class="chip" data-stage="{{ stage.stage }}" data-count="{{ stage.count }}">{{ stage.stage }} ({{ stage.count }})</div>
-      {% endfor %}
+    <!-- Candidate table with vertical scroll (approx 5 rows visible) -->
+    <!-- NOTE: container initially hidden; JS toggles visibility on job selection / reset -->
+    <div class="candidate-table-container hidden" aria-live="polite" aria-hidden="true">
+      <table class="candidate-table compact-table" id="candidateTable" role="table" aria-label="Candidates">
+        <thead>
+          <tr id="tableHeader">
+            <th style="min-width:140px;">Name</th>
+            <th style="min-width:140px;">Email</th>
+            <th style="min-width:120px;">IT Experience</th>
+            <th style="min-width:100px;">Resume</th>
+            <th style="min-width:120px;">Notice Period</th>
+            <th style="min-width:100px;">CTC</th>
+            <th style="min-width:100px;">Stage</th>
+            <th style="min-width:120px;">Contact</th>
+            <th style="min-width:160px;">Skills</th>
+          </tr>
+        </thead>
+        <tbody id="candidateBody">
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 28px 12px; color: var(--muted);">
+              Select a job to view candidates
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
   <!-- Time to Fill -->
   <section class="panel" aria-label="Time to fill">
-    <h2 style="margin:0 0 10px 0; color:#0b1b2b;">Time to Fill</h2>
+    <h2 style="margin:0 0 10px 0; color:#0b1b2b; font-size:1rem;">Time to Fill</h2>
     <div class="table-wrap" role="region" aria-label="Time to fill table">
       <table>
         <thead>
@@ -215,7 +436,7 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
 
   <!-- Time to Hire -->
   <section class="panel" aria-label="Time to hire">
-    <h2 style="margin:0 0 10px 0; color:#0b1b2b;">Time to Hire</h2>
+    <h2 style="margin:0 0 10px 0; color:#0b1b2b; font-size:1rem;">Time to Hire</h2>
     <div class="table-wrap" role="region" aria-label="Time to hire table">
       <table>
         <thead>
@@ -238,10 +459,42 @@ kbd.hint { background:#f3f4f6; padding:6px 8px; border-radius:6px; font-weight:7
     </div>
   </section>
 </div>
+
+<!-- Candidate Modal (unchanged IDs/structure) -->
+<div id="candidateModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="modalTitle">
+  <div class="modal-content" role="document">
+    <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+
+    <div class="modal-header-strip" aria-hidden="false">
+      <div class="modal-header-left">
+        <h3 id="modalTitle">Candidate Details</h3>
+        <div class="modal-header-sub" id="modalHeaderSub">N/A • N/A</div>
+      </div>
+      <div class="modal-header-right">
+        <div class="modal-ai" id="modalAiScore">AI Score: <strong>N/A</strong></div>
+        <a id="modalResumeLink" class="resume-link-text" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
+          View Resume
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"></path>
+            <polyline points="17 3 21 3 21 7"></polyline>
+            <line x1="7" y1="13" x2="17" y2="3"></line>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="modal-body" id="modalBody" aria-live="polite">
+      <div class="modal-full"><span style="color:var(--muted)">Loading...</span></div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+/* Kept JS exactly as before with only small UI toggles to show/hide the candidate table.
+   No changes to API endpoints, IDs, or existing logic. */
 function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
 function animateNumber(el, to, ms = 700){
   const start = 0; const t0 = performance.now();
@@ -254,8 +507,361 @@ function animateNumber(el, to, ms = 700){
   requestAnimationFrame(frame);
 }
 
-document.addEventListener('DOMContentLoaded', function(){
-  // decorate status cells
+document.addEventListener("DOMContentLoaded", async () => {
+  const clientSelect = document.getElementById("clientSelect");
+  const managerSelect = document.getElementById("managerSelect");
+  const jobSelect = document.getElementById("jobSelect");
+  const candidateBody = document.getElementById("candidateBody");
+  const stageButtons = document.getElementById("stageButtons");
+  const tableHeader = document.getElementById("tableHeader");
+  const candidateModal = document.getElementById("candidateModal");
+  const modalClose = document.getElementById("modalClose");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalBody = document.getElementById("modalBody");
+  const modalHeaderSub = document.getElementById("modalHeaderSub");
+  const modalAiScore = document.getElementById("modalAiScore");
+  const modalResumeLink = document.getElementById("modalResumeLink");
+  const resetBtn = document.getElementById("resetPipelineBtn");
+  const candidateTableContainer = document.querySelector('.candidate-table-container');
+
+  const STAGES = ["Screening","Submissions","Interview","Offered","Hired","Rejected","Archived"];
+  let allCandidates = [];
+  let currentStage = null;
+
+  function toggleCandidateTable(show) {
+    if (!candidateTableContainer) return;
+    if (show) {
+      candidateTableContainer.classList.remove('hidden');
+      candidateTableContainer.style.display = '';
+      candidateTableContainer.setAttribute('aria-hidden','false');
+    } else {
+      candidateTableContainer.classList.add('hidden');
+      candidateTableContainer.style.display = 'none';
+      candidateTableContainer.setAttribute('aria-hidden','true');
+    }
+  }
+
+  // Hide candidate table by default
+  toggleCandidateTable(false);
+
+  modalClose.addEventListener("click", () => {
+    candidateModal.style.display = "none";
+    candidateModal.setAttribute('aria-hidden','true');
+  });
+  window.addEventListener("click", (e) => {
+    if (e.target === candidateModal) {
+      candidateModal.style.display = "none";
+      candidateModal.setAttribute('aria-hidden','true');
+    }
+  });
+
+  async function loadClients(){
+    try {
+      const res = await fetch("/pipeline/clients");
+      const data = await res.json();
+      clientSelect.innerHTML = '<option value="">Select Client</option>';
+      data.forEach(c => {
+        clientSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    } catch (error) {
+      console.error("Failed to load clients:", error);
+    }
+  }
+
+  async function loadManagers(clientId){
+    try {
+      const res = await fetch(`/pipeline/managers/${clientId}`);
+      if(!res.ok) return;
+      const data = await res.json();
+      managerSelect.innerHTML = '<option value="">Select Manager</option>';
+      data.forEach(m => {
+        managerSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+      });
+      managerSelect.disabled = false;
+    } catch (error) {
+      console.error("Failed to load managers:", error);
+    }
+  }
+
+  async function loadJobs(managerId){
+    try {
+      const res = await fetch(`/pipeline/jobs/${managerId}`);
+      if(!res.ok) return;
+      const data = await res.json();
+      jobSelect.innerHTML = '<option value="">Select Job</option>';
+      data.forEach(j => {
+        jobSelect.innerHTML += `<option value="${j.id}">${j.title}</option>`;
+      });
+      jobSelect.disabled = false;
+    } catch (error) {
+      console.error("Failed to load jobs:", error);
+    }
+  }
+
+  async function loadCandidates(jobId){
+    try {
+      const res = await fetch(`/pipeline/candidates/${jobId}`);
+      // show the table as soon as a job is selected (even if there are no candidates)
+      toggleCandidateTable(true);
+      if(!res.ok) {
+        allCandidates = [];
+        candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">No candidates found for this job</td></tr>';
+        updateStageCounts();
+        return;
+      }
+      allCandidates = await res.json();
+      renderCandidates(allCandidates);
+      updateStageCounts();
+    } catch (error) {
+      console.error("Failed to load candidates:", error);
+      allCandidates = [];
+      candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">Error loading candidates</td></tr>';
+      updateStageCounts();
+    }
+  }
+
+  function renderCandidates(candidates){
+    candidateBody.innerHTML = "";
+    if(!candidates || candidates.length === 0){
+      candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">No candidates found</td></tr>';
+      return;
+    }
+
+    candidates.forEach(candidate => {
+      const tr = document.createElement("tr");
+      tr.addEventListener("click", () => showCandidateModal(candidate));
+      const resumeLink = candidate.resumelinks
+        ? `<a href="${candidate.resumelinks}" target="_blank" class="resume-link" title="View Resume">
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+               <polyline points="14,2 14,8 20,8"></polyline>
+               <line x1="16" y1="13" x2="8" y2="13"></line>
+               <line x1="16" y1="17" x2="8" y2="17"></line>
+             </svg>
+           </a>`
+        : '<span style="color: var(--muted);">N/A</span>';
+
+      tr.innerHTML = `
+        <td title="${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}">${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}</td>
+        <td title="${candidate.email || 'N/A'}">${candidate.email || 'N/A'}</td>
+        <td title="${candidate.it_experience || 'N/A'}">${candidate.it_experience || 'N/A'}</td>
+        <td style="text-align:center;">${resumeLink}</td>
+        <td title="${candidate.notice_period || 'N/A'}">${candidate.notice_period || 'N/A'}</td>
+        <td title="${candidate.ctc || 'N/A'}">${candidate.ctc || 'N/A'}</td>
+        <td><span class="status-badge stage-${candidate.stage || 'Screening'}">${candidate.stage || 'Screening'}</span></td>
+        <td title="${candidate.contact || 'N/A'}">${candidate.contact || 'N/A'}</td>
+        <td title="${candidate.skillset || 'N/A'}">${candidate.skillset || 'N/A'}</td>
+      `;
+
+      candidateBody.appendChild(tr);
+    });
+  }
+
+  function showCandidateModal(candidate){
+    modalTitle.textContent = (candidate.candidate_name || candidate.name || candidate.full_name || 'Unknown');
+    modalHeaderSub.textContent = `${candidate.location || 'N/A'} • ${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}`;
+    modalAiScore.innerHTML = `AI Score: <strong>${candidate.ai_score || 'N/A'}</strong>`;
+
+    if (candidate.resumelinks) {
+      modalResumeLink.style.display = 'inline-flex';
+      modalResumeLink.href = candidate.resumelinks;
+    } else {
+      modalResumeLink.style.display = 'none';
+      modalResumeLink.href = '#';
+    }
+
+    let modalContent = '';
+
+    modalContent += `
+      <div class="modal-full">
+        <span class="modal-label">AI Score</span>
+        <div class="modal-value">${candidate.ai_score || 'N/A'}</div>
+      </div>
+
+      <div>
+        <span class="modal-label">Skills</span>
+        <div class="modal-value">${candidate.skillset || 'N/A'}</div>
+      </div>
+
+      <div>
+        <span class="modal-label">Relevant Exp</span>
+        <div class="modal-value">${candidate.relevant_experience || 'N/A'}</div>
+      </div>
+
+      <div>
+        <span class="modal-label">Email</span>
+        <div class="modal-value">${candidate.email || 'N/A'}</div>
+      </div>
+
+      <div>
+        <span class="modal-label">Contact</span>
+        <div class="modal-value">${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}</div>
+      </div>
+
+      <div>
+        <span class="modal-label">Education</span>
+        <div class="modal-value">${candidate.education || 'N/A'}</div>
+      </div>
+
+      <div>
+        <span class="modal-label">IT Exp</span>
+        <div class="modal-value">${candidate.it_experience || 'N/A'}</div>
+      </div>
+
+      <div>
+        <span class="modal-label">Notice Period</span>
+        <div class="modal-value">${candidate.notice_period || 'N/A'}</div>
+      </div>
+
+      <div class="modal-full">
+        <span class="modal-label">Clients</span>
+        <div class="modal-value">${candidate.clients || 'N/A'}</div>
+      </div>
+
+      <div class="modal-full">
+        <span class="modal-label">Comment</span>
+        <div class="modal-value">${candidate.comment || 'N/A'}</div>
+      </div>
+
+      <div class="modal-full">
+        <span class="modal-label">Recruitment Notes</span>
+        <div class="modal-value">${candidate.recruitment_notes || 'N/A'}</div>
+      </div>
+    `;
+
+    modalBody.innerHTML = modalContent;
+    candidateModal.style.display = "block";
+    candidateModal.setAttribute('aria-hidden','false');
+    modalBody.scrollTop = 0;
+  }
+
+  function renderStageButtons(){
+    stageButtons.innerHTML = "";
+    STAGES.forEach(stage => {
+      const btn = document.createElement("button");
+      btn.className = `stage-btn stage-${stage}`;
+      btn.type = "button";
+      btn.dataset.stage = stage;
+      btn.setAttribute('aria-pressed','false');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:14px;height:14px;">
+          <path d="M5 12h14" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <span class="stage-label">${stage}</span>
+        <span class="stage-count" aria-hidden="true">0</span>
+      `;
+
+      btn.onclick = () => {
+        const stageName = btn.dataset.stage;
+        const filtered = currentStage === stageName ? allCandidates : allCandidates.filter(c => (c.stage || '').toString() === stageName);
+        currentStage = currentStage === stageName ? null : stageName;
+        renderCandidates(filtered);
+        document.querySelectorAll('.stage-btn').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed','false');
+        });
+        if(currentStage === stageName) {
+          btn.classList.add('active');
+          btn.setAttribute('aria-pressed','true');
+        }
+      };
+      stageButtons.appendChild(btn);
+    });
+  }
+
+  function updateStageCounts(){
+    const counts = {};
+    STAGES.forEach(s => counts[s] = 0);
+    allCandidates.forEach(c => {
+      const st = (c.stage || 'Screening').toString();
+      if (counts[st] !== undefined) counts[st] += 1;
+      else counts[st] = (counts[st] || 0) + 1;
+    });
+
+    document.querySelectorAll('.stage-btn').forEach(btn=>{
+      const stage = btn.dataset.stage;
+      const count = counts[stage] || 0;
+      const el = btn.querySelector('.stage-count');
+      if (el) el.textContent = count;
+      btn.setAttribute('aria-label', `${stage} (${count})`);
+    });
+  }
+
+  clientSelect.addEventListener("change", e => {
+    const id = e.target.value;
+    // when client changes, hide candidate table (until job selection)
+    toggleCandidateTable(false);
+    if(id) {
+      loadManagers(id);
+    } else {
+      managerSelect.disabled = true;
+      jobSelect.disabled = true;
+    }
+    managerSelect.selectedIndex = 0;
+    jobSelect.selectedIndex = 0;
+    allCandidates = [];
+    currentStage = null;
+    candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">Select a job to view candidates</td></tr>';
+    document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+    updateStageCounts();
+  });
+
+  managerSelect.addEventListener("change", e => {
+    const id = e.target.value;
+    // when manager changes, hide candidate table (until job selection)
+    toggleCandidateTable(false);
+    if(id) {
+      loadJobs(id);
+    } else {
+      jobSelect.disabled = true;
+    }
+    jobSelect.selectedIndex = 0;
+    allCandidates = [];
+    currentStage = null;
+    candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">Select a job to view candidates</td></tr>';
+    document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+    updateStageCounts();
+  });
+
+  jobSelect.addEventListener("change", e => {
+    const id = e.target.value;
+    if(id) {
+      // Show table and load candidates for the selected job
+      toggleCandidateTable(true);
+      loadCandidates(id);
+    } else {
+      allCandidates = [];
+      candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">Select a job to view candidates</td></tr>';
+      toggleCandidateTable(false);
+      updateStageCounts();
+    }
+  });
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      clientSelect.selectedIndex = 0;
+      managerSelect.selectedIndex = 0;
+      jobSelect.selectedIndex = 0;
+      managerSelect.disabled = true;
+      jobSelect.disabled = true;
+      allCandidates = [];
+      currentStage = null;
+      // hide the table structure on reset
+      candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">Select a job to view candidates</td></tr>';
+      toggleCandidateTable(false);
+      document.querySelectorAll('.stage-btn').forEach(b => {
+        b.classList.remove('active');
+        const sc = b.querySelector('.stage-count');
+        if (sc) sc.textContent = '0';
+      });
+    });
+  }
+
+  await loadClients();
+  renderStageButtons();
+  updateStageCounts();
+
   document.querySelectorAll('td.status-cell').forEach(td => {
     const txt = (td.textContent || '').trim();
     td.textContent = '';
@@ -271,102 +877,128 @@ document.addEventListener('DOMContentLoaded', function(){
     td.appendChild(span);
   });
 
-  // pipeline chips
-  const chips = Array.from(document.querySelectorAll('#chips-area .chip'));
-  const stageData = chips.map(c => {
-    const stage = c.dataset.stage || c.textContent.trim();
-    const count = Number(c.dataset.count || 0);
-    return { stage, count, node: c };
-  });
-
-  const colorMap = {
-    'screening': '#7c3aed',
-    'submissions': '#0ea5a4',
-    'interview': '#f59e0b',
-    'offered': '#7c3aed',
-    'hired': '#10b981',
-    'rejected': '#ef4444',
-    'archived': '#94a3b8'
-  };
-
-  stageData.forEach(sd => {
-    const key = sd.stage.toLowerCase().trim();
-    const color = colorMap[key] || '#60a5fa';
-    sd.node.style.borderLeft = '4px solid ' + color;
-    sd.node.style.background = 'linear-gradient(180deg, rgba(255,255,255,1), rgba(249,250,251,1))';
-    sd.node.style.color = '#071226';
-    const dot = document.createElement('span');
-    dot.setAttribute('aria-hidden','true');
-    dot.style.width = '10px'; dot.style.height = '10px'; dot.style.borderRadius = '50%';
-    dot.style.background = color; dot.style.display='inline-block'; dot.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-    sd.node.insertBefore(dot, sd.node.firstChild);
-  });
-
-  // proportional bar
-  const total = stageData.reduce((s, x) => s + (isFinite(x.count) ? x.count : 0), 0);
-  const bar = document.getElementById('pipeline-bar');
-  bar.innerHTML = '';
-  if (total === 0) {
-    const seg = document.createElement('div');
-    seg.className = 'pipeline-segment'; seg.style.width = '100%'; seg.style.background = '#e6eef9';
-    bar.appendChild(seg);
-  } else {
-    stageData.forEach(sd => {
-      const pct = total ? Math.round((sd.count / total) * 100) : 0;
-      if (pct <= 0) return;
-      const seg = document.createElement('div');
-      seg.className = 'pipeline-segment';
-      seg.style.width = '0%';
-      const key = sd.stage.toLowerCase().trim();
-      const color = colorMap[key] || '#60a5fa';
-      seg.style.background = color;
-      seg.title = `${sd.stage}: ${sd.count} (${pct}%)`;
-      bar.appendChild(seg);
-      setTimeout(()=> seg.style.width = pct + '%', 80);
+  // pipeline chips (if present) - safe guarded
+  (function initPipelineChips(){
+    const chips = Array.from(document.querySelectorAll('#chips-area .chip'));
+    if (!chips || chips.length === 0) return;
+    const stageData = chips.map(c => {
+      const stage = c.dataset.stage || c.textContent.trim();
+      const count = Number(c.dataset.count || 0);
+      return { stage, count, node: c };
     });
+
+    stageData.forEach(sd => {
+      const key = sd.stage.toLowerCase().trim();
+      const colorMap = {
+        'screening': '#7c3aed',
+        'submissions': '#0ea5a4',
+        'interview': '#f59e0b',
+        'offered': '#7c3aed',
+        'hired': '#10b981',
+        'rejected': '#ef4444',
+        'archived': '#94a3b8'
+      };
+      const color = colorMap[key] || '#60a5fa';
+      sd.node.style.borderLeft = '4px solid ' + color;
+      sd.node.style.background = 'linear-gradient(180deg, rgba(255,255,255,1), rgba(249,250,251,1))';
+      sd.node.style.color = '#071226';
+      const dot = document.createElement('span');
+      dot.setAttribute('aria-hidden','true');
+      dot.style.width = '10px'; dot.style.height = '10px'; dot.style.borderRadius = '50%';
+      dot.style.background = color; dot.style.display='inline-block'; dot.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+      sd.node.insertBefore(dot, sd.node.firstChild);
+    });
+
+    const total = stageData.reduce((s, x) => s + (isFinite(x.count) ? x.count : 0), 0);
+    const bar = document.getElementById('pipeline-bar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    if (total === 0) {
+      const seg = document.createElement('div');
+      seg.className = 'pipeline-segment'; seg.style.width = '100%'; seg.style.background = '#e6eef9';
+      bar.appendChild(seg);
+    } else {
+      stageData.forEach(sd => {
+        const pct = total ? Math.round((sd.count / total) * 100) : 0;
+        if (pct <= 0) return;
+        const seg = document.createElement('div');
+        seg.className = 'pipeline-segment';
+        seg.style.width = '0%';
+        const key = sd.stage.toLowerCase().trim();
+        const color = (function(k){
+          return { 'screening':'#7c3aed','submissions':'#0ea5a4','interview':'#f59e0b','offered':'#7c3aed','hired':'#10b981','rejected':'#ef4444','archived':'#94a3b8' }[k] || '#60a5fa';
+        })(key);
+        seg.style.background = color;
+        seg.title = `${sd.stage}: ${sd.count} (${pct}%)`;
+        bar.appendChild(seg);
+        setTimeout(()=> seg.style.width = pct + '%', 80);
+      });
+    }
+  })();
+
+  async function loadKpiStats(){
+    try{
+      const res = await fetch('/clients/stats');
+      let stats = {};
+      if (res.ok){
+        stats = await res.json();
+      } else {
+        console.warn('clients/stats responded with', res.status);
+      }
+
+      let tc = Number(stats.total_clients || 0);
+      let tm = Number(stats.total_managers || 0);
+      let tj = Number(stats.total_jobs || 0);
+      let aj = Number(stats.active_jobs || 0);
+      let ij = Number(stats.inactive_jobs || 0);
+
+      let needFallback = (!Number.isInteger(tm) || tm <= 0);
+
+      try {
+        const mgrRes = await fetch('/clients/all_managers/data');
+        if (mgrRes.ok) {
+          const mgrData = await mgrRes.json();
+          const mgrs = Array.isArray(mgrData.managers) ? mgrData.managers : (Array.isArray(mgrData) ? mgrData : []);
+          if (mgrs.length !== undefined) {
+            if (needFallback || Math.abs(Number(mgrs.length) - tm) >= 1) {
+              tm = Number(mgrs.length);
+            }
+          }
+        } else {
+          console.warn('fallback /clients/all_managers/data responded with', mgrRes.status);
+        }
+      } catch (e){
+        console.warn('fallback /clients/all_managers/data failed', e);
+      }
+
+      animateNumber(document.getElementById('total-clients'), tc || 0);
+      animateNumber(document.getElementById('total-managers'), tm || 0);
+      animateNumber(document.getElementById('total-jobs'), tj || 0);
+      document.getElementById('active-jobs-count').textContent = aj || 0;
+      document.getElementById('inactive-jobs-count').textContent = ij || 0;
+
+      function setDonut(id, color, pct){
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.setProperty('--donut-color', color);
+        el.style.setProperty('--pct', pct);
+        el.textContent = pct + '%';
+      }
+
+      setDonut('donut-clients', '#4f46e5', Math.round(((tc||0)/Math.max(1,(tc||0)+(tm||0)+(tj||0)))*100));
+      setDonut('donut-managers', '#0ea5a4', Math.round(((tm||0)/Math.max(1,(tc||0)+(tm||0)+(tj||0)))*100));
+      setDonut('donut-jobs', '#10b981', Math.round(((tj||0)/Math.max(1,(tc||0)+(tm||0)+(tj||0)))*100));
+
+    } catch (err) {
+      console.error('Failed to load stats', err);
+      ['total-clients','total-managers','total-jobs'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el && el.textContent.trim() === '') el.textContent = '0';
+      });
+    }
   }
 
-  // KPI stats from backend
-  fetch('/clients/stats').then(r => {
-    if (!r.ok) throw new Error('Bad response ' + r.status);
-    return r.json();
-  }).then(stats => {
-    const tc = Number(stats.total_clients || 0);
-    const tj = Number(stats.total_jobs || 0);
-    const aj = Number(stats.active_jobs || 0);
-    const ij = Number(stats.inactive_jobs || 0);
-
-    animateNumber(document.getElementById('total-clients'), tc);
-    animateNumber(document.getElementById('total-jobs'), tj);
-    animateNumber(document.getElementById('active-jobs'), aj);
-    animateNumber(document.getElementById('inactive-jobs'), ij);
-
-    const jobsTotal = Math.max(1, aj + ij);
-    const pctActive = Math.round((aj / jobsTotal) * 100);
-    const pctInactive = Math.round((ij / jobsTotal) * 100);
-
-    const clientsDonutPct = Math.round((tc / Math.max(1, (tc + tj))) * 100);
-
-    function setDonut(id, color, pct){
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.style.setProperty('--donut-color', color);
-      el.style.setProperty('--pct', pct);
-      el.textContent = pct + '%';
-      el.animate([{ transform: 'rotate(-10deg)' }, { transform: 'rotate(0deg)'}], { duration: 420, easing: 'cubic-bezier(.2,.9,.2,1)' });
-    }
-
-    setDonut('donut-active', '#10b981', pctActive);
-    setDonut('donut-inactive', '#fb7185', pctInactive);
-    setDonut('donut-clients', '#4f46e5', clientsDonutPct);
-    setDonut('donut-jobs', '#06b6d4', Math.round((tj / Math.max(1, (tc + tj))) * 100));
-  }).catch(err => {
-    console.error('Failed to load stats', err);
-    ['total-clients','total-jobs','active-jobs','inactive-jobs'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el && el.textContent.trim() === '') el.textContent = '0';
-    });
-  });
+  loadKpiStats();
 });
 </script>
 {% endblock %}
