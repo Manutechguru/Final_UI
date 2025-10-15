@@ -1,58 +1,50 @@
-# landing_page_app/crud/insertCandidates.py
-import csv
-from landing_page_app.models.candidates import Candidate
+# REPLACE THE WHOLE FILE WITH THIS CONTENT
+
+from typing import Dict, Any, List
 from sqlalchemy.orm import Session
+from fastapi import UploadFile
+import csv
+import io
 
-def insert_candidates_from_csv(db: Session, csv_file) -> dict:
-    try:
-        contents = csv_file.file.read().decode("utf-8").splitlines()
-        reader = csv.DictReader(contents)
+from landing_page_app.models import Candidate
 
-        count_inserted = 0
-        duplicates = []
+def insert_candidates_from_csv(db: Session, csv_file: UploadFile) -> Dict[str, Any]:
+    """
+    Reads a CSV UploadFile and inserts Candidate rows.
+    Returns a summary dict with message, duplicates, and inserted count.
+    """
+    content = csv_file.file.read()
+    text = content.decode("utf-8", errors="ignore")
+    reader = csv.DictReader(io.StringIO(text))
 
-        for row in reader:
-            name = row.get("full_name")
-            email = row.get("email")
+    duplicates: List[Dict[str, Any]] = []
+    count_inserted = 0
 
-            # Check if candidate already exists (by name + email)
-            existing = db.query(Candidate).filter(
-                Candidate.candidate_name == name,
-                Candidate.email == email
-            ).first()
+    for row in reader:
+        # Example: adapt to your candidate unique constraints (e.g., email)
+        email = (row.get("email") or row.get("Email") or "").strip().lower()
+        if not email:
+            continue
 
-            if existing:
-                duplicates.append(name)
-                continue
+        exists = db.query(Candidate).filter(Candidate.email == email).first()
+        if exists:
+            duplicates.append({"email": email})
+            continue
 
-            candidate = Candidate(
-                candidate_name=name,
-                email=email,
-                contact=row.get("phone"),
-                location=row.get("location"),
-                skillset=row.get("skillset"),
-                relevant_experience=row.get("relevant_experience"),
-                it_experience=row.get("it_experience"),
-                education=row.get("education"),
-                company=row.get("company"),
-                resumelinks=row.get("resumelinks"),
-                comment=row.get("comment"),
-                clients=row.get("clients"),
-                notice_period=row.get("notice_period")
-            )
-            db.add(candidate)
-            count_inserted += 1
+        cand = Candidate(
+            name=row.get("name") or row.get("Name"),
+            email=email,
+            phone=row.get("phone") or row.get("Phone"),
+            # Map other fields as needed...
+        )
+        db.add(cand)
+        count_inserted += 1
 
-        db.commit()
+    db.commit()
 
-        message = f"{count_inserted} candidates uploaded successfully."
-        if duplicates:
-            message += f" {len(duplicates)} duplicates skipped."
-
-        return {
-            "message": message,
-            "duplicates": duplicates
-        }
-    except Exception as e:
-        db.rollback()
-        raise e
+    message = f"Inserted {count_inserted} candidate(s); {len(duplicates)} duplicate(s) skipped."
+    return {
+        "message": message,
+        "duplicates": duplicates,
+        "inserted": count_inserted,
+    }

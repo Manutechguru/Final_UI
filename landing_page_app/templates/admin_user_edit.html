@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-2xl mx-auto py-6">
+  <h1 class="text-xl font-semibold mb-4">Edit User</h1>
+
+  <form method="post" action="/admin/users/{{ user.id }}/edit" class="space-y-4">
+    <div>
+      <label class="block text-sm font-medium mb-1">Full Name</label>
+      <input name="full_name" value="{{ user.full_name }}" class="w-full border rounded px-3 py-2">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Email</label>
+      <input name="email" value="{{ user.email }}" class="w-full border rounded px-3 py-2">
+    </div>
+
+    <!-- NEW: Admin-set password (optional, secure — no plaintext viewing) -->
+    <div>
+      <label class="block text-sm font-medium mb-1">New Password (optional)</label>
+      <div class="flex flex-col gap-2">
+        <input id="admin_new_password" name="new_password" type="password"
+               class="border rounded px-3 py-2" placeholder="Enter new password (leave blank to keep current)">
+        <input id="admin_confirm_password" name="confirm_password" type="password"
+               class="border rounded px-3 py-2" placeholder="Confirm new password">
+        <div class="flex gap-2">
+          <button type="button" id="gen-pass" class="px-3 py-1.5 rounded border hover:bg-gray-50 text-sm">
+            Generate temporary password
+          </button>
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input id="force-reset" name="force_password_change" type="checkbox" class="rounded border">
+            <span>Force password change on next login</span>
+          </label>
+        </div>
+        <p class="text-xs text-gray-500">
+          Passwords are stored securely. You can set a new one here, or generate a temporary password
+          and ask the user to change it at their next login.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-6">
+      <label class="inline-flex items-center">
+        <input type="checkbox" name="is_active" {% if user.is_active %}checked{% endif %}>
+        <span class="ml-2">Active</span>
+      </label>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Role</label>
+        <select name="role" class="border rounded px-3 py-2">
+          {% for r in roles %}
+          <option value="{{ r }}" {% if user.role and user.role.name==r %}selected{% endif %}>{{ r }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <button class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      <a class="px-4 py-2 border rounded" href="/admin?tab=allusers">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<!-- one-time client-side generator (does not store plaintext) -->
+<script>
+  function randPassword(len = 12) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+    let out = "";
+    for (let i = 0; i < len; i++) out += chars.charAt(Math.floor(Math.random()*chars.length));
+    return out;
+  }
+  const btn = document.getElementById('gen-pass');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const p = randPassword(12);
+      document.getElementById('admin_new_password').value = p;
+      document.getElementById('admin_confirm_password').value = p;
+      alert('Temporary password (copy and share securely):\n\n' + p);
+    });
+  }
+</script>
+{% endblock %}
