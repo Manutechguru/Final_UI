@@ -1,0 +1,282 @@
+.candidate-link-checkbox:checked + .link-btn {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 8px 20px rgba(16,185,129,0.14);
+  transform: translateY(-2px);
+  color: #fff;
+}
+.link-btn { transition: all .18s ease; display:inline-block; user-select:none; }
+.link-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(2,6,23,0.06); }
+.clean-table tbody tr:hover { background:#fbfdff; }
+.btn-primary { background:#2563eb; border:0; }
+.recently-linked-highlight { animation: pulseHighlight 1s ease-in-out 0s 3; background: rgba(16,185,129,0.06); border-left: 4px solid #10b981; }
+@keyframes pulseHighlight {0%{box-shadow:0 0 0 0 rgba(16,185,129,0);}50%{box-shadow:0 0 12px 6px rgba(16,185,129,0.08);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);} }
+
+.ai-progress-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 30000; background-color: rgba(255,255,255,0.85); }
+.ai-progress-box { display:flex; gap:12px; align-items:center; background:#fff; padding:16px 18px; border-radius:12px; box-shadow: 0 12px 40px rgba(2,6,23,0.12); border: 1px solid #eef4fb; max-width:520px; width:90%; }
+.ai-spinner { width:36px; height:36px; border-radius:50%; border:4px solid #eef2f7; border-top-color:#2563eb; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.rich-toast { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-radius:10px; box-shadow: 0 12px 30px rgba(2,6,23,0.12); color:#fff; z-index:40000; min-width:320px; font-weight:700; }
+.rich-toast .rt-left { font-size:20px; line-height:1; }
+.rich-toast .rt-main { font-weight:800; font-size:14px; }
+.rich-toast .rt-sub { font-weight:600; font-size:13px; opacity:0.95; margin-top:6px; }
+.rich-toast .rt-close { margin-left:12px; background:transparent; border:0; color:inherit; font-size:20px; cursor:pointer; }
+.rich-toast.success { background: linear-gradient(90deg,#10b981,#059669); }
+
+#richToastContainer { position: fixed; right: 12px; top: 12px; display:flex; flex-direction:column; gap:12px; z-index:40001; }
+
+.candidate-details-box {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 0.9rem;
+}
+
+.candidate-header {
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 10px;
+}
+
+.candidate-main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.candidate-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #111827;
+}
+
+.candidate-meta {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.candidate-ai {
+  font-size: 0.9rem;
+  margin: 0;
+}
+.candidate-ai span {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.resume-link {
+  font-size: 0.85rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+.resume-missing {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 18px;
+}
+
+.candidate-grid label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.candidate-grid p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #111827;
+  word-break: break-word;
+}
+
+.candidate-grid .full-width {
+  grid-column: 1 / 3;
+}
+
+.notes-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.notes-box label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.notes-box textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e6eefc;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+.notes-box small {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+/* --- Advanced Search Inline Layout --- */
+.advanced-search-section {
+  margin-top: 10px;
+}
+
+.advanced-search-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap; /* responsive for smaller screens */
+}
+
+/* Keep original design but reduce height slightly */
+.advanced-search-row select.form-select {
+  flex: 1;
+  min-width: 180px;
+  height: 36px;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #dbe2f1;
+  box-shadow: none;
+}
+
+/* Proceed button styling consistent with Teetli */
+.advanced-search-row .proceed-btn {
+  background-color: #10b981;
+  color: #fff;
+  font-weight: 600;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  height: 36px;
+  transition: all 0.2s ease-in-out;
+}
+
+.advanced-search-row .proceed-btn:hover {
+  background-color: #0ea772;
+  transform: translateY(-1px);
+}
+
+/* --- Compact Manual Search Card --- */
+.card-manual {
+  padding: 14px 20px !important;      /* reduced inner padding */
+  border-radius: 10px !important;
+  box-shadow: 0 4px 12px rgba(14,30,37,0.04) !important;
+}
+
+/* Reduce spacing between form fields */
+.card-manual .form-group,
+.card-manual .col,
+.card-manual .row {
+  margin-bottom: 8px !important;      /* less vertical space */
+}
+
+/* Compact input and select fields */
+.card-manual input.form-control,
+.card-manual select.form-select {
+  height: 36px !important;            /* reduce height */
+  padding: 4px 8px !important;        /* tighter inner spacing */
+  font-size: 14px !important;         /* slightly smaller text */
+}
+
+/* Compact buttons inside the manual search */
+.card-manual button {
+  height: 36px !important;
+  padding: 0 14px !important;
+  font-size: 14px !important;
+}
+
+/* Adjust Advanced Search row spacing */
+.advanced-search-section {
+  margin-top: 6px !important;
+}
+
+.advanced-search-row {
+  gap: 8px !important;
+  margin-top: 6px !important;
+}
+
+/* Proceed button height matches selects */
+.advanced-search-row .proceed-btn {
+  height: 36px !important;
+  padding: 0 14px !important;
+}
+
+
+
+/* ---------- unify Search / Reset button sizing in Manual Search (non-invasive) ---------- */
+/* apply to both <button> and <a> when we add class="manual-action" */
+.card-manual .manual-action {
+  height: 36px !important;              /* same height as compact inputs */
+  padding: 0 12px !important;           /* consistent horizontal padding */
+  min-width: 120px;                     /* ensures a sensible visible width */
+  box-sizing: border-box;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px !important;
+  border-radius: 8px !important;        /* keep your existing rounded corners */
+}
+
+/* ensure reset links elsewhere that use reset-btn also align */
+.reset-btn.manual-action {
+  height: 36px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+
+
+/* ADD THIS: make Manual Search static & make Search Results scrollable */
+/* Minimal, non-invasive overrides */
+.card-manual {
+  /* keep your existing compact styling but make it sticky so it remains visible */
+  position: sticky !important;
+  top: 18px !important;
+  z-index: 40 !important;
+  max-width: 100% !important;
+}
+
+/* Results container: outer box limits overall height; inner box becomes the scrolling area */
+.results-block {
+  max-height: calc(100vh - 140px); /* leave room for header + manual card */
+  overflow: hidden !important;
+}
+.results-inner {
+  max-height: calc(100vh - 180px);
+  overflow: auto !important; /* only the results area scrolls */
+  padding: 12px !important;  /* slightly reduced padding for compactness */
+}
+
+/* Slightly tighten table cells to reduce the visual size of the block */
+.clean-table th,
+.clean-table td {
+  padding: 10px !important;
+}
+.compact-results {
+  font-size: 0.88rem !important;
+}
+
+/* Controls compactness */
+#records-per-page {
+  padding: 6px 8px !important;
+  height: 34px !important;
+}
+
+/* Mobile fallback: disable sticky for very small screens so layout remains natural */
+@media (max-width: 720px) {
+  .card-manual { position: static !important; top: auto !important; }
+  .results-block { max-height: 52vh !important; }
+  .results-inner { max-height: 48vh !important; }
+}
