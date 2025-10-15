@@ -286,6 +286,32 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
 
 /* minor visual tweak to status column cells in Time to Fill table to make 'On track' badge look identical */
 .status-cell { white-space: nowrap; }
+
+/* === Redesigned Candidate Modal CSS (only) === */
+.modal-body.redesigned {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 36px;
+  padding: 22px 26px;
+  background: #fff;
+  overflow-y: auto;
+  max-height: calc(100vh - 180px);
+  box-sizing: border-box;
+}
+
+.modal-section-title { grid-column: 1 / -1; margin: 6px 0 2px; font-weight:700; color:#111827; font-size:0.95rem; border-bottom:2px solid #eef2f6; padding-bottom:6px; }
+.modal-field { display:flex; flex-direction:column; gap:6px; }
+.modal-label { font-size:12px; color:#6b7280; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
+.modal-value { font-size:14px; color:#111827; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+
+.modal-full { grid-column: 1 / -1; }
+
+.modal-body.redesigned .skills-full { grid-column: 1 / -1; }
+
+@media (max-width: 880px) {
+  .modal-body.redesigned { grid-template-columns: 1fr; padding: 16px; max-height: calc(100vh - 120px); }
+}
+
 </style>
 
 <div class="container">
@@ -461,6 +487,7 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
 </div>
 
 <!-- Candidate Modal (unchanged IDs/structure) -->
+<!-- Candidate Modal (redesigned for readability; IDs unchanged) -->
 <div id="candidateModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="modalTitle">
   <div class="modal-content" role="document">
     <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
@@ -468,22 +495,29 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
     <div class="modal-header-strip" aria-hidden="false">
       <div class="modal-header-left">
         <h3 id="modalTitle">Candidate Details</h3>
-        <div class="modal-header-sub" id="modalHeaderSub">N/A • N/A</div>
-      </div>
-      <div class="modal-header-right">
-        <div class="modal-ai" id="modalAiScore">AI Score: <strong>N/A</strong></div>
-        <a id="modalResumeLink" class="resume-link-text" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
+        <a id="modalResumeLink" class="resume-link-text" href="#" target="_blank" rel="noopener noreferrer" style="display:none; color:#cfe3ff; text-decoration:underline; font-weight:700; font-size:13px; margin-top:4px; display:inline-block;">
           View Resume
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;">
             <path d="M21 15v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"></path>
             <polyline points="17 3 21 3 21 7"></polyline>
             <line x1="7" y1="13" x2="17" y2="3"></line>
           </svg>
         </a>
+
+        <div class="modal-header-sub" id="modalHeaderSub">N/A • N/A</div>
+      </div>
+      <div class="modal-header-right">
+        <div id="modalAiScore" class="modal-ai-pill" 
+             style="background:rgba(255,255,255,0.08); padding:6px 10px; border-radius:8px;
+             font-weight:700; color:#fff; font-size:13px; margin-top:56px; display:inline-flex;
+             align-items:center; float:right;">
+            AI Score:&nbsp;<strong>N/A</strong>
+        </div>        
       </div>
     </div>
 
-    <div class="modal-body" id="modalBody" aria-live="polite">
+    <!-- Redesigned body layout: long fields full-width, short fields in two columns -->
+    <div class="modal-body redesigned" id="modalBody" aria-live="polite">
       <div class="modal-full"><span style="color:var(--muted)">Loading...</span></div>
     </div>
   </div>
@@ -657,83 +691,81 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  function showCandidateModal(candidate){
-    modalTitle.textContent = (candidate.candidate_name || candidate.name || candidate.full_name || 'Unknown');
-    modalHeaderSub.textContent = `${candidate.location || 'N/A'} • ${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}`;
-    modalAiScore.innerHTML = `AI Score: <strong>${candidate.ai_score || 'N/A'}</strong>`;
+  
+function showCandidateModal(candidate){
+  modalTitle.textContent = (candidate.candidate_name || candidate.name || candidate.full_name || 'Unknown');
+  modalHeaderSub.textContent = `${candidate.location || 'N/A'} • ${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}`;
+  modalAiScore.innerHTML = `AI Score: <strong>${candidate.ai_score || 'N/A'}</strong>`;
 
-    if (candidate.resumelinks) {
-      modalResumeLink.style.display = 'inline-flex';
-      modalResumeLink.href = candidate.resumelinks;
-    } else {
-      modalResumeLink.style.display = 'none';
-      modalResumeLink.href = '#';
-    }
-
-    let modalContent = '';
-
-    modalContent += `
-      <div class="modal-full">
-        <span class="modal-label">AI Score</span>
-        <div class="modal-value">${candidate.ai_score || 'N/A'}</div>
-      </div>
-
-      <div>
-        <span class="modal-label">Skills</span>
-        <div class="modal-value">${candidate.skillset || 'N/A'}</div>
-      </div>
-
-      <div>
-        <span class="modal-label">Relevant Exp</span>
-        <div class="modal-value">${candidate.relevant_experience || 'N/A'}</div>
-      </div>
-
-      <div>
-        <span class="modal-label">Email</span>
-        <div class="modal-value">${candidate.email || 'N/A'}</div>
-      </div>
-
-      <div>
-        <span class="modal-label">Contact</span>
-        <div class="modal-value">${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}</div>
-      </div>
-
-      <div>
-        <span class="modal-label">Education</span>
-        <div class="modal-value">${candidate.education || 'N/A'}</div>
-      </div>
-
-      <div>
-        <span class="modal-label">IT Exp</span>
-        <div class="modal-value">${candidate.it_experience || 'N/A'}</div>
-      </div>
-
-      <div>
-        <span class="modal-label">Notice Period</span>
-        <div class="modal-value">${candidate.notice_period || 'N/A'}</div>
-      </div>
-
-      <div class="modal-full">
-        <span class="modal-label">Clients</span>
-        <div class="modal-value">${candidate.clients || 'N/A'}</div>
-      </div>
-
-      <div class="modal-full">
-        <span class="modal-label">Comment</span>
-        <div class="modal-value">${candidate.comment || 'N/A'}</div>
-      </div>
-
-      <div class="modal-full">
-        <span class="modal-label">Recruitment Notes</span>
-        <div class="modal-value">${candidate.recruitment_notes || 'N/A'}</div>
-      </div>
-    `;
-
-    modalBody.innerHTML = modalContent;
-    candidateModal.style.display = "block";
-    candidateModal.setAttribute('aria-hidden','false');
-    modalBody.scrollTop = 0;
+  if (candidate.resumelinks) {
+    modalResumeLink.style.display = 'inline-flex';
+    modalResumeLink.href = candidate.resumelinks;
+  } else {
+    modalResumeLink.style.display = 'none';
+    modalResumeLink.href = '#';
   }
+
+  modalBody.innerHTML = `
+    <div class="modal-section-title">Skills & Experience</div>
+
+    <div class="modal-field skills-full">
+      <div class="modal-label">Skills</div>
+      <div class="modal-value">${candidate.skillset || 'N/A'}</div>
+    </div>
+
+    <div class="modal-field skills-full">
+      <div class="modal-label">Relevant Experience</div>
+      <div class="modal-value">${candidate.relevant_experience || 'N/A'}</div>
+    </div>
+
+    <div class="modal-section-title">Details</div>
+
+    <div class="modal-field">
+      <div class="modal-label">Email</div>
+      <div class="modal-value">${candidate.email || 'N/A'}</div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">Contact</div>
+      <div class="modal-value">${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}</div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">IT Experience</div>
+      <div class="modal-value">${candidate.it_experience || 'N/A'}</div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">Education</div>
+      <div class="modal-value">${candidate.education || 'N/A'}</div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">Notice Period</div>
+      <div class="modal-value">${candidate.notice_period || 'N/A'}</div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">Clients</div>
+      <div class="modal-value">${candidate.clients || 'N/A'}</div>
+    </div>
+
+    <div class="modal-section-title">Comment</div>
+    <div class="modal-field modal-full">
+      <div class="modal-value">${candidate.comment || 'N/A'}</div>
+    </div>
+
+    <div class="modal-section-title">Recruitment Notes</div>
+    <div class="modal-field modal-full">
+      <div class="modal-value">${candidate.recruitment_notes || 'N/A'}</div>
+    </div>
+  `;
+
+  candidateModal.style.display = "block";
+  candidateModal.setAttribute('aria-hidden','false');
+  modalBody.scrollTop = 0;
+}
+
 
   function renderStageButtons(){
     stageButtons.innerHTML = "";
