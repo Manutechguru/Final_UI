@@ -21,3 +21,4 @@ class Candidate(Base):
     recruitment_notes = Column(String(250), nullable=True)
     ai_score = Column(Integer, nullable=True)
     ai_explanation = Column(Text, nullable=True)
+    ctc = Column(String(50), nullable=True)

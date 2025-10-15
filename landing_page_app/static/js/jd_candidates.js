@@ -4,6 +4,7 @@
 let jdId = null;
 let statusOptions = [];
 let notesSaveTimers = {};
+let editableSaveTimers = {};
 
 // Initialize
 function initJDCandidatesPage(data) {
@@ -11,6 +12,7 @@ function initJDCandidatesPage(data) {
   statusOptions = data.statusOptions || [];
   setupEventListeners();
   setupNotesEditing();
+  setupEditableFields();
   setupAIExplanation();
   updateKPI();
   ensureCheckboxIds();
@@ -108,6 +110,43 @@ function setupNotesEditing() {
   });
 }
 
+// Editable fields (Notice Period & CTC)
+function setupEditableFields() {
+  document.querySelectorAll('.editable-field').forEach(container => {
+    const display = container.querySelector('.editable-display');
+    const edit = container.querySelector('.editable-edit');
+    const cid = container.dataset.candidateId;
+    const fieldType = container.dataset.fieldType;
+    
+    container.dataset.originalValue = (display?.textContent || '').trim();
+
+    if (display) {
+      display.addEventListener('click', (e) => {
+        e.stopPropagation(); // block row modal
+        if (!edit) return;
+        display.style.display = 'none';
+        edit.style.display = 'block';
+        edit.focus();
+        try { edit.select(); } catch {}
+      });
+    }
+
+    if (!edit) return;
+
+    edit.addEventListener('blur', () => saveEditableField(cid, fieldType, edit.value));
+    edit.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        edit.blur();
+      } else if (e.key === 'Escape') {
+        edit.value = container.dataset.originalValue || '';
+        edit.style.display = 'none';
+        display.style.display = 'block';
+      }
+    });
+  });
+}
+
 // Save notes
 function saveNotes(candidateId, notes) {
   if (!candidateId) return;
@@ -135,6 +174,53 @@ function saveNotes(candidateId, notes) {
       display.textContent = container.dataset.originalNotes || 'Click to add notes';
       edit.value = container.dataset.originalNotes || '';
       showToast('Failed to save notes: ' + err.message, 'error', 3000);
+    }
+  }, 700);
+}
+
+// Save editable fields (Notice Period & CTC)
+function saveEditableField(candidateId, fieldType, value) {
+  if (!candidateId || !fieldType) return;
+  
+  const container = document.querySelector(`.editable-field[data-candidate-id="${candidateId}"][data-field-type="${fieldType}"]`);
+  if (!container) return;
+  
+  const display = container.querySelector('.editable-display');
+  const edit = container.querySelector('.editable-edit');
+
+  if (display) display.textContent = 'Saving...';
+  if (edit) { edit.style.display = 'none'; display.style.display = 'block'; }
+
+  clearTimeout(editableSaveTimers[`${candidateId}-${fieldType}`]);
+  editableSaveTimers[`${candidateId}-${fieldType}`] = setTimeout(async () => {
+    try {
+      let endpoint, payload;
+      
+      if (fieldType === 'notice_period') {
+        endpoint = '/candidates/update-notice-period';
+        payload = { candidate_id: candidateId, notice_period: value };
+      } else if (fieldType === 'ctc') {
+        endpoint = '/candidates/update-ctc';
+        payload = { candidate_id: candidateId, ctc: value };
+      } else {
+        throw new Error('Unknown field type');
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) throw new Error(await res.text());
+      
+      container.dataset.originalValue = value || '';
+      display.textContent = value || 'Click to edit';
+      showToast(`${fieldType === 'ctc' ? 'CTC' : 'Notice period'} updated`, 'success');
+    } catch (err) {
+      display.textContent = container.dataset.originalValue || 'Click to edit';
+      edit.value = container.dataset.originalValue || '';
+      showToast(`Failed to save ${fieldType === 'ctc' ? 'CTC' : 'notice period'}: ` + err.message, 'error', 3000);
     }
   }, 700);
 }
@@ -172,6 +258,7 @@ function setupRowExpansion() {
       // block interactive areas
       if (t.closest('input, select, button, a')) return;
       if (t.closest('.notes-editable')) return; // recruiter notes
+      if (t.closest('.editable-field')) return; // notice period & ctc
       if (t.closest('.ai-score-container') || t.closest('.ai-score')) return; // AI score
 
       // fallback check by column header
@@ -179,7 +266,8 @@ function setupRowExpansion() {
       if (td) {
         const th = row.closest('table')?.querySelector(`thead tr th:nth-child(${td.cellIndex + 1})`);
         const heading = (th?.textContent || '').trim().toLowerCase();
-        if (heading.includes('recruiter notes') || heading.includes('ai score')) return;
+        if (heading.includes('recruiter notes') || heading.includes('ai score') || 
+            heading.includes('notice') || heading.includes('ctc')) return;
       }
 
       openCandidateDetailsModal(row);
@@ -214,6 +302,9 @@ function openCandidateDetailsModal(row) {
       if (label.toLowerCase().includes('recruiter notes')) {
         const nd = cell.querySelector('.notes-display');
         valueHTML = nd ? escapeHTML(nd.textContent.trim()) : escapeHTML(cell.textContent.trim());
+      } else if (label.toLowerCase().includes('notice') || label.toLowerCase().includes('ctc')) {
+        const ed = cell.querySelector('.editable-display');
+        valueHTML = ed ? escapeHTML(ed.textContent.trim()) : escapeHTML(cell.textContent.trim());
       } else {
         valueHTML = cell.innerHTML.trim() || escapeHTML(cell.textContent.trim());
       }

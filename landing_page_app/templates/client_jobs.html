@@ -4,524 +4,219 @@
 
 {% block content %}
 <style>
-:root {
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --success: #22c55e;
-  --danger: #dc2626;
-  --warning: #f59e0b;
-  --gray-50: #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --radius: 8px;
-  --transition: all 0.2s ease;
+:root{
+  --primary:#2563eb; --primary-dark:#1d4ed8; --success:#22c55e; --danger:#dc2626;
+  --gray-50:#f8fafc; --gray-100:#f1f5f9; --gray-200:#e2e8f0; --gray-300:#cbd5e1;
+  --gray-400:#94a3b8; --gray-500:#64748b; --gray-600:#475569; --gray-700:#334155;
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+  --radius:8px; --transition:all 0.18s ease;
 }
 
-body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--gray-50);
-  color: var(--gray-800);
-  line-height: 1.6;
-}
+body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--gray-50); color:#1e293b; }
 
-.page-wrapper {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 24px;
-}
+.page-wrapper { max-width:1280px; margin:0 auto; padding:24px; }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--gray-200);
-}
+.header { display:flex; justify-content:space-between; align-items:center; margin-bottom:32px; padding-bottom:16px; border-bottom:1px solid var(--gray-200); }
+.header h1{ margin:0; font-size:28px; font-weight:700; color:var(--gray-800); }
 
-.header h1 {
-  color: var(--gray-900);
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0;
-}
+.header-actions { display:flex; gap:16px; align-items:center; }
 
-.manager-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: white;
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
+.manager-info { display:flex; gap:12px; align-items:center; background:white; padding:12px 16px; border-radius:var(--radius); box-shadow:var(--shadow); }
+.manager-avatar{ width:40px; height:40px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-weight:600; }
+.manager-details h3 { margin:0; font-size:16px; font-weight:600; }
+.manager-details p { margin:4px 0 0; color:var(--gray-500); font-size:14px; }
 
-.manager-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 16px;
-}
+.btn-add { background:var(--primary); color:white; padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
+.btn-add:hover{ background:var(--primary-dark); }
 
-.manager-details h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
+.content { display:block; }
 
-.manager-details p {
-  margin: 4px 0 0;
-  color: var(--gray-500);
-  font-size: 14px;
-}
+.jobs-section { margin-top:8px; }
+.jobs-section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.jobs-section h2 { margin:0; font-size:20px; font-weight:700; }
 
-.content {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 32px;
-  align-items: start;
-}
+.jobs-table-wrapper { overflow:visible; margin-top:8px; }
+.jobs-table { width:100%; border-collapse:collapse; background:white; border-radius:var(--radius); box-shadow:var(--shadow); overflow:visible; position:relative; }
+.jobs-table thead { background:var(--gray-50); }
+.jobs-table th { padding:14px 18px; text-align:left; font-size:13px; font-weight:700; color:var(--gray-500); border-bottom:1px solid var(--gray-200); }
+.jobs-table td { padding:14px 18px; font-size:14px; color:var(--gray-700); vertical-align:middle; border-bottom:1px solid rgba(0,0,0,0.03); }
+.jobs-table tr:last-child td { border-bottom:none; }
 
-.jobs-section h2 {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--gray-800);
-  margin: 0 0 20px;
-}
+.job-title-cell .cell-inner { display:flex; flex-direction:column; gap:6px; }
+.job-title-cell h3 { margin:0; font-size:16px; font-weight:600; color:var(--gray-900); }
+.job-title-cell .job-description { color:var(--gray-600); font-size:13px; }
 
-.jobs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-}
+.status-container { display:flex; align-items:center; gap:10px; white-space:nowrap; }
 
-.job-card {
-  background: white;
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-  position: relative;
-  border-left: 4px solid var(--primary);
-}
+/* Toggle */
+.toggle-switch { position:relative; width:42px; height:22px; display:inline-block; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; inset:0; background:var(--gray-300); border-radius:34px; transition:var(--transition); }
+.toggle-slider:before { content:""; position:absolute; width:16px; height:16px; left:3px; bottom:3px; background:white; border-radius:50%; transition:var(--transition); }
+.toggle-switch input:checked + .toggle-slider { background:var(--success); }
+.toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); }
 
-.job-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-}
+.status-badge { padding:4px 10px; border-radius:20px; font-weight:600; font-size:12px; }
+.status-active { background: rgba(34,197,94,0.12); color:var(--success); }
+.status-inactive { background: rgba(220,38,38,0.08); color:var(--danger); }
 
-.job-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
+/* Actions/dropdown */
+.action-cell { position:relative; white-space:nowrap; }
+.menu-btn { background:none; border:none; width:36px; height:36px; border-radius:6px; cursor:pointer; color:var(--gray-600); }
+.menu-dropdown { position:absolute; top:36px; right:8px; display:none; z-index:7000; background:white; border:1px solid var(--gray-200); border-radius:8px; box-shadow:var(--shadow-lg); padding:8px 0; width:200px; }
+.menu-dropdown.active { display:block; }
+.menu-item { display:flex; align-items:center; gap:8px; padding:8px 16px; width:100%; background:none; border:none; text-align:left; cursor:pointer; color:var(--gray-700); font-size:14px; }
+.menu-item:hover { background:var(--gray-50); }
+.menu-item.delete { color:var(--danger); }
 
-.job-card h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--gray-900);
-  line-height: 1.4;
-  padding-right: 30px;
-}
+/* Modal styles */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:9000; padding:20px; }
+.modal { background:white; border-radius:12px; width:100%; max-width:560px; box-shadow:var(--shadow-lg); overflow:hidden; }
+.modal-header { padding:18px 20px; border-bottom:1px solid var(--gray-200); display:flex; justify-content:space-between; align-items:center; }
+.modal-body { padding:18px 20px; }
+.modal-footer { padding:12px 20px; border-top:1px solid var(--gray-200); display:flex; justify-content:flex-end; gap:12px; }
+.modal-close { background:none; border:none; font-size:20px; color:var(--gray-500); cursor:pointer; width:36px; height:36px; border-radius:6px; }
 
-.job-description {
-  color: var(--gray-600);
-  margin: 12px 0;
-  font-size: 14px;
-  line-height: 1.5;
-}
+/* Confirm Delete Modal specific */
+.confirm-body { display:flex; gap:12px; align-items:flex-start; }
+.confirm-icon { font-size:28px; color:var(--danger); background: rgba(220,38,38,0.08); padding:8px; border-radius:8px; }
+.confirm-message { font-size:15px; color:var(--gray-800); }
 
-.job-description a {
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
+/* forms */
+.form-group { margin-bottom:12px; }
+.form-control { width:100%; padding:10px 12px; border:1px solid var(--gray-300); border-radius:6px; background:var(--gray-50); }
+.btn-primary { padding:10px 16px; border-radius:6px; background:var(--primary); color:white; border:none; font-weight:700; cursor:pointer; }
+.btn-secondary { padding:8px 12px; border-radius:6px; background:var(--gray-100); border:none; cursor:pointer; color:var(--gray-700); }
+.btn-danger { padding:10px 16px; border-radius:6px; background:var(--danger); color:white; border:none; cursor:pointer; }
 
-.job-description a:hover {
-  text-decoration: underline;
-}
+/* toast */
+#toastContainer { position:fixed; bottom:20px; right:20px; z-index:12000; display:flex; flex-direction:column; gap:10px; }
+.toast { background:var(--success); color:#fff; padding:12px 16px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12); display:flex; align-items:center; justify-content:space-between; min-width:220px; }
 
-.job-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 16px 0;
-  font-size: 13px;
-  color: var(--gray-500);
-}
-
-.job-meta-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.job-meta-item i {
-  font-size: 14px;
-  width: 16px;
-}
-
-.job-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--gray-200);
-}
-
-.status-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.status-badge {
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.status-active {
-  background: rgba(34, 197, 94, 0.1);
-  color: var(--success);
-}
-
-.status-inactive {
-  background: rgba(220, 38, 38, 0.1);
-  color: var(--danger);
-}
-
-.toggle-switch {
-  position: relative;
-  width: 42px;
-  height: 22px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--gray-300);
-  transition: var(--transition);
-  border-radius: 34px;
-}
-
-.toggle-slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: var(--transition);
-  border-radius: 50%;
-}
-
-input:checked + .toggle-slider {
-  background-color: var(--success);
-}
-
-input:checked + .toggle-slider:before {
-  transform: translateX(20px);
-}
-
-.view-candidates-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--primary);
-  color: white;
-  padding: 8px 14px;
-  border-radius: var(--radius);
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  transition: var(--transition);
-}
-
-.view-candidates-btn:hover {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
-}
-
-.job-menu {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-}
-
-.menu-btn {
-  background: none;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--gray-500);
-  transition: var(--transition);
-}
-
-.menu-btn:hover {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.menu-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  padding: 8px 0;
-  width: 180px;
-  z-index: 10;
-  display: none;
-}
-
-.menu-dropdown.active { display: block; }
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 16px;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--gray-700);
-  transition: var(--transition);
-}
-
-.menu-item:hover { background: var(--gray-50); }
-.menu-item.delete { color: var(--danger); }
-.menu-item i { font-size: 16px; width: 18px; }
-
-.empty-state {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-.empty-state i { font-size: 48px; color: var(--gray-300); margin-bottom: 16px; }
-.empty-state h3 { font-size: 18px; font-weight: 600; color: var(--gray-700); margin: 0 0 8px; }
-.empty-state p { color: var(--gray-500); margin: 0; }
-
-.add-job-section {
-  background: white;
-  border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: var(--shadow);
-  position: sticky;
-  top: 24px;
-}
-.add-job-section h2 { font-size: 20px; font-weight: 700; color: var(--gray-800); margin: 0 0 20px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
-.form-control {
-  width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius);
-  font-size: 14px; transition: var(--transition); background: var(--gray-50);
-}
-.form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-.btn-primary {
-  width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: var(--radius);
-  font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.btn-primary:hover { background: var(--primary-dark); }
-
-.message { padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px; font-size: 14px; font-weight: 500; }
-.message.success { background: rgba(34, 197, 94, 0.1); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.2); }
-.message.error { background: rgba(220, 38, 38, 0.1); color: var(--danger); border: 1px solid rgba(220, 38, 38, 0.2); }
-
-/* Modal */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-  display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
-}
-.modal { background: white; border-radius: var(--radius); width: 100%; max-width: 520px; box-shadow: var(--shadow-lg); overflow: hidden; }
-.modal-header { padding: 20px 24px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--gray-900); }
-.modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray-500); width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
-.modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
-.modal-body { padding: 24px; }
-.modal-details { display: flex; flex-direction: column; gap: 16px; }
-.modal-detail { display: flex; flex-direction: column; gap: 4px; }
-.modal-detail label { font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
-.modal-detail span { font-size: 14px; color: var(--gray-700); }
-.modal-footer { padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; }
-.btn-secondary { padding: 8px 16px; background: var(--gray-100); color: var(--gray-700); border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); }
-.btn-secondary:hover { background: var(--gray-200); }
-
-@media (max-width: 1024px) {
-  .content { grid-template-columns: 1fr; gap: 24px; }
-  .add-job-section { position: static; }
-}
-@media (max-width: 768px) {
-  .page-wrapper { padding: 16px; }
-  .header { flex-direction: column; align-items: flex-start; gap: 16px; }
-  .jobs-grid { grid-template-columns: 1fr; }
-}
-
-/* Toasts (green bottom-right like your screenshot) */
-#toastContainer {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 5000;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-}
-.toast {
-  background: #22c55e; color: #fff; padding: 12px 16px; border-radius: 6px;
-  font-weight: 600; min-width: 220px; max-width: 360px; display: flex; align-items: center; justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-.toast button {
-  background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; margin-left: 12px;
-}
+@media (max-width:768px){ .page-wrapper{ padding:16px } .jobs-section-header{ flex-direction:column; align-items:flex-start; gap:12px } .menu-dropdown{ right:0; } }
 </style>
 
 <div class="page-wrapper">
   <div class="header">
     <h1>Jobs Management</h1>
-    <div class="manager-info">
-      <div class="manager-avatar">{{ manager.manager_name[0]|upper }}</div>
-      <div class="manager-details">
-        <h3>{{ manager.manager_name }}</h3>
-        <p>Manager ID: {{ manager.manager_id }}</p>
+    <div class="header-actions">
+      <button id="openAddJobBtn" class="btn-add">Add Job</button>
+      <div class="manager-info">
+        <div class="manager-avatar">{{ manager.manager_name[0]|upper }}</div>
+        <div class="manager-details">
+          <h3>{{ manager.manager_name }}</h3>
+          <p>Manager ID: {{ manager.manager_id }}</p>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="content">
-    <!-- Jobs List Section -->
     <div class="jobs-section">
-      <h2>Job Positions ({{ jobs|length }})</h2>
+      <div class="jobs-section-header">
+        <h2>Job Positions ({{ jobs|length }})</h2>
+      </div>
 
-      {% if jobs %}
-      <div class="jobs-grid">
-        {% for job in jobs %}
-        <div class="job-card" data-job-id="{{ job.job_id }}"
-             data-created-by="{{ job.created_by or 'N/A' }}"
-             data-created-at="{{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else 'N/A' }}"
-             data-updated-by="{{ job.updated_by or 'N/A' }}"
-             data-updated-at="{{ job.updated_at.strftime('%Y-%m-%d %H:%M:%S') if job.updated_at else 'N/A' }}">
-          <div class="job-card-header">
-            <h3>{{ job.job_title }}</h3>
-            <div class="job-menu">
-              <button class="menu-btn">⋮</button>
-              <div class="menu-dropdown">
-                <button class="menu-item view-job-btn"><i>📋</i> View Details</button>
-                <button class="menu-item edit-job-btn"><i>✏️</i> Edit Job</button>
-                <button class="menu-item delete delete-job-btn"><i>🗑️</i> Delete Job</button>
-              </div>
-            </div>
-          </div>
+      <div class="jobs-table-wrapper">
+        {% if jobs %}
+        <table class="jobs-table" role="table">
+          <thead>
+            <tr>
+              <th>Job Title</th>
+              <th>Created By</th>
+              <th>Created At</th>
+              <th>Updated By</th>
+              <th>Updated At</th>
+              <th style="width:160px;">Status</th>
+              <th style="width:160px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for job in jobs %}
+            <tr class="job-card"
+                data-job-id="{{ job.job_id }}"
+                data-created-by="{{ job.created_by or 'N/A' }}"
+                data-created-at="{{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else 'N/A' }}"
+                data-updated-by="{{ job.updated_by or 'N/A' }}"
+                data-updated-at="{{ job.updated_at.strftime('%Y-%m-%d %H:%M:%S') if job.updated_at else 'N/A' }}">
+              <td class="job-title-cell">
+                <div class="cell-inner">
+                  <h3>{{ job.job_title }}</h3>
+                  <div class="job-description">
+                    {% if job.job_description %}
+                      {% if job.job_description.startswith('http') %}
+                        <a href="{{ job.job_description }}" target="_blank"><i>📄</i> View Job Description</a>
+                      {% else %}
+                        {{ job.job_description }}
+                      {% endif %}
+                    {% else %}
+                      <em>No job description provided.</em>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>{{ job.created_by or 'N/A' }}</td>
+              <td>{{ job.created_at.strftime('%Y-%m-%d %H:%M') if job.created_at else 'N/A' }}</td>
+              <td>{{ job.updated_by or 'N/A' }}</td>
+              <td>{{ job.updated_at.strftime('%Y-%m-%d %H:%M') if job.updated_at else 'N/A' }}</td>
 
-          <div class="job-description">
-            {% if job.job_description %}
-              {% if job.job_description.startswith('http') %}
-                <a href="{{ job.job_description }}" target="_blank"><i>📄</i> View Job Description</a>
-              {% else %}
-                {{ job.job_description }}
-              {% endif %}
-            {% else %}
-              <em>No job description provided.</em>
-            {% endif %}
-          </div>
+              <td class="status-cell">
+                <div class="status-container">
+                  <label class="toggle-switch" title="Toggle Job Status">
+                    <input type="checkbox" class="status-toggle" {{ 'checked' if job.status=='active' else '' }}>
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="status-badge {{ 'status-active' if job.status=='active' else 'status-inactive' }}">{{ job.status|capitalize }}</span>
+                </div>
+              </td>
 
-          <div class="job-meta">
-            <div class="job-meta-item"><i>🆔</i> <span>Job ID: {{ job.job_id }}</span></div>
-            <div class="job-meta-item"><i>📅</i> <span>Created: {{ job.created_at.strftime('%Y-%m-%d') if job.created_at else 'N/A' }}</span></div>
-            <div class="job-meta-item"><i>✏️</i> <span>Updated: {{ job.updated_at.strftime('%Y-%m-%d %H:%M') if job.updated_at else 'N/A' }}</span></div>
-          </div>
-
-          <div class="job-footer">
-            <div class="status-container">
-              <label class="toggle-switch" title="Toggle Job Status">
-                <input type="checkbox" class="status-toggle" {{ 'checked' if job.status=='active' else '' }}>
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="status-badge {{ 'status-active' if job.status=='active' else 'status-inactive' }}">{{ job.status|capitalize }}</span>
-            </div>
-
-            <a href="/managers/jobs/{{ job.job_id }}/candidates" class="view-candidates-btn"><i>👥</i> View Candidates</a>
-          </div>
+              <td class="action-cell">
+                <a href="/managers/jobs/{{ job.job_id }}/candidates" class="view-candidates-btn" title="View Candidates"><i>👥</i> View Candidates</a>
+                <button class="menu-btn" aria-label="Open job menu">⋮</button>
+                <div class="menu-dropdown" role="menu">
+                  <button class="menu-item view-job-btn" role="menuitem"><i>📋</i> View Details</button>
+                  <button class="menu-item edit-job-btn" role="menuitem"><i>✏️</i> Edit Job</button>
+                  <button class="menu-item delete delete-job-btn" role="menuitem"><i>🗑️</i> Delete Job</button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state" style="padding:60px 20px; text-align:center; background:white; border-radius:8px; box-shadow:var(--shadow);">
+          <i style="font-size:48px;color:var(--gray-300);display:block;margin-bottom:16px;">📋</i>
+          <h3 style="margin:0 0 8px;color:var(--gray-700);">No jobs added yet</h3>
+          <p style="margin:0;color:var(--gray-500);">Click "Add Job" to create your first job position.</p>
         </div>
-        {% endfor %}
+        {% endif %}
       </div>
-      {% else %}
-      <div class="empty-state">
-        <i>📋</i>
-        <h3>No jobs added yet</h3>
-        <p>Get started by adding your first job position using the form on the right.</p>
-      </div>
-      {% endif %}
     </div>
+  </div>
+</div>
 
-    <!-- Add Job Form Section -->
-    <div class="add-job-section">
-      <h2>Add New Job</h2>
-
-      {% if message %}
-      <div class="message {{ 'success' if 'success' in message|lower else 'error' }}">{{ message }}</div>
-      {% endif %}
-
+<!-- Add Job Modal -->
+<div class="modal-overlay" id="addJobModal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3>Add New Job</h3>
+      <button class="modal-close add-modal-close" aria-label="Close add job">&times;</button>
+    </div>
+    <div class="modal-body">
       <form method="POST" action="/managers/jobs/{{ manager.manager_id }}/add-job" id="jobForm">
         <div class="form-group">
-          <label for="job_title">Job Title</label>
-          <input type="text" id="job_title" name="job_title" class="form-control" placeholder="e.g. Senior Software Engineer" required>
+          <label for="job_title">Job Title *</label>
+          <input type="text" id="job_title" name="job_title" class="form-control" placeholder="Enter Job Title" required>
         </div>
-
         <div class="form-group">
           <label for="job_description">Job Description (or Link)</label>
-          <textarea id="job_description" name="job_description" class="form-control" placeholder="Describe the role or paste a link to the full job description" rows="4"></textarea>
+          <textarea id="job_description" name="job_description" class="form-control" rows="5" placeholder="Describe the role or paste a link"></textarea>
         </div>
-
-        <button type="submit" class="btn-primary"><i>➕</i> Add Job</button>
+        <div class="modal-footer" style="border-top:none;padding-top:8px;">
+          <button type="button" class="btn-secondary add-modal-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">Create Job</button>
+        </div>
       </form>
     </div>
   </div>
@@ -529,29 +224,29 @@ input:checked + .toggle-slider:before {
 
 <!-- Job Details Modal -->
 <div class="modal-overlay" id="jobModal">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true">
     <div class="modal-header">
       <h3>Job Details</h3>
-      <button class="modal-close">&times;</button>
+      <button class="modal-close" aria-label="Close job details">&times;</button>
     </div>
     <div class="modal-body">
       <div class="modal-details">
-        <div class="modal-detail"><label>Created By</label><span id="modalCreatedBy">N/A</span></div>
-        <div class="modal-detail"><label>Created At</label><span id="modalCreatedAt">N/A</span></div>
-        <div class="modal-detail"><label>Updated By</label><span id="modalUpdatedBy">N/A</span></div>
-        <div class="modal-detail"><label>Updated At</label><span id="modalUpdatedAt">N/A</span></div>
+        <div class="modal-detail"><label>Created By</label><div id="modalCreatedBy">N/A</div></div>
+        <div class="modal-detail"><label>Created At</label><div id="modalCreatedAt">N/A</div></div>
+        <div class="modal-detail"><label>Updated By</label><div id="modalUpdatedBy">N/A</div></div>
+        <div class="modal-detail"><label>Updated At</label><div id="modalUpdatedAt">N/A</div></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-secondary" id="closeModalBtn">Close</button></div>
   </div>
 </div>
 
-<!-- Edit Job Modal (keeps your visual language) -->
+<!-- Edit Job Modal -->
 <div class="modal-overlay" id="editJobModal" style="display:none;">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true">
     <div class="modal-header">
       <h3>Edit Job</h3>
-      <button class="modal-close edit-modal-close">&times;</button>
+      <button class="modal-close edit-modal-close" aria-label="Close edit job">&times;</button>
     </div>
     <div class="modal-body">
       <form id="editJobForm">
@@ -563,7 +258,7 @@ input:checked + .toggle-slider:before {
           <label for="editJobDescription">Job Description (or Link)</label>
           <textarea id="editJobDescription" name="job_description" class="form-control" rows="4"></textarea>
         </div>
-        <div class="modal-footer" style="border-top:none; padding:0; margin-top:8px;">
+        <div class="modal-footer" style="border-top:none;padding:0;margin-top:8px;">
           <button type="button" class="btn-secondary edit-modal-cancel">Cancel</button>
           <button type="submit" class="btn-primary" id="saveEditBtn">Save Changes</button>
         </div>
@@ -572,68 +267,85 @@ input:checked + .toggle-slider:before {
   </div>
 </div>
 
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay" id="confirmDeleteModal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3>Confirm Delete</h3>
+      <button class="modal-close confirm-close" aria-label="Close confirm">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-body">
+        <div class="confirm-icon">🗑️</div>
+        <div>
+          <p class="confirm-message"><strong>Are you sure you want to delete this job?</strong><br>This action cannot be undone.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary confirm-cancel">Cancel</button>
+      <button class="btn-danger" id="confirmDeleteBtn">Delete Job</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast container -->
 <div id="toastContainer"></div>
 
 <script>
-// Helper: local YYYY-MM-DD HH:MM:SS
-function formatLocalYMDHMS(d) {
-  if (!(d instanceof Date)) d = new Date(d);
-  const pad = n => String(n).padStart(2, '0');
+// --- Helpers ---
+function formatLocalYMDHMS(d){
+  if(!(d instanceof Date)) d = new Date(d);
+  const pad = n => String(n).padStart(2,'0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-// Toast (green, bottom-right, auto-dismiss)
-function showToast(message, duration=3000) {
-  const c = document.getElementById("toastContainer");
-  const el = document.createElement("div");
-  el.className = "toast";
+function showToast(message, duration=3000){
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast';
   el.innerHTML = `<span>${message}</span><button aria-label="Close" onclick="this.parentElement.remove()">×</button>`;
   c.appendChild(el);
-  setTimeout(() => { if (el.parentElement) el.remove(); }, duration);
+  setTimeout(()=>{ if(el.parentElement) el.remove(); }, duration);
 }
 
-// Update timestamp in card & modal
-function updateJobTimestampInUI(jobCard, updatedAtStr, updatedBy) {
-  if (!jobCard) return;
+// Update timestamps in UI (keeps dataset updated)
+function updateJobTimestampInUI(jobCard, updatedAtStr, updatedBy){
+  if(!jobCard) return;
   jobCard.dataset.updatedAt = updatedAtStr || 'N/A';
-  if (typeof updatedBy !== 'undefined' && updatedBy !== null) jobCard.dataset.updatedBy = updatedBy;
+  if(typeof updatedBy !== 'undefined' && updatedBy !== null) jobCard.dataset.updatedBy = updatedBy;
 
-  const metaItems = jobCard.querySelectorAll('.job-meta-item');
-  for (const item of metaItems) {
-    const text = item.textContent.toLowerCase();
-    if (text.includes('updated')) {
-      item.querySelector('span').textContent = `Updated: ${updatedAtStr ? formatLocalYMDHMS(updatedAtStr).substring(0, 16) : 'N/A'}`;
-      break;
-    }
+  // Update updated at visible cell (5th td)
+  const updatedCell = jobCard.querySelector('td:nth-child(5)');
+  if(updatedCell){
+    updatedCell.textContent = updatedAtStr ? (typeof updatedAtStr === 'string' ? updatedAtStr.substring(0,16) : formatLocalYMDHMS(new Date(updatedAtStr)).substring(0,16)) : 'N/A';
   }
+
   const modalUpdatedAtEl = document.getElementById('modalUpdatedAt');
-  if (modalUpdatedAtEl) modalUpdatedAtEl.textContent = updatedAtStr || 'N/A';
+  if(modalUpdatedAtEl) modalUpdatedAtEl.textContent = updatedAtStr || 'N/A';
   const modalUpdatedByEl = document.getElementById('modalUpdatedBy');
-  if (modalUpdatedByEl && (typeof updatedBy !== 'undefined' && updatedBy !== null)) modalUpdatedByEl.textContent = updatedBy;
+  if(modalUpdatedByEl && (typeof updatedBy !== 'undefined' && updatedBy !== null)) modalUpdatedByEl.textContent = updatedBy;
 }
 
-// Attach all behaviors
-function attachEvents() {
-  // Toggle status (uses your existing endpoints; no wire changes)
+// --- Attach behaviors ---
+function attachEvents(){
+  // 1) Toggle status
   document.querySelectorAll('.status-toggle').forEach(toggle => {
-    toggle.addEventListener('change', async function() {
+    toggle.addEventListener('change', async function(){
       const jobCard = this.closest('.job-card');
-      if (!jobCard) return;
-
+      if(!jobCard) return;
       const jobId = jobCard.dataset.jobId;
       const desiredStatus = this.checked ? 'active' : 'inactive';
       this.disabled = true;
 
       const statusBadge = jobCard.querySelector('.status-badge');
-      if (statusBadge) {
+      if(statusBadge){
         statusBadge.textContent = desiredStatus.charAt(0).toUpperCase() + desiredStatus.slice(1);
-        statusBadge.className = `status-badge status-${desiredStatus}`;
+        statusBadge.className = 'status-badge status-' + desiredStatus;
       }
 
       const endpoints = [
         { url: `/managers/jobs/{{ manager.manager_id }}/toggle-job/${jobId}`, method: 'POST' },
-        // Legacy fallbacks kept as-is; harmless if missing
         { url: `/managers/jobs/{{ manager.manager_id }}/update-status/${jobId}`, method: 'POST' },
         { url: `/jobs/{{ manager.manager_id }}/toggle-job/${jobId}`, method: 'POST' },
         { url: `/jobs/toggle-job/${jobId}`, method: 'POST' },
@@ -641,59 +353,64 @@ function attachEvents() {
         { url: `/managers/jobs/{{ manager.manager_id }}/update-status/${jobId}`, method: 'PUT' },
       ];
 
-      let success = false, lastResponse = null, lastError = null;
-      for (const ep of endpoints) {
-        try {
+      let success=false, lastResponse=null, lastError=null;
+      for(const ep of endpoints){
+        try{
           const res = await fetch(ep.url, {
             method: ep.method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: desiredStatus })
           });
           lastResponse = res;
-          if (res.ok) { success = true; break; }
-          lastError = await res.text().catch(() => `HTTP ${res.status}`);
-        } catch (e) { lastError = e?.message || String(e); }
+          if(res.ok){ success=true; break; }
+          lastError = await res.text().catch(()=>`HTTP ${res.status}`);
+        }catch(e){ lastError = e?.message || String(e); }
       }
 
-      if (!success) {
+      if(!success){
+        // revert
         this.checked = !this.checked;
-        if (statusBadge) {
-          statusBadge.textContent = this.checked ? 'Active' : 'Inactive';
-          statusBadge.className = `status-badge status-${this.checked ? 'active' : 'inactive'}`;
-        }
+        if(statusBadge){ statusBadge.textContent = this.checked ? 'Active' : 'Inactive'; statusBadge.className = `status-badge status-${this.checked ? 'active' : 'inactive'}`; }
         showToast('Failed to update job status', 4000);
         console.error('Status toggle failed:', lastResponse, lastError);
       } else {
-        try {
+        try{
           const ct = lastResponse.headers.get('content-type') || '';
           let data = null;
-          if (ct.includes('application/json')) data = await lastResponse.json().catch(() => null);
+          if(ct.includes('application/json')) data = await lastResponse.json().catch(()=>null);
           const updatedAt = (data && data.updated_at) ? data.updated_at : formatLocalYMDHMS(new Date());
           const updatedBy = (data && data.updated_by) ? data.updated_by : null;
           updateJobTimestampInUI(jobCard, updatedAt, updatedBy);
-        } catch { updateJobTimestampInUI(jobCard, formatLocalYMDHMS(new Date()), null); }
+        }catch(e){
+          updateJobTimestampInUI(jobCard, formatLocalYMDHMS(new Date()), null);
+        }
         showToast(`Status updated to ${desiredStatus}`);
       }
       this.disabled = false;
     });
   });
 
-  // Menu dropdown (unchanged)
+  // 2) Menu dropdown (three dots) behavior
   document.querySelectorAll('.menu-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
+    btn.addEventListener('click', function(e){
       e.stopPropagation();
       const dd = this.nextElementSibling;
+      if(!dd) return;
       const isActive = dd.classList.contains('active');
-      document.querySelectorAll('.menu-dropdown.active').forEach(d => { if (d !== dd) d.classList.remove('active'); });
+      // close other dropdowns
+      document.querySelectorAll('.menu-dropdown.active').forEach(d => { if(d !== dd) d.classList.remove('active'); });
       dd.classList.toggle('active', !isActive);
     });
   });
+  // click outside -> close dropdowns
   document.addEventListener('click', () => document.querySelectorAll('.menu-dropdown.active').forEach(d => d.classList.remove('active')));
 
-  // View details (unchanged)
+  // 3) View details
   document.querySelectorAll('.view-job-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
       const jobCard = this.closest('.job-card');
+      if(!jobCard) return;
       document.getElementById('modalCreatedBy').textContent = jobCard.dataset.createdBy || 'N/A';
       document.getElementById('modalCreatedAt').textContent = jobCard.dataset.createdAt || 'N/A';
       document.getElementById('modalUpdatedBy').textContent = jobCard.dataset.updatedBy || 'N/A';
@@ -701,76 +418,121 @@ function attachEvents() {
       document.getElementById('jobModal').style.display = 'flex';
     });
   });
-  const detailsModal = document.getElementById('jobModal');
-  document.querySelector('.modal-close').addEventListener('click', () => detailsModal.style.display = 'none');
-  document.getElementById('closeModalBtn').addEventListener('click', () => detailsModal.style.display = 'none');
-  detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) detailsModal.style.display = 'none'; });
 
-  // DELETE (unchanged wire, toast UI)
+  // details modal close handlers
+  const detailsModal = document.getElementById('jobModal');
+  if(detailsModal){
+    const dmClose = detailsModal.querySelector('.modal-close');
+    if(dmClose) dmClose.addEventListener('click', ()=> detailsModal.style.display = 'none');
+    const closeBtn = document.getElementById('closeModalBtn');
+    if(closeBtn) closeBtn.addEventListener('click', ()=> detailsModal.style.display = 'none');
+    detailsModal.addEventListener('click', (e)=> { if(e.target === detailsModal) detailsModal.style.display = 'none' });
+  }
+
+  // 4) Delete - use confirm modal (UI) then call same endpoint
+  const confirmModal = document.getElementById('confirmDeleteModal');
+  const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+  let deleteTarget = null; // { jobId, jobCard }
+
   document.querySelectorAll('.delete-job-btn').forEach(btn => {
-    btn.addEventListener('click', async function() {
-      if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) return;
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
       const jobCard = this.closest('.job-card');
+      if(!jobCard) return;
       const jobId = jobCard.dataset.jobId;
-      try {
-        const response = await fetch(`/managers/jobs/{{ manager.manager_id }}/delete-job/${jobId}`, { method: 'POST' });
-        if (!response.ok) throw new Error(await response.text().catch(() => `HTTP ${response.status}`));
-        jobCard.remove();
-        showToast('Job deleted successfully');
-      } catch (err) {
-        showToast('Error deleting job', 4000);
-        console.error('Delete job error:', err);
-      }
+      deleteTarget = { jobId, jobCard };
+      if(confirmModal) confirmModal.style.display = 'flex';
+      // close dropdown for cleanliness
+      document.querySelectorAll('.menu-dropdown.active').forEach(d => d.classList.remove('active'));
     });
   });
 
-  // EDIT: open modal + prefill
+  // close/hide confirm modal
+  document.querySelectorAll('.confirm-cancel, .confirm-close').forEach(el => {
+    el.addEventListener('click', ()=> { if(confirmModal) confirmModal.style.display = 'none'; deleteTarget = null; });
+  });
+  if(confirmModal) confirmModal.addEventListener('click', (e)=> { if(e.target === confirmModal){ confirmModal.style.display = 'none'; deleteTarget = null; }});
+
+  // when user confirms delete -> call same backend endpoint and remove row on success
+  if(confirmDeleteBtn){
+    confirmDeleteBtn.addEventListener('click', async function(){
+      if(!deleteTarget) return;
+      const { jobId, jobCard } = deleteTarget;
+      try{
+        const response = await fetch(`/managers/jobs/{{ manager.manager_id }}/delete-job/${jobId}`, { method: 'POST' });
+        if(!response.ok) throw new Error(await response.text().catch(()=>`HTTP ${response.status}`));
+        // remove row from table
+        jobCard.remove();
+        // update header count
+        const hdr = document.querySelector('.jobs-section h2');
+        if(hdr){
+          const match = hdr.textContent.match(/\((\d+)\)/);
+          if(match) hdr.textContent = hdr.textContent.replace(/\(\d+\)/, `(${Math.max(0, Number(match[1]) - 1)})`);
+        }
+        showToast('Job deleted successfully');
+      }catch(err){
+        console.error('Delete job error:', err);
+        showToast('Error deleting job', 4000);
+      }finally{
+        if(confirmModal) confirmModal.style.display = 'none';
+        deleteTarget = null;
+      }
+    });
+  }
+
+  // 5) Edit open/prefill
   document.querySelectorAll('.edit-job-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
       const jobCard = this.closest('.job-card');
+      if(!jobCard) return;
       const jobId = jobCard.dataset.jobId;
       const title = jobCard.querySelector('h3').textContent.trim();
       const descEl = jobCard.querySelector('.job-description');
       let description = '';
-      if (descEl) {
+      if(descEl){
         const a = descEl.querySelector('a');
-        if (a) description = a.getAttribute('href');
+        if(a) description = a.getAttribute('href');
         else description = descEl.textContent.trim() !== 'No job description provided.' ? descEl.textContent.trim() : '';
       }
       document.getElementById('editJobTitle').value = title;
       document.getElementById('editJobDescription').value = description;
       document.getElementById('editJobForm').dataset.jobId = jobId;
       document.getElementById('editJobModal').style.display = 'flex';
+      // close dropdowns
+      document.querySelectorAll('.menu-dropdown.active').forEach(d => d.classList.remove('active'));
     });
   });
-  // EDIT: close/cancel
+
+  // edit modal close
   document.querySelectorAll('.edit-modal-close, .edit-modal-cancel').forEach(btn => {
-    btn.addEventListener('click', () => { document.getElementById('editJobModal').style.display = 'none'; });
+    btn.addEventListener('click', ()=> document.getElementById('editJobModal').style.display = 'none');
   });
-  // EDIT: submit (new API)
-  document.getElementById('editJobForm').addEventListener('submit', async function(e) {
+
+  // edit submit -> call your existing endpoint (unchanged)
+  document.getElementById('editJobForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const jobId = this.dataset.jobId;
     const newTitle = document.getElementById('editJobTitle').value.trim();
-    const newDesc  = document.getElementById('editJobDescription').value.trim();
-    if (!newTitle) { showToast('Job title is required', 4000); return; }
+    const newDesc = document.getElementById('editJobDescription').value.trim();
+    if(!newTitle){ showToast('Job title is required', 4000); return; }
 
-    try {
+    try{
       const res = await fetch(`/managers/jobs/{{ manager.manager_id }}/edit-job/${jobId}`, {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
         body: JSON.stringify({ job_title: newTitle, job_description: newDesc })
       });
-      if (!res.ok) throw new Error(await res.text().catch(()=>`HTTP ${res.status}`));
+      if(!res.ok) throw new Error(await res.text().catch(()=>`HTTP ${res.status}`));
       const data = await res.json();
 
       // update card UI
       const jobCard = document.querySelector(`.job-card[data-job-id="${jobId}"]`);
-      if (jobCard) {
+      if(jobCard){
         jobCard.querySelector('h3').textContent = data.job_title;
         const descWrap = jobCard.querySelector('.job-description');
-        if (data.job_description) {
-          if (data.job_description.startsWith('http')) {
+        if(data.job_description){
+          if(data.job_description.startsWith('http')){
             descWrap.innerHTML = `<a href="${data.job_description}" target="_blank"><i>📄</i> View Job Description</a>`;
           } else {
             descWrap.textContent = data.job_description;
@@ -782,11 +544,23 @@ function attachEvents() {
       }
       showToast(`Job "${data.job_title}" updated`);
       document.getElementById('editJobModal').style.display = 'none';
-    } catch (err) {
-      showToast('Error updating job', 4000);
+    }catch(err){
       console.error('Edit job error:', err);
+      showToast('Error updating job', 4000);
     }
   });
+
+  // 6) Add Job modal open/close (UI only - form submits to your existing action)
+  const addJobModal = document.getElementById('addJobModal');
+  const openAddJobBtn = document.getElementById('openAddJobBtn');
+  if(openAddJobBtn) openAddJobBtn.addEventListener('click', ()=> { if(addJobModal) addJobModal.style.display = 'flex'; });
+  document.querySelectorAll('.add-modal-close, .add-modal-cancel').forEach(btn => {
+    btn.addEventListener('click', ()=> { if(addJobModal) addJobModal.style.display = 'none'; });
+  });
+  if(addJobModal) addJobModal.addEventListener('click', (e)=> { if(e.target === addJobModal) addJobModal.style.display = 'none' });
+
+  // ensure dropdowns close when table is scrolled or resized
+  window.addEventListener('resize', ()=> document.querySelectorAll('.menu-dropdown.active').forEach(d => d.classList.remove('active')));
 }
 
 document.addEventListener('DOMContentLoaded', attachEvents);

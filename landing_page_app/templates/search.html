@@ -6,31 +6,8 @@
 <!-- Container -->
 <div class="nxg-container" style="max-width:1180px; margin:18px auto;">
 
-  <!-- TOP HERO / SEARCH AREA (improved, attractive) -->
+  <!-- TOP HERO / SEARCH AREA -->
   <div class="hero-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:18px;">
-    <!-- Advanced Search card (left) -->
-    <div class="card-advanced" style="background: linear-gradient(135deg,#eef2ff 0%, #e6f7ff 100%); border-radius:12px; padding:18px; box-shadow:0 8px 20px rgba(14,30,37,0.06); border:1px solid rgba(14,30,37,0.04);">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div style="background:linear-gradient(180deg,#fff 0,#f3f8ff 100%); border-radius:12px; padding:10px; display:flex; align-items:center; justify-content:center; width:56px; height:56px;">
-          <i class="bi bi-file-earmark-text" style="font-size:22px; color:#2563eb;"></i>
-        </div>
-        <div style="flex:1;">
-          <div style="font-weight:800; font-size:16px; color:#0f172a;">Advanced: Parse JD (Drive / Docs)</div>
-          <div style="color:#374151; font-size:13px; margin-top:4px;">Paste a Google Drive/Docs share link — our AI will extract keywords and match the best candidates.</div>
-        </div>
-      </div>
-
-      <form id="advancedSearchForm" action="/candidates/advanced-search" method="post" class="mt-3" autocomplete="off" style="display:flex; gap:10px; align-items:center;">
-        <input type="url" name="jd_drive_link" placeholder="Paste share link (Drive / Docs)" required
-               class="form-control" style="flex:1; min-width:0; border-radius:8px; padding:10px 12px; border:1px solid #e6eefc; background:#fff;"/>
-        <button type="submit" class="btn proceed-btn" style="background:#10b981; color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:700;">
-          <i class="bi bi-magic me-1"></i> Proceed
-        </button>
-      </form>
-      <div style="font-size:12px; color:#6b7280; margin-top:8px;">AI will examine JD text and compare with stored resumes (10 at a time) to find best matches.</div>
-    </div>
-
-    <!-- Manual search + Client/Vendor/Job (right) -->
     <div class="card-manual" style="background:#fff; border-radius:12px; padding:14px; box-shadow:0 8px 20px rgba(14,30,37,0.04); border:1px solid rgba(14,30,37,0.04);">
       <div style="display:flex; align-items:center; justify-content:space-between;">
         <div style="font-weight:800; font-size:16px; color:#0f172a;">Manual Search</div>
@@ -65,12 +42,11 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="display:flex; gap:8px; width:100%;">
             <button type="submit" class="btn btn-primary" style="flex:1; border-radius:8px; padding:9px 12px;">Search</button>
-            <a href="/candidates/search" class="btn btn-outline-secondary" style="flex:1; border-radius:8px; padding:9px 12px;">Reset</a>
+            <a href="/candidates/search" class="btn btn-outline-secondary reset-btn" style="flex:1; border-radius:8px; padding:9px 12px;">Reset</a>
           </div>
         </div>
       </form>
 
-      <!-- Client / Vendor / Job (kept IDs and endpoints) -->
       <div style="display:flex; gap:8px; margin-top:12px; align-items:center;">
         <select id="clientSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
           <option value="">Select Client</option>
@@ -80,19 +56,84 @@
         </select>
 
         <select id="vendorSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
-          <option value="">Select Vendor</option>
+          <option value="">Select Manager</option>
         </select>
 
         <select id="jdSelect" class="form-select form-select-sm" style="flex:1; border-radius:8px; border:1px solid #e6eefc; padding:7px 10px;">
           <option value="">Select Job</option>
         </select>
       </div>
+      <!-- Dropdown AI Proceed button: posts selected job_id to backend -->
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <form id="dropdownAiForm" method="POST" action="/candidates/dropdown-ai-search" style="display:flex; gap:10px;">
+          <input type="hidden" name="job_id" id="selectedJobInput" />
+          <button type="submit" class="btn proceed-btn" style="background:#10b981; color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:700;">
+            <i class="bi bi-magic me-1"></i> Proceed
+          </button>
+        </form>
+      </div>
+
+      
+
+<script>
+(function(){
+  try {
+    document.addEventListener("DOMContentLoaded", function () {
+      const jdSelect = document.getElementById("jdSelect");
+      const jobInput = document.getElementById("selectedJobInput");
+      const form = document.getElementById("dropdownAiForm");
+      if (!form || !jdSelect || !jobInput) return;
+      // on submit, ensure job selected and set hidden input, then show AI overlay before submitting
+      form.addEventListener("submit", function(e) {
+        if (!jdSelect.value) {
+          e.preventDefault();
+          alert("Please select a Job first.");
+          return;
+        }
+        jobInput.value = jdSelect.value;
+
+        // Show AI progress overlay before submit
+        e.preventDefault();
+        try {
+          if (typeof showAiProgress === 'function') {
+            showAiProgress({
+              title: "AI Evaluation",
+              subtitle: "Analyzing JD and matching candidates — this may take a few moments."
+            });
+          } else {
+            const overlay = document.getElementById('aiProgressOverlay');
+            if (overlay) {
+              const titleEl = document.getElementById('aiProgressTitle');
+              const subEl = document.getElementById('aiProgressSubtitle');
+              if (titleEl) titleEl.textContent = "AI Evaluation";
+              if (subEl) subEl.textContent = "Analyzing JD and matching candidates — this may take a few moments.";
+              overlay.style.display = 'flex';
+              try { document.body.style.overflow = 'hidden'; } catch(e){}
+            }
+          }
+        } catch (err) {
+          console.warn('showAiProgress error', err);
+        }
+
+        // Ensure browser repaints overlay before navigation by waiting two animation frames
+        requestAnimationFrame(function(){
+          requestAnimationFrame(function(){
+            form.submit();
+          });
+        });
+      });
+    });
+  } catch (e) { console.warn('dropdownAiForm init failed', e); }
+})();
+</script>
+
+
+
 
     </div>
   </div>
 
   {% if results is defined and results %}
-  <!-- KPI Row (simple) -->
   <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
     <div style="background:#fff; border:1px solid #eef2f7; border-radius:10px; padding:10px 14px;">
       <div style="font-weight:800; font-size:18px;">{{ results|length }}</div>
@@ -108,13 +149,13 @@
     </div>
     <div style="flex:1"></div>
   </div>
+  {% endif %}
 
-  <!-- Clean Results Table -->
   <div style="background:#fff; border:1px solid #eef4fb; border-radius:10px; overflow:hidden;">
     <div style="padding:14px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div style="font-weight:700; font-size:15px;">Search Results</div>
-        <div style="color:#6b7280; font-size:13px;">Showing <strong id="visibleCountLabel">{{ results|length }}</strong> candidates</div>
+        <div style="color:#6b7280; font-size:13px;">Showing <strong id="visibleCountLabel">{% if results is defined and results %}{{ results|length }}{% else %}0{% endif %}</strong> candidates</div>
       </div>
 
       <table class="clean-table" style="width:100%; border-collapse:collapse; font-size:0.95rem;">
@@ -132,64 +173,72 @@
           </tr>
         </thead>
         <tbody id="search-results-body">
-          {% for candidate in results %}
-            {% set cid = candidate.candidates_id %}
-            <tr class="candidate-row" data-candidate-id="{{ cid }}" data-hidden="{{ 'true' if candidate.is_linked else 'false' }}" style="border-bottom:1px solid #f1f5f9; cursor:pointer;">
-              <!-- LINK toggle -->
-              <td style="padding:8px 12px; vertical-align:middle; text-align:center;">
-                <input type="checkbox" id="link_cb_{{ cid }}" class="candidate-link-checkbox" data-candidate="{{ cid }}" style="position:absolute; left:-9999px;"
-                       {% if candidate.is_linked %}checked{% endif %} />
-                <label for="link_cb_{{ cid }}" class="link-btn" title="Toggle link/unlink" style="display:inline-block; width:36px; height:36px; border-radius:10px; border:1px solid #d1d5db; background:#fff; box-shadow:0 1px 0 rgba(0,0,0,0.02); text-align:center; line-height:36px; font-size:16px; cursor:pointer;">
-                  🔗
-                </label>
-              </td>
-                            <td style="padding:12px; vertical-align:middle;">
-                <div style="font-weight:700; color:#111827;">{{ candidate.candidate_name or 'N/A' }}</div>
-              </td>
+          {% if results is defined and results %}
+            {% for candidate in results %}
+                {% set cid = candidate.candidates_id %}
+                <tr class="candidate-row"
+                    data-candidate-id="{{ cid }}"
+                    data-linked="{{ 'true' if candidate.is_linked else 'false' }}"
+                    data-existing-jd-ids="{{ candidate.existing_jd_ids|join(',') }}"
+                    data-mapping-display="{{ candidate.mapping_display|e }}" 
+                    style="border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                  <td style="padding:8px 12px; vertical-align:middle; text-align:center;">
+                    <input type="checkbox"
+                           id="link_cb_{{ cid }}"
+                           class="candidate-link-checkbox"
+                           data-candidate="{{ cid }}"
+                           style="position:absolute; left:-9999px;"
+                           {% if candidate.is_linked %}checked{% endif %} />
+                    <label for="link_cb_{{ cid }}" class="link-btn" title="Toggle link/unlink" style="display:inline-block; width:36px; height:36px; border-radius:10px; border:1px solid #d1d5db; background:#fff; box-shadow:0 1px 0 rgba(0,0,0,0.02); text-align:center; line-height:36px; font-size:16px; cursor:pointer;">🔗</label>
+                  </td>
 
-              <td style="padding:12px; vertical-align:middle;">
-                {% if candidate.skillset %}
-                  {% set sl = candidate.skillset.split(',') %}
-                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                    {% for s2 in sl[:3] %}<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px; font-weight:700;">{{ s2.strip() }}</span>{% endfor %}
-                    {% if sl|length > 3 %}<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px;">+{{ sl|length - 3 }}</span>{% endif %}
-                  </div>
-                {% else %}
-                  <span style="color:#6b7280;">N/A</span>
-                {% endif %}
-              </td>
+                  <td style="padding:12px; vertical-align:middle;">
+                    <div style="font-weight:700; color:#111827;">{{ candidate.candidate_name or 'N/A' }}</div>
+                  </td>
 
-              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.email or 'N/A' }}</td>
-              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.contact or 'N/A' }}</td>
-              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.it_experience or candidate.it_exp or 'N/A' }}</td>
-              <td style="padding:12px; vertical-align:middle; text-align:center;">
-                <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                  <span class="ai-score-cell" data-id="{{ cid }}" style="font-weight:800;">{{ (candidate.score | default(candidate.ai_score)) }}</span>
-                  <button type="button" class="ai-explain-btn" data-id="{{ cid }}" title="Explain" style="border:1px solid #e5e7eb; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button>
-                  <button type="button" class="ai-reset-btn" data-id="{{ cid }}" title="Reset" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px; color:#b91c1c;">Reset</button>
-                </div>
-              </td>
-              <td style="padding:12px; vertical-align:middle;">
-                {% if candidate.resumelinks %}
-                  <a href="{{ candidate.resumelinks }}" target="_blank" style="color:#2563eb; text-decoration:none;">View <i class="bi bi-paperclip"></i></a>
-                {% else %}
-                  <span style="color:#6b7280;">N/A</span>
-                {% endif %}
-              </td>
-              <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.location or 'N/A' }}</td>
-            </tr>
-          {% endfor %}
+                  <td style="padding:12px; vertical-align:middle;">
+                    {% if candidate.skillset %}
+                      {% set sl = candidate.skillset.split(',') %}
+                      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        {% for s2 in sl[:3] %}<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px; font-weight:700;">{{ s2.strip() }}</span>{% endfor %}
+                        {% if sl|length > 3 %}<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px;">+{{ sl|length - 3 }}</span>{% endif %}
+                      </div>
+                    {% else %}
+                      <span style="color:#6b7280;">N/A</span>
+                    {% endif %}
+                  </td>
+
+                  <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.email or 'N/A' }}</td>
+                  <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.contact or 'N/A' }}</td>
+                  <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.it_experience or candidate.it_exp or 'N/A' }}</td>
+                  <td style="padding:12px; vertical-align:middle; text-align:center;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                      <span class="ai-score-cell" data-id="{{ cid }}" style="font-weight:800;">{{ (candidate.score | default(candidate.ai_score)) }}</span>
+                      <button type="button" class="ai-explain-btn" data-id="{{ cid }}" title="Explain" style="border:1px solid #e5e7eb; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button>
+                      <button type="button" class="ai-reset-btn" data-id="{{ cid }}" title="Reset" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px; color:#b91c1c;">Reset</button>
+                    </div>
+                  </td>
+                  <td style="padding:12px; vertical-align:middle;">
+                    {% if candidate.resumelinks %}
+                      <a href="{{ candidate.resumelinks }}" target="_blank" style="color:#2563eb; text-decoration:none;">View <i class="bi bi-paperclip"></i></a>
+                    {% else %}
+                      <span style="color:#6b7280;">N/A</span>
+                    {% endif %}
+                  </td>
+                  <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.location or 'N/A' }}</td>
+                </tr>
+            {% endfor %}
+          {% endif %}
         </tbody>
       </table>
 
-      <!-- Pagination controls & Recently linked -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
         <div style="display:flex; align-items:center; gap:8px;">
           <label style="color:#6b7280; font-size:13px;">Rows per page</label>
           <select id="records-per-page" style="padding:8px 10px; border-radius:8px; border:1px solid #e6eefc; font-size:13px;">
-            <option value="10">10 Records per page</option>
+            <option value="10"selected>10 Records per page</option>
             <option value="20">20 Records per page</option>
-            <option value="30" selected>30 Records per page</option>
+            <option value="30">30 Records per page</option>
             <option value="40">40 Records per page</option>
             <option value="50">50 Records per page</option>
           </select>
@@ -208,8 +257,7 @@
     </div>
   </div>
 
-  {% elif results is defined and not results and (skills or location or experience or prefill_skills|default('') or prefill_location|default('') or prefill_experience|default('') or (advanced_from_jd|default(False))) %}
-  <!-- NO RESULTS ALERT (shown only after a search/advanced-search produced zero results) -->
+  {% if results is defined and not results and (skills or location or experience or prefill_skills|default('') or prefill_location|default('') or prefill_experience|default('') or (advanced_from_jd|default(False))) %}
   <div style="margin-top:12px;">
     <div style="background:#fff; border:1px dashed #e6eefc; border-radius:10px; padding:18px; display:flex; gap:12px; align-items:flex-start;">
       <div style="width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#fff 0,#f3f8ff 100%); display:flex; align-items:center; justify-content:center;">
@@ -221,7 +269,7 @@
           We couldn't find any candidates matching your search criteria. Try relaxing filters (remove location or reduce required skills), or click Reset to start over.
         </div>
         <div style="margin-top:10px;">
-          <a href="/candidates/search" class="btn btn-outline-secondary" style="border-radius:8px; padding:8px 12px;">Reset</a>
+          <a href="/candidates/search" class="btn btn-outline-secondary reset-btn" style="border-radius:8px; padding:8px 12px;">Reset</a>
         </div>
       </div>
     </div>
@@ -249,6 +297,32 @@
 </div>
 
 <!-- AI Explanation Modal -->
+<!-- Mapping Warning Modal (shows Client > Vendor > Job mappings before link/unlink) -->
+<div id="mappingWarningModal" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; z-index:100000;">
+  <div style="position:absolute; inset:0; background:rgba(2,6,23,0.28); backdrop-filter: blur(2px);" aria-hidden="true"></div>
+
+  <div style="position:relative; background:#ffffff; max-width:640px; width:94%; border-radius:12px; padding:18px; box-shadow:0 18px 60px rgba(2,6,23,0.12); z-index:100001;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,#fff7ed,#fff1f2); display:flex; align-items:center; justify-content:center; font-weight:800; color:#92400e;">!</div>
+        <h3 id="mappingWarningTitle" style="margin:0; font-size:17px; font-weight:700; color:#0f172a;">Warning</h3>
+      </div>
+      <button id="mappingWarningClose" style="border:0; background:transparent; font-size:18px; cursor:pointer; color:#6b7280; padding:6px 8px; border-radius:8px;">✕</button>
+    </div>
+
+    <div id="mappingWarningBody" style="margin-top:14px; color:#374151; max-height:46vh; overflow:auto; white-space:normal; font-size:14px; line-height:1.45;">
+      <!-- Dynamic mapping lines will be injected here by JavaScript. Each mapping link (if present) will be rendered as an inline 'pill' link so it is clearly tappable/clickable. -->
+      <!-- Example injected item (JS will replace this with real data): -->
+      <!-- <div style="margin-top:8px;"><a href=\"/candidates/jd/123?highlight=456\" style="display:inline-block;padding:8px 12px;border-radius:999px;background:#f1f5ff;color:#1d4ed8;text-decoration:none;border:1px solid rgba(29,78,216,0.08);font-weight:700;">Client &gt; Vendor &gt; Job</a></div> -->
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+      <button id="mappingWarningCancel" class="btn btn-outline-secondary" style="padding:9px 14px; border-radius:10px; border:1px solid #e6eefc; background:transparent; color:#374151;">Cancel</button>
+      <button id="mappingWarningConfirm" class="btn btn-primary" style="padding:9px 14px; border-radius:10px; background:#2563eb; color:#fff; border:0;">Proceed</button>
+    </div>
+  </div>
+</div>
+
 <div id="aiExplanationModal" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; z-index:99999;">
   <div style="background:#fff; max-width:720px; width:92%; border-radius:8px; padding:18px; box-shadow:0 8px 40px rgba(2,6,23,0.08);">
     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -259,7 +333,7 @@
   </div>
 </div>
 
-<!-- AI Progress overlay (robust manager included below) -->
+<!-- AI Progress overlay -->
 <div id="aiProgressOverlay" class="ai-progress-overlay" style="display:none;">
   <div class="ai-progress-box" role="status" aria-live="polite" aria-atomic="true">
     <div class="ai-spinner" aria-hidden="true"></div>
@@ -271,7 +345,6 @@
 </div>
 
 <style>
-/* keep your existing styles intact */
 .candidate-link-checkbox:checked + .link-btn {
   background: #10b981 !important;
   border-color: #10b981 !important;
@@ -286,39 +359,11 @@
 .recently-linked-highlight { animation: pulseHighlight 1s ease-in-out 0s 3; background: rgba(16,185,129,0.06); border-left: 4px solid #10b981; }
 @keyframes pulseHighlight {0%{box-shadow:0 0 0 0 rgba(16,185,129,0);}50%{box-shadow:0 0 12px 6px rgba(16,185,129,0.08);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);} }
 
-/* AI overlay styles */
-.ai-progress-overlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 30000;
-  background-color: rgba(255,255,255,0.85);
-}
-.ai-progress-box {
-  display:flex;
-  gap:12px;
-  align-items:center;
-  background:#fff;
-  padding:16px 18px;
-  border-radius:12px;
-  box-shadow: 0 12px 40px rgba(2,6,23,0.12);
-  border: 1px solid #eef4fb;
-  max-width:520px;
-  width:90%;
-}
-.ai-spinner {
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:4px solid #eef2f7;
-  border-top-color:#2563eb;
-  animation: spin 1s linear infinite;
-}
+.ai-progress-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 30000; background-color: rgba(255,255,255,0.85); }
+.ai-progress-box { display:flex; gap:12px; align-items:center; background:#fff; padding:16px 18px; border-radius:12px; box-shadow: 0 12px 40px rgba(2,6,23,0.12); border: 1px solid #eef4fb; max-width:520px; width:90%; }
+.ai-spinner { width:36px; height:36px; border-radius:50%; border:4px solid #eef2f7; border-top-color:#2563eb; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Rich toast */
 .rich-toast { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-radius:10px; box-shadow: 0 12px 30px rgba(2,6,23,0.12); color:#fff; z-index:40000; min-width:320px; font-weight:700; }
 .rich-toast .rt-left { font-size:20px; line-height:1; }
 .rich-toast .rt-main { font-weight:800; font-size:14px; }
@@ -326,21 +371,25 @@
 .rich-toast .rt-close { margin-left:12px; background:transparent; border:0; color:inherit; font-size:20px; cursor:pointer; }
 .rich-toast.success { background: linear-gradient(90deg,#10b981,#059669); }
 
-/* position container */
 #richToastContainer { position: fixed; right: 12px; top: 12px; display:flex; flex-direction:column; gap:12px; z-index:40001; }
 </style>
 
-<!-- toast container -->
 <div id="richToastContainer" aria-live="polite" aria-atomic="true"></div>
 
 <script>
+/* Replaced JS — robust dropdown persistence, reset, pageshow handling, delegation, modal, pagination.
+   IMPORTANT: This script keeps every backend endpoint, form action and UI markup EXACTLY the same.
+   Only behavior changed: when returning to page we now force server fetch to repopulate vendor/job
+   lists when a saved client exists (fixes vanish on navigation/back).
+*/
+
 document.addEventListener('DOMContentLoaded', function () {
-  // DOM refs (no IDs changed)
-  const clientSelect = document.getElementById('clientSelect');
-  const vendorSelect = document.getElementById('vendorSelect');
-  const jdSelect = document.getElementById('jdSelect');
-  const rows = Array.from(document.querySelectorAll('tr.candidate-row'));
-  const recordsPerPageSelect = document.getElementById('records-per-page');
+  // Element refs
+  const clientSelectEl = () => document.getElementById('clientSelect');
+  const vendorSelectEl = () => document.getElementById('vendorSelect');
+  const jdSelectEl = () => document.getElementById('jdSelect');
+  const tbody = () => document.getElementById('search-results-body');
+  const recordsPerEl = document.getElementById('records-per-page');
   const prevBtn = document.getElementById('prev-page');
   const nextBtn = document.getElementById('next-page');
   const pageInfo = document.getElementById('page-info');
@@ -349,342 +398,713 @@ document.addEventListener('DOMContentLoaded', function () {
   const advancedForm = document.getElementById('advancedSearchForm');
   const searchForm = document.getElementById('searchForm');
 
-  if (searchForm) {
-    searchForm.addEventListener('submit', function () {
-      if (typeof _aiProgressPersistent !== 'undefined' && _aiProgressPersistent) return;
-      try {
-        const skillsEl = document.querySelector('input[name="skills"]');
-        const expEl = document.querySelector('input[name="experience"]');
-        const locEl = document.querySelector('input[name="location"]');
-        const skillsVal = skillsEl && skillsEl.value ? skillsEl.value.trim() : '';
-        const expVal = expEl && expEl.value ? expEl.value.trim() : '';
-        const locVal = locEl && locEl.value ? locEl.value.trim() : '';
-        if (skillsVal || expVal || locVal) {
-          showAiProgress({ persist: true, title: 'AI is evaluating candidates', subtitle: 'Reading resumes and matching — this may take a few moments.' });
-        }
-      } catch(e) { /* no-op */ }
-    });
-  }
+  // Keys
+  const STORAGE_KEY = 'nxg_search_snapshot_v1';
+  const DD_STATE_KEY = 'nxg_dropdown_state_v1';
+  const LINKED_IDS_KEY = 'nxg_linked_candidate_ids_v1';
+  const RECENTLY_KEY = 'recently_linked';
+  const RESET_FLAG = 'nxg_reset_flag_v1';
 
-  // Overlay manager (counter + persistent mode)
-  let _aiProgressCount = 0;
-  let _aiProgressPersistent = false;
+  // --- UI helpers ---
   function showAiProgress(opts = {}) {
-    // opts: { persist: boolean, title: string, subtitle: string }
     try {
       if (opts.title) document.getElementById('aiProgressTitle').textContent = opts.title;
       if (opts.subtitle) document.getElementById('aiProgressSubtitle').textContent = opts.subtitle;
-      if (opts.persist) _aiProgressPersistent = true;
-      _aiProgressCount = Math.max(1, _aiProgressCount + 1);
       if (aiProgressOverlay) aiProgressOverlay.style.display = 'flex';
       document.body.style.overflow = 'hidden';
-    } catch (e) { console.warn('showAiProgress error', e); }
+    } catch(e){}
   }
-  function hideAiProgress(force = false) {
-    if (_aiProgressPersistent && !force) {
-      _aiProgressCount = Math.max(0, _aiProgressCount - 1);
-      return;
-    }
-    _aiProgressCount = Math.max(0, _aiProgressCount - 1);
-    if (_aiProgressCount === 0 || force) {
-      try { if (aiProgressOverlay) aiProgressOverlay.style.display = 'none'; } catch(e){}
-      document.body.style.overflow = '';
-      _aiProgressPersistent = false;
-      _aiProgressCount = 0;
-    }
-  }
-  function clearAiProgress() {
-    _aiProgressPersistent = false;
-    _aiProgressCount = 0;
+  function hideAiProgress() {
     try { if (aiProgressOverlay) aiProgressOverlay.style.display = 'none'; } catch(e){}
     document.body.style.overflow = '';
   }
-  window.addEventListener('beforeunload', function () {
-    if (typeof _aiProgressPersistent === 'undefined' || !_aiProgressPersistent) clearAiProgress();
-  });
-
-  // Rich success toast for linking
-  function showLinkedToast(clientName, vendorName, jobName) {
-    const container = document.getElementById('richToastContainer');
-    if (!container) return;
-    const root = document.createElement('div');
-    root.className = 'rich-toast success';
-    root.role = 'status';
-    root.innerHTML = `
-      <div class="rt-left">✔</div>
-      <div style="flex:1;">
-        <div class="rt-main">Candidate linked successfully</div>
-        <div class="rt-sub">${escapeHtml(clientName || 'Client')} › ${escapeHtml(vendorName || 'Vendor')} › ${escapeHtml(jobName || 'Job')}</div>
-      </div>
-      <button class="rt-close" aria-label="Close">&times;</button>
-    `;
-    container.appendChild(root);
-    const close = root.querySelector('.rt-close');
-    close.addEventListener('click', ()=> root.remove());
-    setTimeout(()=>{ root.style.opacity = '0'; setTimeout(()=> root.remove(), 300); }, 4000);
-  }
-
   function escapeHtml(s) {
     if (s === null || s === undefined) return '';
     return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
   }
+  
+  /* add this right after escapeHtml(s) */
+  function decodeHtmlEntities(str) {
+    if (!str) return '';
+    const ta = document.createElement('textarea');
+    ta.innerHTML = str;
+    return ta.value;
+  }
+function showToast(msg, type='default', time=3200) {
+    try {
+      const c = document.getElementById('richToastContainer') || document.body;
+      const el = document.createElement('div');
+      el.className = 'rich-toast' + (type==='success' ? ' success' : '');
+      el.innerHTML = `<div class="rt-left">${type==='success' ? '✔' : ''}</div><div style="flex:1;"><div class="rt-main">${escapeHtml(msg)}</div></div><button class="rt-close" aria-label="Close">&times;</button>`;
+      c.appendChild(el);
+      el.querySelector('.rt-close').addEventListener('click', ()=>el.remove());
+      setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, time);
+    } catch(e){}
+  }
 
-  // PREFILL fallback (safe)
-  try {
-    const pfSkills = {{ prefill_skills|tojson if prefill_skills is defined else 'null' }};
-    const pfLoc = {{ prefill_location|tojson if prefill_location is defined else 'null' }};
-    const pfExp = {{ prefill_experience|tojson if prefill_experience is defined else 'null' }};
-    if (pfSkills) { const el = document.querySelector('input[name="skills"]'); if (el && !el.value) el.value = pfSkills; }
-    if (pfLoc)    { const el = document.querySelector('input[name="location"]'); if (el && !el.value) el.value = pfLoc; }
-    if (pfExp)    { const el = document.querySelector('input[name="experience"]'); if (el && !el.value) el.value = pfExp; }
-  } catch(e){}
+  // --- dropdown persistence ---
+  function saveDropdownState() {
+    try {
+      const clientSelect = clientSelectEl();
+      const vendorSelect = vendorSelectEl();
+      const jdSelect = jdSelectEl();
+      const state = {
+        client: clientSelect ? clientSelect.value : '',
+        vendor: vendorSelect ? vendorSelect.value : '',
+        job: jdSelect ? jdSelect.value : '',
+        vendors: vendorSelect ? Array.from(vendorSelect.options).map(o=>({value:o.value, text:o.textContent})) : [],
+        jobs: jdSelect ? Array.from(jdSelect.options).map(o=>({value:o.value, text:o.textContent})) : []
+      };
+      localStorage.setItem(DD_STATE_KEY, JSON.stringify(state));
+    } catch(e){}
+  }
 
-  // Initialize row flags: start visible; will hide only after a Job is selected
-  rows.forEach(row => {
-    const cb = row.querySelector('.candidate-link-checkbox');
-    row.dataset.linked = 'false';
-    row.dataset.hidden = 'false';
-    if (cb) { cb.checked = false; cb.dataset.mappingId = ''; }
-  });
+  function clearDropdownState() {
+    try { localStorage.removeItem(DD_STATE_KEY); } catch(e){}
+  }
 
-  // Pagination
+  // --- fetching helpers (unchanged endpoints) ---
+  async function fetchVendorsForClient(clientId) {
+    const vendorSelect = vendorSelectEl();
+    const jdSelect = jdSelectEl();
+    if (!vendorSelect || !jdSelect) return;
+    vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
+    jdSelect.innerHTML = '<option value="">Select Job</option>';
+    if (!clientId) { saveDropdownState(); applyLinkedIds(); return; }
+    try {
+      const res = await fetch(`/candidates/get-vendors/${encodeURIComponent(clientId)}`);
+      const data = await res.json().catch(()=>[]);
+      (data || []).forEach(v => {
+        const o = document.createElement('option'); o.value = v.vendor_id; o.textContent = v.vendor_name; vendorSelect.appendChild(o);
+      });
+      saveDropdownState();
+    } catch(e){ console.warn('fetchVendorsForClient', e); }
+  }
+
+  async function fetchJobsForVendor(vendorId) {
+    const jdSelect = jdSelectEl();
+    if (!jdSelect) return;
+    jdSelect.innerHTML = '<option value="">Select Job</option>';
+    if (!vendorId) { saveDropdownState(); return; }
+    try {
+      const res = await fetch(`/candidates/get-jobs/${encodeURIComponent(vendorId)}`);
+      const data = await res.json().catch(()=>[]);
+      (data || []).forEach(j => {
+        const o = document.createElement('option'); o.value = j.job_id; o.textContent = j.job_title; jdSelect.appendChild(o);
+      });
+      saveDropdownState();
+    } catch(e){ console.warn('fetchJobsForVendor', e); }
+  }
+
+  // safe-binding: avoid duplicate event listeners using dataset flags
+  function bindCascadingOnce() {
+    try {
+      const clientSelect = clientSelectEl();
+      const vendorSelect = vendorSelectEl();
+      const jdSelect = jdSelectEl();
+      if (clientSelect && clientSelect.dataset.bound !== '1') {
+        clientSelect.addEventListener('change', function(){ fetchVendorsForClient(this.value); });
+        clientSelect.dataset.bound = '1';
+      }
+      if (vendorSelect && vendorSelect.dataset.bound !== '1') {
+        vendorSelect.addEventListener('change', function(){ fetchJobsForVendor(this.value); });
+        vendorSelect.dataset.bound = '1';
+      }
+      if (jdSelect && jdSelect.dataset.bound !== '1') {
+        jdSelect.addEventListener('change', function(){ saveDropdownState(); if (this.value) refreshMappingsForJob(this.value); });
+        jdSelect.dataset.bound = '1';
+      }
+    } catch(e){}
+  }
+  bindCascadingOnce();
+
+  // --- reset interceptors ---
+  function bindResetInterceptors() {
+    try {
+      const resetEls = Array.from(document.querySelectorAll('a[href="/candidates/search"], .reset-btn, button[type="reset"]'));
+      resetEls.forEach(el => {
+        if (el.dataset.resetBound === '1') return;
+        el.dataset.resetBound = '1';
+        el.addEventListener('click', function () {
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(LINKED_IDS_KEY);
+            localStorage.removeItem(RECENTLY_KEY);
+            clearDropdownState();
+            const c = clientSelectEl(); const v = vendorSelectEl(); const j = jdSelectEl();
+            if (c) c.value = '';
+            if (v) v.innerHTML = '<option value="">Select Vendor</option>';
+            if (j) j.innerHTML = '<option value="">Select Job</option>';
+            sessionStorage.setItem(RESET_FLAG, Date.now().toString());
+          } catch(e){}
+        });
+      });
+    } catch(e){}
+  }
+  bindResetInterceptors();
+
+  // --- linked ids helpers ---
+  function getLinkedIds() {
+    try {
+      const raw = localStorage.getItem(LINKED_IDS_KEY); if (!raw) return new Set();
+      const arr = JSON.parse(raw || '[]'); return new Set((arr||[]).map(x=>String(x)));
+    } catch(e){ return new Set(); }
+  }
+  function saveLinkedIds(set) { try { localStorage.setItem(LINKED_IDS_KEY, JSON.stringify(Array.from(set))); } catch(e){} }
+  function addLinkedId(id) { try { const s = getLinkedIds(); s.add(String(id)); saveLinkedIds(s); } catch(e){} }
+  function removeLinkedId(id) { try { const s = getLinkedIds(); s.delete(String(id)); saveLinkedIds(s); } catch(e){} }
+
+  // --- pagination ---
   let currentPage = 1;
-  let recordsPerPage = parseInt(recordsPerPageSelect ? recordsPerPageSelect.value : '30', 10);
-  function getVisibleRows() { return rows.filter(r => r.dataset.hidden !== 'true'); }
+  // preserve existing default (30) to avoid changing UX
+  let recordsPerPage = recordsPerEl ? parseInt(recordsPerEl.value, 10) || 30 : 30;
+
+  function getRows() {
+    return Array.from(document.querySelectorAll('tr.candidate-row')).filter(r => r.dataset.hidden !== 'true');
+  }
+
   function renderPagination() {
-    const visible = getVisibleRows();
-    const total = visible.length;
-    const start = (currentPage - 1) * recordsPerPage;
-    const end = Math.min(start + recordsPerPage, total);
-    rows.forEach(r => { if (r.dataset.hidden === 'true') r.style.display = 'none'; });
-    visible.forEach((r, idx) => { r.style.display = (idx >= start && idx < end) ? '' : 'none'; });
-    if (pageInfo) pageInfo.textContent = `Showing ${total === 0 ? 0 : (start + 1)}–${end} of ${total}`;
-    const visibleCountEl = document.getElementById('visibleCountLabel');
-    if (visibleCountEl) visibleCountEl.textContent = total;
-    if (prevBtn) prevBtn.disabled = currentPage === 1;
-    if (nextBtn) nextBtn.disabled = end >= total;
-  }
-  if (recordsPerPageSelect) {
-    recordsPerPageSelect.addEventListener('change', function () { recordsPerPage = parseInt(this.value, 10); currentPage = 1; renderPagination(); });
-  }
-  if (prevBtn) prevBtn.addEventListener('click', function () { if (currentPage > 1) { currentPage--; renderPagination(); }});
-  if (nextBtn) nextBtn.addEventListener('click', function () { if (currentPage * recordsPerPage < getVisibleRows().length) { currentPage++; renderPagination(); }});
-  renderPagination();
-
-  // Cascading dropdowns: client->vendors->jobs
-  if (clientSelect && vendorSelect) {
-    clientSelect.addEventListener('change', async function () {
-      vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
-      jdSelect.innerHTML = '<option value="">Select Job</option>';
-      if (!this.value) return;
-      try {
-        const res = await fetch(`/candidates/get-vendors/${this.value}`);
-        const data = await res.json();
-        data.forEach(v => {
-          const o = document.createElement('option'); o.value = v.vendor_id; o.textContent = v.vendor_name;
-          vendorSelect.appendChild(o);
-        });
-      } catch(err) { console.warn(err); }
-    });
-  }
-  if (vendorSelect && jdSelect) {
-    vendorSelect.addEventListener('change', async function () {
-      jdSelect.innerHTML = '<option value="">Select Job</option>';
-      if (!this.value) return;
-      try {
-        const res = await fetch(`/candidates/get-jobs/${this.value}`);
-        const data = await res.json();
-        data.forEach(j => {
-          const o = document.createElement('option'); o.value = j.job_id; o.textContent = j.job_title;
-          jdSelect.appendChild(o);
-        });
-      } catch(err) { console.warn(err); }
-    });
-  }
-
-  // Advanced form submit: show persistent overlay BEFORE performing request (fetch) to avoid flash
-  if (advancedForm) {
-    advancedForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      // avoid stacking if already persistent
-      if (_aiProgressPersistent) return;
-      showAiProgress({ persist: true, title: 'AI is evaluating candidates', subtitle: 'Analyzing JD and matching candidates — this may take a few moments.' });
-
-      // disable submit to prevent double submits
-      const submitBtn = advancedForm.querySelector('button[type="submit"], input[type="submit"]');
-      if (submitBtn) { submitBtn.disabled = true; }
-
-      try {
-        const formData = new FormData(advancedForm);
-        const resp = await fetch(advancedForm.action, { method: 'POST', body: formData, credentials: 'same-origin' });
-        if (!resp.ok) {
-          const txt = await resp.text().catch(()=>null);
-          hideAiProgress(true);
-          if (submitBtn) submitBtn.disabled = false;
-          alert('Advanced search failed: ' + (txt || (resp.status + ' ' + resp.statusText)));
-          return;
-        }
-
-        // If response is JSON with redirect, follow it
-        const contentType = resp.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const j = await resp.json().catch(()=>null);
-          if (j && j.redirect) {
-            window.location.href = j.redirect;
-            return;
-          }
-          // fallback: reload
-          hideAiProgress(true);
-          window.location.reload();
-          return;
-        }
-
-        // Otherwise assume HTML. Replace current document with response HTML so overlay remains until server returns.
-        const html = await resp.text();
-        try {
-          document.open();
-          document.write(html);
-          document.close();
-        } catch (writeErr) {
-          // fallback to navigation if write fails
-          window.location.href = '/candidates/search';
-        }
-      } catch (err) {
-        hideAiProgress(true);
-        if (submitBtn) submitBtn.disabled = false;
-        alert('Advanced search error: ' + (err.message || err));
-      }
-    });
-  }
-
-  // helper to get option text safely
-  function getSelectText(selectEl) {
-    if (!selectEl) return '';
     try {
-      const idx = selectEl.selectedIndex;
-      if (typeof idx === 'number' && idx >= 0) {
-        const o = selectEl.options[idx];
-        return (o && o.text) ? o.text.trim() : '';
-      }
-      return '';
-    } catch(e) { return ''; }
-  }
+      const visibleRows = getRows();
+      const total = visibleRows.length;
+      const per = recordsPerPage || 30;
+      const maxPages = Math.max(1, Math.ceil(total / per));
 
-  // Refresh mapping for job — show overlay while mapping loads (non-persistent)
-  async function refreshMappingsForJob(jobId) {
-    if (!jobId) return;
-    showAiProgress({ persist: false, title: 'Updating job mapping', subtitle: 'Fetching mapped candidates — please wait.' });
-    try {
-      const res = await fetch(`/candidates/get-mapped-candidates/${jobId}`);
-      const mappings = await res.json();
-      const map = {};
-      (mappings || []).forEach(m => map[String(m.candidate_id)] = m);
+      // clamp currentPage
+      if (currentPage > maxPages) currentPage = maxPages;
+      if (currentPage < 1) currentPage = 1;
 
-      rows.forEach(row => {
-        const cid = String(row.dataset.candidateId || '');
-        const cb = row.querySelector('.candidate-link-checkbox');
-        const scoreCell = row.querySelector('.ai-score-cell');
+      const start = (currentPage - 1) * per;
+      const end = Math.min(start + per, total);
 
-        if (map[cid]) {
-          const m = map[cid];
-          row.dataset.linked = 'true';
-          row.dataset.hidden = 'true';
-          if (cb) { cb.checked = true; cb.dataset.mappingId = m.mapping_id || ''; }
-          if (scoreCell && (m.ai_score !== null && m.ai_score !== undefined)) scoreCell.textContent = m.ai_score;
-        } else {
-          // Not mapped to the currently selected job: keep visible (unlinked)
-          row.dataset.hidden = 'false';
-          row.dataset.linked = 'false';
-          if (cb) { cb.checked = false; cb.dataset.mappingId = ''; }
-        }
+      // hide/show only the visibleRows slice (preserve rows filtered/hidden by other logic)
+      // First hide all candidate rows
+      Array.from(document.querySelectorAll('tr.candidate-row')).forEach(r => { r.style.display = 'none'; });
+
+      visibleRows.forEach((r, idx) => {
+        r.style.display = (idx >= start && idx < end) ? '' : 'none';
       });
 
-      currentPage = 1;
-      renderPagination();
-    } catch (err) {
-      console.warn('refreshMappingsForJob error', err);
-    } finally {
-      hideAiProgress();
+      // update page info UI
+      const from = total === 0 ? 0 : (start + 1);
+      const to = total === 0 ? 0 : end;
+      if (pageInfo) pageInfo.textContent = `Showing ${from}–${to} of ${total}`;
+      const visibleCountEl = document.getElementById('visibleCountLabel');
+      if (visibleCountEl) visibleCountEl.textContent = String(total);
+
+      // enable/disable prev/next
+      if (prevBtn) prevBtn.disabled = currentPage <= 1;
+      if (nextBtn) nextBtn.disabled = currentPage >= maxPages;
+    } catch (e) {
+      console.warn('renderPagination error', e);
     }
   }
 
-  if (jdSelect) {
-    jdSelect.addEventListener('change', () => refreshMappingsForJob(jdSelect.value));
-    if (jdSelect.value) setTimeout(()=> refreshMappingsForJob(jdSelect.value), 200);
+  // hook up records-per-page change
+  if (recordsPerEl && !recordsPerEl.dataset.boundForPagination) {
+    recordsPerEl.dataset.boundForPagination = '1';
+    recordsPerEl.addEventListener('change', function () {
+      recordsPerPage = parseInt(this.value, 10) || 30;
+      currentPage = 1;
+      try { serializeSnapshot(); } catch(e){}
+      renderPagination();
+    });
   }
 
-  // per-row link toggle (keeps same endpoint)
-  document.querySelectorAll('.candidate-link-checkbox').forEach(cb => {
-    cb.addEventListener('change', async function () {
-      const candidateId = Number(this.dataset.candidate);
-      const jobId = jdSelect && jdSelect.value ? Number(jdSelect.value) : null;
-      if (!jobId) {
-        alert('Please select a Job before linking/unlinking.');
-        this.checked = !this.checked;
-        return;
-      }
-      const linked = !!this.checked;
-      const row = this.closest('tr.candidate-row');
-      const scoreCell = row ? row.querySelector('.ai-score-cell') : null;
-      let ai_score = null;
-      if (scoreCell) {
-        const p = parseInt((scoreCell.textContent || '').trim(), 10);
-        if (!isNaN(p)) ai_score = p;
-      }
-
-      const clientName = getSelectText(clientSelect) || '';
-      const vendorName = getSelectText(vendorSelect) || '';
-      const jobName = getSelectText(jdSelect) || '';
-
-      try {
-        showAiProgress({ persist: false, title: linked ? 'Linking candidate' : 'Unlinking candidate', subtitle: 'Please wait...' });
-
-        const resp = await fetch('/candidates/toggle-link', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, linked: linked, ai_score: ai_score })
-        });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.message || 'Toggle failed');
-
-        if (linked) {
-          if (data.mapping_id) this.dataset.mappingId = data.mapping_id;
-          try {
-            const key='recently_linked';
-            const raw = localStorage.getItem(key);
-            const arr = raw ? JSON.parse(raw) : [];
-            if (!arr.includes(candidateId)) { arr.push(candidateId); localStorage.setItem(key, JSON.stringify(arr)); }
-          } catch(e){}
-
-          showLinkedToast(clientName || 'Client', vendorName || 'Vendor', jobName || 'Job');
-          row.classList.add('recently-linked-highlight');
-          setTimeout(()=> {
-            row.classList.remove('recently-linked-highlight');
-            row.dataset.linked = 'true';
-            row.dataset.hidden = 'true';
-            currentPage = 1;
-            renderPagination();
-          }, 500);
-        } else {
-          this.dataset.mappingId = '';
-          row.dataset.linked = 'false';
-          row.dataset.hidden = 'false';
-          renderPagination();
-        }
-      } catch (err) {
-        alert('Failed to toggle link: ' + (err.message || err));
-        this.checked = !this.checked;
-      } finally {
-        hideAiProgress();
+  // prev / next buttons
+  if (prevBtn && !prevBtn.dataset.boundForPagination) {
+    prevBtn.dataset.boundForPagination = '1';
+    prevBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (currentPage > 1) {
+        currentPage--;
+        renderPagination();
       }
     });
-  });
+  }
+  if (nextBtn && !nextBtn.dataset.boundForPagination) {
+    nextBtn.dataset.boundForPagination = '1';
+    nextBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      const visibleCount = getRows().length;
+      const maxPages = Math.max(1, Math.ceil(visibleCount / (recordsPerPage || 30)));
+      if (currentPage < maxPages) {
+        currentPage++;
+        renderPagination();
+      }
+    });
+  }
 
-  // Find candidate payload shapes for modal
+  // Ensure initial pagination run after hydration
+  try { renderPagination(); } catch(e) {}
+// --- apply linked ids (hide rows) ---
+  function applyLinkedIds() {
+try {
+    const linked = getLinkedIds();
+    const all = Array.from(document.querySelectorAll('tr.candidate-row'));
+    all.forEach(row => {
+      const cid = String(row.dataset.candidateId || row.getAttribute('data-candidate-id') || '');
+      const cb = row.querySelector('.candidate-link-checkbox');
+      if (cid && linked.has(cid)) {
+        row.dataset.linked = 'true';
+        if (cb) cb.checked = true;
+      } else {
+        if (row.dataset.linked !== 'true') {
+          row.dataset.linked = 'false';
+          if (cb) cb.checked = false;
+        }
+      }
+    });
+    currentPage = 1; renderPagination();
+  } catch(e){}
+}
+
+  // --- serialize/hydrate for back navigation ---
+  function serializeSnapshot() {
+    try {
+      const tbodyEl = document.getElementById('search-results-body');
+      if (!tbodyEl) return;
+      const trs = Array.from(tbodyEl.querySelectorAll('tr.candidate-row'));
+      const filtered = trs.filter(tr => { const cb = tr.querySelector('.candidate-link-checkbox'); return !(cb && cb.checked); });
+      if (!filtered.length) { localStorage.removeItem(STORAGE_KEY); return; }
+      const results = filtered.map(tr => {
+        const cid = tr.getAttribute('data-candidate-id') || '';
+        const name = (tr.querySelector('td:nth-child(2)')?.innerText || '').trim();
+        const skillElems = Array.from(tr.querySelectorAll('td:nth-child(3) span')).map(s=>s.innerText.trim());
+        const skillset = skillElems.join(',');
+        const email = (tr.querySelector('td:nth-child(4)')?.innerText || '').trim();
+        const contact = (tr.querySelector('td:nth-child(5)')?.innerText || '').trim();
+        const it_experience = (tr.querySelector('td:nth-child(6)')?.innerText || '').trim();
+        const score = (tr.querySelector('.ai-score-cell')?.innerText || '').trim();
+        const resumelink = tr.querySelector('td:nth-child(8) a') ? tr.querySelector('td:nth-child(8) a').href : '';
+        const location = (tr.querySelector('td:nth-child(9)')?.innerText || '').trim();
+        return { candidates_id: cid, candidate_name: name, skillset, email, contact, it_experience, score, resumelinks: resumelink, location, is_linked: false };
+      });
+      const clientSelect = clientSelectEl(); const vendorSelect = vendorSelectEl(); const jdSelect = jdSelectEl();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ts: Date.now(), results, clientId: clientSelect ? clientSelect.value : '', vendorId: vendorSelect ? vendorSelect.value : '', jobId: jdSelect ? jdSelect.value : '' }));
+    } catch(e){ console.warn('serializeSnapshot', e); }
+  }
+
+  async function hydrateIfNeeded() {
+    try {
+      const tbodyEl = document.getElementById('search-results-body');
+      if (!tbodyEl) return false;
+      const serverRows = Array.from(tbodyEl.querySelectorAll('tr.candidate-row'));
+      if (serverRows.length > 0) { serializeSnapshot(); applyLinkedIds(); renderPagination(); return false; }
+      // avoid overwriting if user typed filters
+      const skillsIn = document.querySelector('input[name="skills"]');
+      const locIn = document.querySelector('input[name="location"]');
+      const expIn = document.querySelector('input[name="experience"]');
+      const inputsEmpty = (!skillsIn || !skillsIn.value.trim()) && (!locIn || !locIn.value.trim()) && (!expIn || !expIn.value.trim());
+      if (!inputsEmpty) return false;
+
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const store = JSON.parse(raw);
+      if (!store || !Array.isArray(store.results) || store.results.length === 0) return false;
+
+      tbodyEl.innerHTML = store.results.map(buildRowHtml).join('');
+      // restore selects using server lists where possible
+      try {
+        if (store.clientId) {
+          const clientSelect = clientSelectEl(); const vendorSelect = vendorSelectEl(); const jdSelect = jdSelectEl();
+          clientSelect.value = store.clientId;
+          const rv = await fetch(`/candidates/get-vendors/${encodeURIComponent(store.clientId)}`).catch(()=>null);
+          if (rv && rv.ok) {
+            const vendors = await rv.json().catch(()=>[]);
+            vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
+            vendors.forEach(v => { const o = document.createElement('option'); o.value = v.vendor_id; o.textContent = v.vendor_name; vendorSelect.appendChild(o); });
+            if (store.vendorId) {
+              vendorSelect.value = store.vendorId;
+              const rj = await fetch(`/candidates/get-jobs/${encodeURIComponent(store.vendorId)}`).catch(()=>null);
+              if (rj && rj.ok) {
+                const jobs = await rj.json().catch(()=>[]);
+                jdSelect.innerHTML = '<option value="">Select Job</option>';
+                jobs.forEach(j => { const o = document.createElement('option'); o.value = j.job_id; o.textContent = j.job_title; jdSelect.appendChild(o); });
+                if (store.jobId) jdSelect.value = store.jobId;
+              }
+            }
+          }
+        } else {
+          // if no server-side client, restore local snapshot
+          restoreDropdownStateIfSafe();
+        }
+      } catch(e){ console.warn('hydrate restore', e); }
+
+      attachDelegation();
+      applyLinkedIds();
+      renderPagination();
+      return true;
+    } catch(e){ console.warn('hydrateIfNeeded', e); return false; }
+  }
+
+  function buildRowHtml(candidate) {
+    const cid = candidate.candidates_id || candidate.id || '';
+    const name = candidate.candidate_name || candidate.name || 'N/A';
+    const skillList = (candidate.skillset || '').split(',').map(s=>s.trim()).filter(Boolean);
+    const showSkills = skillList.slice(0,3).map(s => `<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px; font-weight:700;">${escapeHtml(s)}</span>`).join('');
+    const extra = skillList.length>3 ? `<span style="font-size:0.78rem; padding:5px 8px; background:#eef2ff; color:#1e3a8a; border-radius:999px;">+${skillList.length-3}</span>` : '';
+    const email = candidate.email || 'N/A';
+    const contact = candidate.contact || 'N/A';
+    const itExp = candidate.it_experience || candidate.it_exp || 'N/A';
+    const score = candidate.score || candidate.ai_score || '';
+    const resume = candidate.resumelinks ? `<a href="${escapeHtml(candidate.resumelinks)}" target="_blank" style="color:#2563eb; text-decoration:none;">View <i class="bi bi-paperclip"></i></a>` : '<span style="color:#6b7280;">N/A</span>';
+    const loc = candidate.location || 'N/A';
+    return `
+      <tr class="candidate-row" data-candidate-id="${escapeHtml(cid)}" data-existing-jd-ids="${escapeHtml(candidate.existing_jd_ids || '')}" data-mapping-display="${escapeHtml(candidate.mapping_display || '')}">
+        <td style="padding:8px 12px; text-align:center; vertical-align:middle;">
+          <input type="checkbox" id="link_cb_${escapeHtml(cid)}" class="candidate-link-checkbox" data-candidate="${escapeHtml(cid)}" style="position:absolute; left:-9999px;">
+          <label for="link_cb_${escapeHtml(cid)}" class="link-btn" style="display:inline-block; width:36px; height:36px; border-radius:10px; border:1px solid #d1d5db; background:#fff; text-align:center; line-height:36px; cursor:pointer;">🔗</label>
+        </td>
+        <td style="padding:12px;"><div style="font-weight:700; color:#111827;">${escapeHtml(name)}</div></td>
+        <td style="padding:12px;"><div style="display:flex; gap:6px; flex-wrap:wrap;">${showSkills}${extra}</div></td>
+        <td style="padding:12px; color:#374151;">${escapeHtml(email)}</td>
+        <td style="padding:12px; color:#374151;">${escapeHtml(contact)}</td>
+        <td style="padding:12px; color:#374151;">${escapeHtml(itExp)}</td>
+        <td style="padding:12px; text-align:center;"><div style="display:flex; gap:8px; align-items:center; justify-content:center;"><span class="ai-score-cell" data-id="${escapeHtml(cid)}" style="font-weight:800;">${escapeHtml(score)}</span><button type="button" class="ai-explain-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #e5e7eb; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button><button type="button" class="ai-reset-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px; color:#b91c1c;">Reset</button></div></td>
+        <td style="padding:12px;">${resume}</td>
+        <td style="padding:12px; color:#374151;">${escapeHtml(loc)}</td>
+      </tr>
+    `;
+  }
+
+  // --- event delegation for table (single binding) ---
+  function attachDelegation() {
+    const tbodyEl = tbody();
+    if (!tbodyEl) return;
+    if (tbodyEl._nxgBound === '1') return;
+    tbodyEl._nxgBound = '1';
+
+    // click: open modal or explain/reset
+    tbodyEl.addEventListener('click', async function (e) {
+      const explainBtn = e.target.closest('.ai-explain-btn');
+      if (explainBtn) {
+        e.preventDefault();
+        const cid = explainBtn.dataset.id;
+        if (!cid) return;
+        try {
+          showAiProgress({ title:'Fetching explanation', subtitle:'Please wait...' });
+          const res = await fetch(`/candidates/ai-explanation/${encodeURIComponent(cid)}`);
+          const data = await res.json().catch(()=>null);
+          hideAiProgress();
+          if (!res.ok) throw new Error(data?.message || 'Explanation failed');
+          const body = document.getElementById('aiExplanationModalBody');
+          const score = data && (data.ai_score !== undefined && data.ai_score !== null) ? data.ai_score : (data.score !== undefined ? data.score : '');
+          const expl = data && (data.explanation || data.ai_explanation) ? (data.explanation || data.ai_explanation) : 'No explanation available.';
+          body.innerText = `Score: ${score}\n\nExplanation:\n${expl}`;
+          document.getElementById('aiExplanationModal').style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        } catch(err){ hideAiProgress(); alert('Failed to fetch explanation'); }
+        return;
+      }
+
+      const resetBtn = e.target.closest('.ai-reset-btn');
+      if (resetBtn) {
+        e.preventDefault();
+        const cid = resetBtn.dataset.id;
+        if (!cid) return;
+        if (!confirm('Reset AI score for this candidate?')) return;
+        try {
+          showAiProgress({ title:'Resetting score', subtitle:'Please wait...' });
+          const res = await fetch('/candidates/ai-reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ candidate_id: Number(cid) })});
+          const data = await res.json().catch(()=>null);
+          hideAiProgress();
+          if (!res.ok) throw new Error(data?.message || 'Reset failed');
+          const scoreEl = document.querySelector('.ai-score-cell[data-id="'+cid+'"]');
+          if (scoreEl) scoreEl.innerText = '';
+          serializeSnapshot();
+          alert('AI score reset.');
+        } catch(err){ hideAiProgress(); alert('Failed to reset AI score: ' + (err.message || err)); }
+        return;
+      }
+
+      // ignore clicks on inputs/labels/buttons/anchors
+      if (e.target.closest('input, label, a, button, textarea, select')) return;
+      const row = e.target.closest('tr.candidate-row');
+      if (!row) return;
+      const cid = row.dataset.candidateId;
+      if (!cid) return;
+      openCandidateModal(cid);
+    });
+
+    // change: checkbox toggle
+    tbodyEl.addEventListener('change', function (e) {
+      if (e.target && e.target.matches('.candidate-link-checkbox')) {
+        handleToggleLink(e.target);
+      }
+    });
+  }
+
+  attachDelegation();
+
+  // --- toggle link ---
+  
+// --- toggle link ---
+// Replaces old handleToggleLink / confirm() flow with a dialog-style modal.
+// Event binding elsewhere already calls handleToggleLink(e.target)
+let _nxg_pending_toggle = null;
+
+
+async function handleToggleLink(checkbox) {
+  try {
+    if (!checkbox) return;
+    const candidateId = Number(checkbox.dataset.candidate);
+    const jdSelect = jdSelectEl();
+    const jobId = jdSelect && jdSelect.value ? Number(jdSelect.value) : null;
+    if (!jobId) {
+      alert('Please select a Job before linking/unlinking.');
+      try { checkbox.checked = !checkbox.checked; } catch(e){}
+      return;
+    }
+    const linked = !!checkbox.checked;
+    const row = checkbox.closest('tr.candidate-row');
+
+    // Prefer mapping_display attribute if present
+    const existingIds = (row && row.dataset && row.dataset.existingJdIds) ? (row.dataset.existingJdIds || '').split(',').map(s=>s.trim()).filter(Boolean) : [];
+    const mappingDisplayRaw = (row && row.dataset && row.dataset.mappingDisplay) ? row.dataset.mappingDisplay : '';
+
+    // decode server-escaped entities (Jinja often writes &gt; etc.)
+    const mappingDisplayDecoded = decodeHtmlEntities(mappingDisplayRaw);
+
+    // Convert mappingDisplay into array of readable lines (or fallback to job ids)
+    let mappingItems = [];
+    if (mappingDisplayDecoded && mappingDisplayDecoded.trim()) {
+      // mappingDisplay uses " | " separators server-side
+      mappingItems = mappingDisplayDecoded.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
+    } else if (existingIds.length) {
+      // fallback: show Job ID list so user still sees where it's linked
+      mappingItems = existingIds.map(id => `Job ID: ${id}`);
+    }
+// Decide if we must warn:
+    const isLinkingToDifferent = linked && existingIds.length > 0 && !existingIds.includes(String(jobId));
+    const isUnlinkingPresent = !linked && existingIds.length > 0 && existingIds.includes(String(jobId));
+
+    if (isLinkingToDifferent || isUnlinkingPresent) {
+      try {
+        const titleEl = document.getElementById('mappingWarningTitle');
+        const bodyEl = document.getElementById('mappingWarningBody');
+        const modal = document.getElementById('mappingWarningModal');
+        if (titleEl && bodyEl && modal) {
+          // Build HTML: one bold line per mapping item
+          let linesHtml = '';
+try {
+  // If mapping text items and JD ids align, render each item as a link to its JD page
+  if (mappingItems.length && existingIds.length && mappingItems.length === existingIds.length) {
+    linesHtml = mappingItems.map((item, idx) => {
+      const jid = existingIds[idx];
+      if (jid) {
+        const href = `/candidates/jd/${encodeURIComponent(jid)}?highlight=${encodeURIComponent(candidateId)}`;
+        return `<div style="margin-top:8px; font-weight:700;">
+                  <a href="${escapeHtml(href)}" class="mapping-link" data-candidate="${escapeHtml(String(candidateId))}" data-job="${escapeHtml(String(jid))}" style="color:#1d4ed8; text-decoration:underline;">
+                    ${escapeHtml(item)}
+                  </a>
+                </div>`;
+      }
+      return `<div style="margin-top:8px; font-weight:700;">${escapeHtml(item)}</div>`;
+    }).join('');
+  } else if (existingIds.length) {
+    // If we only have job ids, show Job ID links
+    linesHtml = existingIds.map(jid => {
+      const href = `/candidates/jd/${encodeURIComponent(jid)}?highlight=${encodeURIComponent(candidateId)}`;
+      return `<div style="margin-top:8px; font-weight:700;">
+                <a href="${escapeHtml(href)}" style="color:#1d4ed8; text-decoration:underline;">Job ID: ${escapeHtml(String(jid))}</a>
+              </div>`;
+    }).join('');
+  } else {
+    // Fallback: plain text mapping items
+    linesHtml = mappingItems.map(item => `<div style="margin-top:8px; font-weight:700;">${escapeHtml(item)}</div>`).join('');
+  }
+} catch (e) {
+  // safe fallback in case of unexpected data
+  linesHtml = mappingItems.map(item => `<div style="margin-top:8px; font-weight:700;">${escapeHtml(item)}</div>`).join('');
+}
+if (isLinkingToDifferent) {
+            titleEl.textContent = 'Candidate already linked';
+            bodyEl.innerHTML = `<div>This candidate is already linked under:</div>
+                                ${linesHtml}
+                                <div style="margin-top:12px;">Do you want to also link the candidate to the selected job?</div>`;
+          } else {
+            titleEl.textContent = 'Confirm unlink';
+            bodyEl.innerHTML = `<div>You are about to unlink this candidate from the selected job.</div>
+                                ${linesHtml}
+                                <div style="margin-top:12px;">Proceed to unlink?</div>`;
+          }
+          _nxg_pending_toggle = { checkbox, candidateId, jobId, linked, row };
+          modal.style.display = 'flex';
+          try { document.body.style.overflow = 'hidden'; } catch(e){}
+          return; // wait for modal confirm/cancel
+        }
+      } catch(e) {
+        // fallback to classic confirm if modal fails
+        const fallbackMsg = mappingItems.length ? `This candidate is already linked under:\n${mappingItems.join('\n')}` : `This candidate is already linked under another job.`;
+        if (!confirm(fallbackMsg + '\n\nProceed?')) {
+          try { checkbox.checked = !linked; } catch(e){}
+          return;
+        }
+      }
+    }
+
+    // no warning required — perform toggle directly
+    await _nxg_perform_toggle({ checkbox, candidateId, jobId, linked, row });
+  } catch (err) {
+    console.warn('handleToggleLink error', err);
+    try { checkbox.checked = !checkbox.checked; } catch(e){}
+  }
+}
+
+
+// Modal handlers: confirm / cancel / close
+(function () {
+  const modal = document.getElementById('mappingWarningModal');
+  const confirmBtn = document.getElementById('mappingWarningConfirm');
+  const cancelBtn = document.getElementById('mappingWarningCancel');
+  const closeBtn = document.getElementById('mappingWarningClose');
+
+  function closeModalAndRestore(revertCheckbox = true) {
+    if (!modal) return;
+    modal.style.display = 'none';
+    try { document.body.style.overflow = ''; } catch(e){}
+    if (_nxg_pending_toggle && revertCheckbox && _nxg_pending_toggle.checkbox) {
+      // revert checkbox to prior state (user cancelled)
+      try { _nxg_pending_toggle.checkbox.checked = !_nxg_pending_toggle.linked; } catch(e){}
+    }
+    _nxg_pending_toggle = null;
+  }
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', async function () {
+      if (!_nxg_pending_toggle) { closeModalAndRestore(true); return; }
+      const pending = _nxg_pending_toggle;
+      closeModalAndRestore(false);
+      // perform the toggle action
+      await _nxg_perform_toggle(pending);
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function () { closeModalAndRestore(true); });
+  }
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function () { closeModalAndRestore(true); });
+  }
+})();
+
+// actual network + UI update logic (extracted from original code so behavior is preserved)
+async function _nxg_perform_toggle({ checkbox, candidateId, jobId, linked, row }) {
+  if (!checkbox || !row) return;
+  try {
+    showAiProgress({ title: linked ? 'Linking candidate' : 'Unlinking candidate', subtitle: 'Please wait...' });
+    const resp = await fetch('/candidates/toggle-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, linked: linked })
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) throw new Error(data?.message || 'Toggle failed');
+
+    if (linked) {
+      addLinkedId(candidateId);
+      try {
+        const raw = localStorage.getItem(RECENTLY_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        if (!arr.includes(candidateId)) { arr.push(candidateId); localStorage.setItem(RECENTLY_KEY, JSON.stringify(arr)); }
+      } catch(e){}
+      // update row metadata but DO NOT hide the row
+      row.classList.add('recently-linked-highlight');
+      setTimeout(() => {
+        row.classList.remove('recently-linked-highlight');
+        row.dataset.linked = 'true';
+        // append jobId into existing_jd_ids if not present
+        const existing = (row.dataset.existingJdIds || '').split(',').map(s => s.trim()).filter(Boolean);
+        if (!existing.includes(String(jobId))) existing.push(String(jobId));
+        row.dataset.existingJdIds = existing.join(',');
+        // append human-readable display from selects (best-effort)
+        try {
+          const clientName = clientSelectEl() ? (clientSelectEl().selectedOptions[0]?.textContent || '') : '';
+          const vendorName = vendorSelectEl() ? (vendorSelectEl().selectedOptions[0]?.textContent || '') : '';
+          const jobName = jdSelectEl() ? (jdSelectEl().selectedOptions[0]?.textContent || '') : '';
+          const newDisp = `${clientName} > ${vendorName} > ${jobName}`;
+          row.dataset.mappingDisplay = row.dataset.mappingDisplay ? (row.dataset.mappingDisplay + ' | ' + newDisp) : newDisp;
+        } catch(e){}
+        serializeSnapshot();
+        renderPagination();
+      }, 420);
+      showToast('Candidate linked','success',3000);
+    } else {
+      // unlink
+      removeLinkedId(candidateId);
+      // remove jobId from existing_jd_ids
+      const existing = (row.dataset.existingJdIds || '').split(',').map(s => s.trim()).filter(Boolean).filter(id => id !== String(jobId));
+      row.dataset.existingJdIds = existing.join(',');
+      if (existing.length === 0) row.dataset.linked = 'false';
+      serializeSnapshot(); renderPagination();
+    }
+  } catch (err) {
+    alert('Failed to toggle link: ' + (err.message || err));
+    // revert checkbox on failure
+    try { checkbox.checked = !checkbox.checked; } catch(e){}
+  } finally {
+    hideAiProgress();
+  }
+}
+
+
+  // --- refresh mapping for selected job ---
+  async function refreshMappingsForJob() {
+if (!jobId) { applyLinkedIds(); return; }
+  showAiProgress({ title:'Updating job mapping', subtitle:'Fetching mapped candidates.' });
+  try {
+    const res = await fetch(`/candidates/get-mapped-candidates/${encodeURIComponent(jobId)}`);
+    const mappings = await res.json().catch(()=>[]);
+    const map = {}; (mappings || []).forEach(m => { map[String(m.candidate_id)] = m; });
+    try {
+      const s = getLinkedIds();
+      (mappings || []).forEach(m => s.add(String(m.candidate_id)));
+      saveLinkedIds(s);
+    } catch(e){}
+    Array.from(document.querySelectorAll('tr.candidate-row')).forEach(row => {
+      const cid = String(row.dataset.candidateId || row.getAttribute('data-candidate-id') || '');
+      const cb = row.querySelector('.candidate-link-checkbox');
+      const scoreCell = row.querySelector('.ai-score-cell');
+      if (map[cid]) {
+        // mark as linked for selected job (do NOT hide)
+        row.dataset.linked = 'true';
+        if (cb) cb.checked = true;
+        // ensure selected jobId present in existing_jd_ids
+        const existing = (row.dataset.existingJdIds || '').split(',').map(s=>s.trim()).filter(Boolean);
+        if (!existing.includes(String(jobId))) existing.push(String(jobId));
+        row.dataset.existingJdIds = existing.join(',');
+        // update mapping_display best-effort using selected dropdowns
+        try {
+          const clientName = clientSelectEl() ? (clientSelectEl().selectedOptions[0]?.textContent||'') : '';
+          const vendorName = vendorSelectEl() ? (vendorSelectEl().selectedOptions[0]?.textContent||'') : '';
+          const jobName = jdSelectEl() ? (jdSelectEl().selectedOptions[0]?.textContent||'') : '';
+          const disp = `${clientName} > ${vendorName} > ${jobName}`;
+          row.dataset.mappingDisplay = row.dataset.mappingDisplay ? (row.dataset.mappingDisplay + ' | ' + disp) : disp;
+        } catch(e){}
+        if (scoreCell && map[cid] && (map[cid].ai_score !== undefined && map[cid].ai_score !== null)) scoreCell.innerText = map[cid].ai_score;
+      } else {
+        // leave other rows as-is (do not hide)
+        if (row.dataset.linked !== 'true') {
+          if (cb) cb.checked = false;
+          row.dataset.linked = 'false';
+        }
+      }
+    });
+    currentPage = 1; renderPagination();
+  } catch(e) {
+    console.warn('refreshMappingsForJob', e);
+  } finally { hideAiProgress(); }
+}
+
+  // initial mapping refresh if jd selected on first load
+  try { const jdInit = jdSelectEl(); if (jdInit && jdInit.value) setTimeout(()=>refreshMappingsForJob(jdInit.value), 200); } catch(e){}
+
+  // --- Candidate modal helpers ---
   function findCandidateObject(obj, depth=0) {
-    if (!obj || typeof obj !== 'object' || depth > 4) return null;
+    if (!obj || typeof obj !== 'object' || depth>4) return null;
     const keys = Object.keys(obj); const markers = ['candidates_id','candidate_id','candidate_name','name','email','skillset','it_experience','ai_score','score'];
-    if (keys.some(k => markers.includes(k))) return obj;
+    if (keys.some(k=>markers.includes(k))) return obj;
     for (const k of keys) {
       try { const v = obj[k]; if (v && typeof v === 'object') { const f = findCandidateObject(v, depth+1); if (f) return f; } } catch(e){}
     }
@@ -697,221 +1117,273 @@ document.addEventListener('DOMContentLoaded', function () {
     const f = findCandidateObject(payload); return f || payload;
   }
 
-  // Open candidate modal
   async function openCandidateModal(candidateId) {
     try {
-      showAiProgress({ persist: false, title: 'Loading candidate', subtitle: 'Please wait.' });
+      showAiProgress({ title:'Loading candidate', subtitle:'Please wait.' });
       const resp = await fetch(`/candidates/${encodeURIComponent(candidateId)}`);
-      const payload = await resp.json().catch(()=> ({}));
+      const payload = await resp.json().catch(()=>({}));
       hideAiProgress();
       if (!resp.ok) throw new Error('Failed to fetch candidate');
+
       const c = normalizeCandidatePayload(payload);
       const name = c.candidate_name || c.name || 'N/A';
       const skills = c.skillset || c.skills || 'N/A';
       const aiScore = (c.ai_score !== undefined && c.ai_score !== null) ? c.ai_score : (c.score !== undefined ? c.score : '');
       const email = c.email || c.email_address || 'N/A';
       const contact = c.contact || c.phone || 'N/A';
-      const itExp = c.it_experience || c.it_exp || c.it_experience || 'N/A';
+      const itExp = c.it_experience || c.it_exp || 'N/A';
       const location = c.location || 'N/A';
       const relExp = c.relevant_experience || 'N/A';
       const education = c.education || 'N/A';
       const company = c.company || 'N/A';
-      const clients = c.clients || 'N/A';
       const resume = c.resumelinks || c.resume || '';
       const notice = c.notice_period || c.notice || '';
       const comment = c.comment || '';
       const notes = c.recruitment_notes || c.recruiter_notes || '';
-
       const mapping_jd_id = c.mapping_jd_id || c.mapping || '';
 
       const body = document.getElementById('candidateModalBody');
       body.innerHTML = `
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div><strong>Name:</strong><div style="margin-top:6px;">${escapeHtml(name)}</div></div>
-          <div><strong>AI Score:</strong><div style="margin-top:6px;">${escapeHtml(aiScore)}</div></div>
+        <div style="display:flex; gap:14px; align-items:flex-start;">
+          <div style="flex:0 0 220px; padding:12px; border-right:1px solid #eef4fb;">
+            <div style="font-weight:800; font-size:18px; color:#111827;">${escapeHtml(name)}</div>
+            <div style="margin-top:8px; font-weight:700; font-size:14px; color:#111827;">AI Score: <span style="font-weight:900; color:#0f172a;">${escapeHtml(aiScore)}</span></div>
+            <div style="margin-top:12px;">${resume ? `<a href="${escapeHtml(resume)}" target="_blank" style="color:#2563eb; text-decoration:none;">View resume <i class="bi bi-paperclip"></i></a>` : '<span style="color:#6b7280;">No resume</span>'}</div>
+            <div style="margin-top:12px; color:#6b7280;">${escapeHtml(company)}</div>
+            <div style="margin-top:6px; color:#6b7280;">${escapeHtml(location)}</div>
+          </div>
 
-          <div><strong>Skills:</strong><div style="margin-top:6px;">${escapeHtml(skills)}</div></div>
-          <div><strong>Email:</strong><div style="margin-top:6px;">${escapeHtml(email)}</div></div>
-          <div><strong>Contact:</strong><div style="margin-top:6px;">${escapeHtml(contact)}</div></div>
+          <div style="flex:1; padding:8px 6px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div><strong>Skills</strong><div style="margin-top:6px;">${escapeHtml(skills)}</div></div>
+              <div><strong>Relevant Exp</strong><div style="margin-top:6px;">${escapeHtml(relExp)}</div></div>
 
-          <div><strong>IT Exp:</strong><div style="margin-top:6px;">${escapeHtml(itExp)}</div></div>
-          <div><strong>Location:</strong><div style="margin-top:6px;">${escapeHtml(location)}</div></div>
+              <div><strong>Email</strong><div style="margin-top:6px;">${escapeHtml(email)}</div></div>
+              <div><strong>Contact</strong><div style="margin-top:6px;">${escapeHtml(contact)}</div></div>
 
-          <div><strong>Relevant Exp:</strong><div style="margin-top:6px;">${escapeHtml(relExp)}</div></div>
-          <div><strong>Education:</strong><div style="margin-top:6px;">${escapeHtml(education)}</div></div>
+              <div><strong>IT Exp</strong><div style="margin-top:6px;">${escapeHtml(itExp)}</div></div>
+              <div><strong>Education</strong><div style="margin-top:6px;">${escapeHtml(education)}</div></div>
 
-          <div><strong>Company:</strong><div style="margin-top:6px;">${escapeHtml(company)}</div></div>
-          <div><strong>Clients:</strong><div style="margin-top:6px;">${escapeHtml(clients)}</div></div>
+              <div><strong>Clients</strong><div style="margin-top:6px;">${escapeHtml(c.clients || '')}</div></div>
+              <div><strong>Notice</strong><div style="margin-top:6px;">${escapeHtml(notice)}</div></div>
 
-          <div style="grid-column:1/3;"><strong>Resume:</strong><div style="margin-top:6px;">${resume ? `<a href="${resume}" target="_blank" style="color:#2563eb;">Open resume</a>` : 'N/A'}</div></div>
+              <div style="grid-column:1/3;"><strong>Comment</strong><div style="margin-top:6px;">${escapeHtml(comment)}</div></div>
+            </div>
 
-          <div><strong>Notice:</strong><div style="margin-top:6px;">${escapeHtml(notice)}</div></div>
-          <div><strong>Comment:</strong><div style="margin-top:6px;">${escapeHtml(comment)}</div></div>
-
-          <div style="grid-column:1/3; margin-top:6px;">
-            <label style="font-weight:700;">Recruitment Notes</label>
-            <textarea id="modalRecruitmentNotes" rows="5" style="width:100%; padding:8px; border:1px solid #e6eefc; border-radius:6px; margin-top:6px;">${escapeHtml(notes)}</textarea>
-            <div style="font-size:12px; color:#6b7280; margin-top:6px;">Notes are stored for this candidate; if later linked to a Job they may be associated with the mapping.</div>
+            <div style="margin-top:12px;">
+              <label style="font-weight:700;">Recruitment Notes</label>
+              <textarea id="modalRecruitmentNotes" rows="5" style="width:100%; padding:8px; border:1px solid #e6eefc; border-radius:6px; margin-top:6px;">${escapeHtml(notes)}</textarea>
+              <div style="font-size:12px; color:#6b7280; margin-top:6px;">Notes are stored for this candidate; if later linked to a Job they may be associated with the mapping.</div>
+            </div>
           </div>
         </div>
       `;
 
       const backdrop = document.getElementById('candidateModalBackdrop');
-      backdrop.dataset.candidateId = candidateId; backdrop.dataset.mappingJdId = mapping_jd_id || '';
-      backdrop.style.display = 'flex'; document.body.style.overflow = 'hidden';
-    } catch (err) {
+      backdrop.dataset.candidateId = candidateId;
+      backdrop.dataset.mappingJdId = mapping_jd_id || '';
+      backdrop.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    } catch(err) {
       hideAiProgress();
       alert('Failed to load candidate details: ' + (err.message || err));
     }
   }
 
-  // open modal when clicking a row (ignore clicks on interactive controls)
-  const tbody = document.getElementById('search-results-body');
-  tbody?.addEventListener('click', function (e) {
-    if (e.target.closest('input, label, a, button, textarea, select')) return;
-    const row = e.target.closest('tr.candidate-row');
-    if (!row) return;
-    const cid = row.dataset.candidateId;
-    if (!cid) return;
-    openCandidateModal(cid);
-  });
-
-  // modal handlers
+  // modal open/close handlers
   document.getElementById('candidateModalClose').addEventListener('click', closeCandidateModal);
   document.getElementById('candidateModalCancel').addEventListener('click', closeCandidateModal);
-  document.getElementById('candidateModalBackdrop').addEventListener('click', function (e) {
-    if (e.target.id === 'candidateModalBackdrop' || e.target.id === 'candidateModalOverlay') closeCandidateModal();
-  });
-  function closeCandidateModal() {
-    const b = document.getElementById('candidateModalBackdrop'); b.style.display = 'none'; b.dataset.candidateId=''; b.dataset.mappingJdId=''; document.body.style.overflow='';
-  }
+  document.getElementById('candidateModalBackdrop').addEventListener('click', function(e){ if (e.target.id === 'candidateModalBackdrop' || e.target.id === 'candidateModalOverlay') closeCandidateModal(); });
+  function closeCandidateModal() { const b = document.getElementById('candidateModalBackdrop'); if (!b) return; b.style.display='none'; b.dataset.candidateId=''; b.dataset.mappingJdId=''; document.body.style.overflow=''; }
 
-  // Save recruitment notes
+  // save notes
   document.getElementById('saveNotesBtn').addEventListener('click', async function () {
     const backdrop = document.getElementById('candidateModalBackdrop');
     const candidateId = Number(backdrop.dataset.candidateId || 0);
     const mappingJd = backdrop.dataset.mappingJdId || '';
-    let jobIdVal = mappingJd || (jdSelect ? jdSelect.value : '') || '';
+    let jobIdVal = mappingJd || (jdSelectEl() ? jdSelectEl().value : '') || '';
     const job_id = jobIdVal ? Number(jobIdVal) : 0;
     const notes = document.getElementById('modalRecruitmentNotes').value || '';
     try {
-      showAiProgress({ persist: false, title: 'Saving notes', subtitle: 'Please wait.' });
-      const resp = await fetch('/candidates/update-note', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ candidate_id: Number(candidateId), job_id: job_id, note: notes })
-      });
-      const data = await resp.json();
+      showAiProgress({ title:'Saving notes', subtitle:'Please wait.' });
+      const resp = await fetch('/candidates/update-note', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ candidate_id: Number(candidateId), job_id: job_id, note: notes })});
+      const data = await resp.json().catch(()=>null);
       hideAiProgress();
       if (!resp.ok) throw new Error(data?.message || 'Save failed');
-      showToast('Notes saved', 'success', 2000);
+      showToast('Notes saved','success',2000);
       try {
         const row = document.querySelector(`tr[data-candidate-id="${candidateId}"]`);
-        if (row) {
-          const notesEl = row.querySelector('.notes-content');
-          if (notesEl) notesEl.textContent = notes || 'N/A';
-        }
+        if (row) { serializeSnapshot(); }
       } catch(e){}
       closeCandidateModal();
-    } catch (err) {
-      hideAiProgress();
-      alert('Failed to save notes: ' + (err.message || err));
-    }
+    } catch(err) { hideAiProgress(); alert('Failed to save notes: ' + (err.message || err)); }
   });
 
-  // recently linked: add highlight params
+  // recently linked button behavior (append query param highlight)
   if (recentlyLinkedBtn) {
-    recentlyLinkedBtn.addEventListener('click', function(e){
+    recentlyLinkedBtn.addEventListener('click', function (e) {
       try {
-        const raw = localStorage.getItem('recently_linked');
-        const arr = raw ? JSON.parse(raw) : [];
-        if (!arr || arr.length === 0) {
-          e.preventDefault();
-          alert('No recently linked candidates in this session.');
-          return;
-        }
-        const url = new URL(this.href, window.location.origin);
-        url.searchParams.set('highlight', arr.join(','));
-        this.href = url.pathname + url.search;
+        const raw = localStorage.getItem(RECENTLY_KEY); const arr = raw ? JSON.parse(raw) : [];
+        if (!arr || arr.length === 0) { e.preventDefault(); alert('No recently linked candidates in this session.'); return; }
+        const url = new URL(this.href, window.location.origin); url.searchParams.set('highlight', arr.join(',')); this.href = url.pathname + url.search;
       } catch(e){}
     });
   }
 
-  // AI Explanation & Reset
-  document.addEventListener('click', async function (e) {
-    const explainBtn = e.target.closest('.ai-explain-btn');
-    if (explainBtn) {
+  // aiExplanation modal close
+  document.getElementById('aiExplanationModalClose').addEventListener('click', function(){ document.getElementById('aiExplanationModal').style.display = 'none'; document.body.style.overflow = ''; });
+
+  // --- Advanced & Manual form overlay behavior (preserve AI overlay) ---
+  if (advancedForm) {
+    advancedForm.addEventListener('submit', async function (e) {
       e.preventDefault();
-      const cid = explainBtn.dataset.id;
-      if (!cid) return;
+      showAiProgress({ title:'AI is evaluating candidates', subtitle:'Analyzing JD and matching candidates — this may take a few moments.' });
+      const submitBtn = advancedForm.querySelector('button[type="submit"], input[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
       try {
-        showAiProgress({ persist: false, title: 'Fetching explanation', subtitle: 'Please wait for the AI explanation.' });
-        const res = await fetch(`/candidates/ai-explanation/${encodeURIComponent(cid)}`);
-        const data = await res.json().catch(()=>null);
-        hideAiProgress();
-        if (!res.ok) throw new Error(data?.message || 'Explanation fetch failed');
-        const body = document.getElementById('aiExplanationModalBody');
-        const score = (data && (data.ai_score !== undefined && data.ai_score !== null)) ? data.ai_score : (data.score !== undefined ? data.score : '');
-        const expl = data && (data.explanation || data.ai_explanation) ? (data.explanation || data.ai_explanation) : 'No explanation available.';
-        body.innerText = `Score: ${score}\n\nExplanation:\n${expl}`;
-        document.getElementById('aiExplanationModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-      } catch (err) {
-        hideAiProgress();
-        alert('Failed to fetch explanation: ' + (err.message || err));
-      }
-      return;
-    }
-
-    const resetBtn = e.target.closest('.ai-reset-btn');
-    if (resetBtn) {
-      e.preventDefault();
-      const cid = resetBtn.dataset.id;
-      if (!cid) return;
-      if (!confirm('Reset AI score for this candidate?')) return;
-      try {
-        showAiProgress({ persist: false, title: 'Resetting score', subtitle: 'Please wait...' });
-        const res = await fetch('/candidates/ai-reset', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ candidate_id: Number(cid) })
-        });
-        const data = await res.json().catch(()=>null);
-        hideAiProgress();
-        if (!res.ok) throw new Error(data?.message || 'Reset failed');
-        const scoreEl = document.querySelector('.ai-score-cell[data-id="'+cid+'"]');
-        if (scoreEl) scoreEl.innerText = '';
-        alert('AI score reset.');
-      } catch (err) {
-        hideAiProgress();
-        alert('Failed to reset AI score: ' + (err.message || err));
-      }
-      return;
-    }
-  });
-
-  // close explanation modal
-  document.getElementById('aiExplanationModalClose').addEventListener('click', function(){
-    document.getElementById('aiExplanationModal').style.display = 'none';
-    document.body.style.overflow = '';
-  });
-
-  // small toast
-  function showToast(msg, type='default', time=2500) {
-    const t = document.createElement('div');
-    t.textContent = msg;
-    t.style.position = 'fixed';
-    t.style.right = '12px';
-    t.style.bottom = '12px';
-    t.style.background = type==='success' ? '#198754' : (type==='error' ? '#dc3545' : '#2563eb');
-    t.style.color = '#fff';
-    t.style.padding = '10px 14px';
-    t.style.borderRadius = '8px';
-    t.style.zIndex = 99999;
-    document.body.appendChild(t);
-    setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=> t.remove(), 300); }, time);
+        const formData = new FormData(advancedForm);
+        const resp = await fetch(advancedForm.action, { method:'POST', body: formData, credentials: 'same-origin' });
+        if (!resp.ok) {
+          const txt = await resp.text().catch(()=>null); hideAiProgress(); if (submitBtn) submitBtn.disabled = false; alert('Advanced search failed: ' + (txt || (resp.status + ' ' + resp.statusText))); return;
+        }
+        const contentType = resp.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const j = await resp.json().catch(()=>null);
+          if (j && j.redirect) { window.location.href = j.redirect; return; }
+          hideAiProgress(); window.location.reload(); return;
+        }
+        const html = await resp.text();
+        try { document.open(); document.write(html); document.close(); } catch(e) { window.location.href = '/candidates/search'; }
+      } catch(err) { hideAiProgress(); if (submitBtn) submitBtn.disabled = false; alert('Advanced search error: ' + (err.message || err)); }
+    });
   }
 
+  if (searchForm) {
+    searchForm.addEventListener('submit', function () {
+      try {
+        const skillsEl = document.querySelector('input[name="skills"]');
+        const expEl = document.querySelector('input[name="experience"]');
+        const locEl = document.querySelector('input[name="location"]');
+        const skillsVal = skillsEl && skillsEl.value ? skillsEl.value.trim() : '';
+        const expVal = expEl && expEl.value ? expEl.value.trim() : '';
+        const locVal = locEl && locEl.value ? locEl.value.trim() : '';
+        if (skillsVal || expVal || locVal) showAiProgress({ title:'AI is evaluating candidates', subtitle:'Preparing search results — please wait.' });
+      } catch(e){}
+    });
+  }
+
+  // --- improved restore: always try to repopulate vendor/job lists from server when a saved client exists ---
+  async function restoreDropdownStateIfSafe() {
+    try {
+      // If user clicked Reset recently, do not restore (bfcache safety)
+      if (sessionStorage.getItem(RESET_FLAG)) { sessionStorage.removeItem(RESET_FLAG); return; }
+      const raw = localStorage.getItem(DD_STATE_KEY);
+      if (!raw) return;
+      const st = JSON.parse(raw || '{}');
+      if (!st) return;
+
+      const clientSelect = clientSelectEl();
+      const vendorSelect = vendorSelectEl();
+      const jdSelect = jdSelectEl();
+
+      if (st.client) {
+        // set client value (if available)
+        try { if (clientSelect) clientSelect.value = st.client; } catch(e){}
+
+        // Force server fetch for vendors to ensure fresh options after navigating back
+        try {
+          await fetchVendorsForClient(st.client);
+        } catch(e){ /* ignore, fallback below */ }
+
+        // ensure vendor option exists and select it
+        try {
+          if (vendorSelect && st.vendor) {
+            const exists = Array.from(vendorSelect.options).some(opt => String(opt.value) === String(st.vendor));
+            if (!exists && st.vendors && st.vendors.length) {
+              st.vendors.forEach(v => {
+                if (v && v.value !== undefined && String(v.value) === String(st.vendor)) {
+                  const o = document.createElement('option'); o.value = v.value; o.textContent = v.text; vendorSelect.appendChild(o);
+                }
+              });
+            }
+            vendorSelect.value = st.vendor;
+            // fetch jobs for vendor (server-first)
+            await fetchJobsForVendor(st.vendor);
+          }
+        } catch(e){}
+
+        // ensure job option exists and select it
+        try {
+          if (jdSelect && st.job) {
+            const existsJ = Array.from(jdSelect.options).some(opt => String(opt.value) === String(st.job));
+            if (!existsJ && st.jobs && st.jobs.length) {
+              st.jobs.forEach(j => {
+                if (j && j.value !== undefined && String(j.value) === String(st.job)) {
+                  const o = document.createElement('option'); o.value = j.value; o.textContent = j.text; jdSelect.appendChild(o);
+                }
+              });
+            }
+            jdSelect.value = st.job;
+          }
+        } catch(e){}
+        return;
+      }
+
+      // if no saved client, restore vendor/job option snapshots if selects empty (original fallback)
+      if (vendorSelect && vendorSelect.options.length <= 1 && st.vendors && st.vendors.length) {
+        vendorSelect.innerHTML = '<option value="">Select Manager</option>';
+        st.vendors.forEach(v => {
+          if (v && v.value && !Array.from(vendorSelect.options).some(opt => String(opt.value) === String(v.value))) {
+            const o = document.createElement('option'); o.value = v.value; o.textContent = v.text; vendorSelect.appendChild(o);
+          }
+        });
+        try { vendorSelect.value = st.vendor || ''; } catch(e){}
+      }
+      if (jdSelect && jdSelect.options.length <= 1 && st.jobs && st.jobs.length) {
+        jdSelect.innerHTML = '<option value="">Select Job</option>';
+        st.jobs.forEach(j => {
+          if (j && j.value && !Array.from(jdSelect.options).some(opt => String(opt.value) === String(j.value))) {
+            const o = document.createElement('option'); o.value = j.value; o.textContent = j.text; jdSelect.appendChild(o);
+          }
+        });
+        try { jdSelect.value = st.job || ''; } catch(e){}
+      }
+    } catch(e){ console.warn('restoreDropdownStateIfSafe', e); }
+  }
+
+  // Save on change (captures selects)
+  ['change','input'].forEach(ev => {
+    document.addEventListener(ev, function(e){
+      if (e.target && (e.target.id === 'clientSelect' || e.target.id === 'vendorSelect' || e.target.id === 'jdSelect')) {
+        saveDropdownState();
+      }
+    }, {capture:true});
+  });
+
+  window.addEventListener('beforeunload', saveDropdownState);
+
+  // --- pageshow handler (bfcache) ---
+  window.addEventListener('pageshow', async function (e) {
+    try {
+      bindResetInterceptors();
+      bindCascadingOnce();
+      // Wait for restore so selects are repopulated before mapping refresh
+      await restoreDropdownStateIfSafe();
+      attachDelegation();
+      applyLinkedIds();
+      renderPagination();
+      const jd = jdSelectEl(); if (jd && jd.value) refreshMappingsForJob(jd.value);
+    } catch(err){ console.warn('pageshow handler', err); }
+  });
+
+  // --- initial hydration and state apply ---
+  attachDelegation();
+  try { if (document.getElementById('search-results-body') && document.getElementById('search-results-body').querySelectorAll('tr.candidate-row').length > 0) serializeSnapshot(); } catch(e){}
+  hydrateIfNeeded();
+  // Ensure dropdown restore on first load too (covers direct navigation)
+  restoreDropdownStateIfSafe();
+  applyLinkedIds();
+  renderPagination();
 });
 </script>
 

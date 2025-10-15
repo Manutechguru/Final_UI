@@ -5,7 +5,6 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 <link rel="stylesheet" href="{{ request.url_for('static', path='css/jd_candidates.css') }}">
 
-
 <div class="nxg-container mt-2">
   <div class="page-head">
     <h1>JD Candidates <small>(JD ID: {{ jd_id }})</small></h1>
@@ -71,6 +70,7 @@
           <th>Resume</th>
           <th>Clients</th>
           <th>Notice</th>
+          <th>CTC</th>
           <th>Comment</th>
           <th>Recruiter Notes</th>
           <th>Stage</th>
@@ -123,9 +123,30 @@
               </td>
 
               <td><div class="ellipsis" title="{{ c.clients or '' }}">{{ c.clients or 'N/A' }}</div></td>
-              <td><div class="ellipsis" title="{{ c.notice_period or '' }}">{{ c.notice_period or 'N/A' }}</div></td>
+              
+              <!-- Notice Period Editable -->
+              <td>
+                <div class="editable-field" data-candidate-id="{{ cid }}" data-field-type="notice_period">
+                  <div class="editable-display" tabindex="0">
+                    {{ c.notice_period or 'Click to edit' }}
+                  </div>
+                  <input type="text" class="editable-edit" placeholder="Enter notice period..." style="display:none;" value="{{ c.notice_period or '' }}">
+                </div>
+              </td>
+              
+              <!-- CTC Editable -->
+              <td>
+                <div class="editable-field" data-candidate-id="{{ cid }}" data-field-type="ctc">
+                  <div class="editable-display" tabindex="0">
+                    {{ c.ctc or 'Click to edit' }}
+                  </div>
+                  <input type="text" class="editable-edit" placeholder="Enter CTC..." style="display:none;" value="{{ c.ctc or '' }}">
+                </div>
+              </td>
+              
               <td><div class="ellipsis" title="{{ c.comment or '' }}">{{ c.comment or 'N/A' }}</div></td>
               
+              <!-- Recruiter Notes Editable -->
               <td>
                 <div class="notes-editable" data-candidate-id="{{ cid }}">
                   <div class="notes-display" tabindex="0">
@@ -179,7 +200,27 @@
               <td style="white-space:normal; word-break:break-word;">{% if c.resumelinks %}<a href="{{ c.resumelinks }}" target="_blank" rel="noopener noreferrer">Open resume</a>{% else %}N/A{% endif %}</td>
 
               <td style="white-space:normal; word-break:break-word;">{{ c.clients or 'N/A' }}</td>
-              <td style="white-space:normal; word-break:break-word;">{{ c.notice_period or 'N/A' }}</td>
+              
+              <!-- Notice Period in expanded view -->
+              <td style="white-space:normal; word-break:break-word;">
+                <div class="editable-field" data-candidate-id="{{ cid }}" data-field-type="notice_period">
+                  <div class="editable-display" tabindex="0">
+                    {{ c.notice_period or 'Click to edit' }}
+                  </div>
+                  <input type="text" class="editable-edit" placeholder="Enter notice period..." style="display:none;" value="{{ c.notice_period or '' }}">
+                </div>
+              </td>
+              
+              <!-- CTC in expanded view -->
+              <td style="white-space:normal; word-break:break-word;">
+                <div class="editable-field" data-candidate-id="{{ cid }}" data-field-type="ctc">
+                  <div class="editable-display" tabindex="0">
+                    {{ c.ctc or 'Click to edit' }}
+                  </div>
+                  <input type="text" class="editable-edit" placeholder="Enter CTC..." style="display:none;" value="{{ c.ctc or '' }}">
+                </div>
+              </td>
+              
               <td style="white-space:normal; word-break:break-word;">{{ c.comment or 'N/A' }}</td>
               
               <td style="white-space:normal; word-break:break-word;">

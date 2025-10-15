@@ -272,8 +272,16 @@
     </button>
     <nav class="nav-links" id="navLinks">
         <a href="/templates"><i class="fas fa-home"></i> Home</a>
-        <a href="/search"><i class="fas fa-search"></i> Search</a>
+        <a href="/search"><i class="fas fa-search"></i> Candidates Search</a>
         <a href="/clients/new-arrivals"><i class="fas fa-users"></i> Clients</a>
+
+        {# ✅ Show this only for admins #}
+        {% if is_admin %}
+            <a href="/admin" class="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-700 text-white px-3 py-1.5 rounded">
+                <i class="fas fa-cog"></i> Go to Admin
+            </a>
+        {% endif %}
+
         <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </nav>
 </header>

@@ -10,16 +10,11 @@
     <div class="header-container">
         <div class="header-content">
             <h1><i class="fas fa-users"></i> Client Management</h1>
-           
+            <p>Manage your clients, vendors, and jobs in one place</p>
         </div>
-        <form id="addClientForm">
-            <div class="input-group">
-                <input type="text" name="client_name" placeholder="Enter client name" required>
-                <button type="submit" class="btn-primary">
-                    <i class="fas fa-plus"></i> Add Client
-                </button>
-            </div>
-        </form>
+        <button class="btn-primary" onclick="showCreateDialog()">
+            <i class="fas fa-plus"></i> Create Client
+        </button>
     </div>
 
     <div id="notification-toast"></div>
@@ -43,53 +38,121 @@
                 <p>Inactive Clients</p>
             </div>
         </div>
+        <div class="summary-card total">
+            <div class="card-icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="card-content">
+                <h2 id="totalCount">{{ clients|length }}</h2>
+                <p>Total Clients</p>
+            </div>
+        </div>
     </div>
 
-    <div class="search-container">
+    <div class="controls-container">
         <div class="search-box">
             <i class="fas fa-search"></i>
             <input type="text" id="searchBox" placeholder="Search clients by name...">
         </div>
     </div>
 
-    <div class="clients-container" id="clientsContainer">
-        {% for client in clients %}
-        <div class="client-card" id="client-{{ client.client_id }}">
-            <div class="card-header">
-                <h3>{{ client.client_name }}</h3>
-                <div class="dropdown">
-                    <button class="three-dots-btn"><i class="fas fa-ellipsis-v"></i></button>
-                    <div class="dropdown-content">
-                        <a href="#" onclick="event.preventDefault(); showEditDialog('{{ client.client_id }}', '{{ client.client_name }}');">
-                            <i class="fas fa-edit"></i> Edit
-                        </a>
-                        <a href="#" onclick="event.preventDefault(); showDeleteDialog('{{ client.client_id }}', '{{ client.client_name }}');">
-                            <i class="fas fa-trash"></i> Delete
-                        </a>
+    <div class="table-container">
+        <table class="clients-table">
+            <thead>
+                <tr>
+                    <th>Client Name</th>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>Created Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="clientsTableBody">
+                {% for client in clients %}
+                <tr id="client-{{ client.client_id }}">
+                    <td class="client-name">{{ client.client_name }}</td>
+                    <td class="client-id">{{ client.client_id }}</td>
+                    <td class="status-cell">
+                        <label class="switch">
+                            <input type="checkbox" onchange="toggleActive('{{ client.client_id }}', this)" {% if client.status == 'active' %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="status-text">{{ 'Active' if client.status == 'active' else 'Inactive' }}</span>
+                    </td>
+                    <td class="created-date">{% if client.created_at %} {{ client.created_at.strftime("%Y-%m-%d %H:%M:%S") }} {% else %} N/A {% endif %}</td>
+                    <td class="actions-cell">
+                        <div class="action-buttons">
+                            <a href="{{ url_for('list_managers', client_id=client.client_id) }}" class="btn-icon view-btn" title="View Vendors">
+                                <i class="fas fa-store"></i>
+                            </a>
+                            <button class="btn-icon edit-btn" onclick="showEditDialog('{{ client.client_id }}', '{{ client.client_name }}')" title="Edit Client">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete-btn" onclick="showDeleteDialog('{{ client.client_id }}', '{{ client.client_name }}')" title="Delete Client">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create Client Modal -->
+<div id="createModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus-circle"></i> Create New Client</h3>
+            <span class="close-modal" onclick="closeCreateModal()">&times;</span>
+        </div>
+        <form id="createClientForm" method="post" action="{{ url_for('add_new_client') }}">
+            <div class="modal-body">
+                <!-- Client Section -->
+                <div class="form-section">
+                    <h4>Client Information</h4>
+                    <div class="form-group">
+                        <label for="clientName">Client Name *</label>
+                        <input type="text" id="clientName" name="client_name" required placeholder="Enter client name">
                     </div>
                 </div>
-            </div>
-            
-            <div class="card-details">
-                <p><strong>ID:</strong> {{ client.client_id }}</p>
-                <p><strong>Created:</strong> {% if client.created_at %} {{ client.created_at.strftime("%Y-%m-%d %H:%M:%S") }} {% else %} N/A {% endif %}</p>
+
+                <!-- Vendor Section (mandatory now) -->
+                <div class="form-section">
+                    <h4>Vendor Information</h4>
+                    <div class="form-group">
+                        <label for="managerName">Vendor Name *</label>
+                        <input type="text" id="managerName" name="manager_name" required placeholder="Enter vendor name">
+                    </div>
+                </div>
+
+                <!-- Jobs Section (dynamic multiple jobs) -->
+                <div class="form-section">
+                    <h4>Job Details (At least one required)</h4>
+                    <div id="jobsContainer">
+                        <div class="job-item">
+                            <div class="form-group">
+                                <label>Job Title *</label>
+                                <input type="text" name="job_titles" required placeholder="Enter job title">
+                            </div>
+                            <div class="form-group">
+                                <label>Job Description</label>
+                                <textarea name="job_descriptions" rows="3" placeholder="Enter job description"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary small-btn" onclick="addJobField()">
+                        <i class="fas fa-plus"></i> Add Another Job
+                    </button>
+                </div>
             </div>
 
-            <div class="card-footer">
-                <div class="status-control">
-                    <label class="switch">
-                        <input type="checkbox" onchange="toggleActive('{{ client.client_id }}', this)" {% if client.status == 'active' %}checked{% endif %}>
-                        <span class="slider"></span>
-                    </label>
-                    <span class="status-text">{{ 'Active' if client.status == 'active' else 'Inactive' }}</span>
-                </div>
-                
-                <a href="{{ url_for('list_managers', client_id=client.client_id) }}" class="view-vendors-btn">
-                    <i class="fas fa-store"></i> View Vendors
-                </a>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Create Client</button>
             </div>
-        </div>
-        {% endfor %}
+        </form>
     </div>
 </div>
 
@@ -97,11 +160,12 @@
 <div id="deleteModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Confirm Deletion</h3>
+            <h3><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h3>
             <span class="close-modal" onclick="closeModal()">&times;</span>
         </div>
         <div class="modal-body">
             <p>Are you sure you want to delete client: <strong id="clientToDeleteName"></strong>?</p>
+            <p class="warning-text">This action cannot be undone and will delete all associated vendors and jobs.</p>
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeModal()">Cancel</button>
@@ -114,7 +178,7 @@
 <div id="editModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Edit Client Name</h3>
+            <h3><i class="fas fa-edit"></i> Edit Client Name</h3>
             <span class="close-modal" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editClientForm">
@@ -133,6 +197,26 @@
         </form>
     </div>
 </div>
+
+<script>
+function addJobField() {
+    const jobsContainer = document.getElementById("jobsContainer");
+    const jobItem = document.createElement("div");
+    jobItem.classList.add("job-item");
+    jobItem.innerHTML = `
+        <hr>
+        <div class="form-group">
+            <label>Job Title *</label>
+            <input type="text" name="job_titles" required placeholder="Enter job title">
+        </div>
+        <div class="form-group">
+            <label>Job Description</label>
+            <textarea name="job_descriptions" rows="3" placeholder="Enter job description"></textarea>
+        </div>
+    `;
+    jobsContainer.appendChild(jobItem);
+}
+</script>
 
 <script src="{{ url_for('static', path='js/new_arrivals.js') }}"></script>
 {% endblock %}

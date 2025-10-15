@@ -84,10 +84,9 @@ def fetch_jd_candidates(db: Session, jd_id: int):
             "resumelinks": candidate.resumelinks or None,
             "clients": getattr(candidate, "clients", "N/A"),
             "notice_period": candidate.notice_period or "N/A",
+            "ctc": candidate.ctc or "N/A",
             "comment": candidate.comment or "N/A",
             "stage": mapping.stage or "Linked",
-
-            # FIXED: Use recruiter_notes instead of recruitment_notes
             "recruiter_notes": candidate.recruitment_notes or "",
             "ai_score": candidate.ai_score if candidate.ai_score is not None else "N/A",
             "ai_explanation": candidate.ai_explanation or "N/A",
@@ -108,7 +107,42 @@ def update_recruiter_notes(db: Session, candidate_id: int, notes: str):
     if not candidate:
         return False
     
-    # FIXED: Save to recruiter_notes field
     candidate.recruitment_notes = notes
+    db.commit()
+    return True
+
+# -----------------------------
+# UPDATE CTC
+# -----------------------------
+def update_candidate_ctc(db: Session, candidate_id: int, ctc):
+    """
+    Update CTC for a candidate. Accepts integer or float (e.g., 5 or 4.4).
+    """
+    candidate = db.query(Candidate).filter(
+        Candidate.candidates_id == candidate_id
+    ).first()
+    
+    if not candidate:
+        return False
+    
+    candidate.ctc = ctc
+    db.commit()
+    return True
+
+# -----------------------------
+# UPDATE NOTICE PERIOD
+# -----------------------------
+def update_candidate_notice_period(db: Session, candidate_id: int, notice_period: str):
+    """
+    Update notice period for a candidate.
+    """
+    candidate = db.query(Candidate).filter(
+        Candidate.candidates_id == candidate_id
+    ).first()
+    
+    if not candidate:
+        return False
+    
+    candidate.notice_period = notice_period
     db.commit()
     return True

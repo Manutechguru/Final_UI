@@ -52,7 +52,7 @@ table.candidates tbody td{
   line-height:1.1;
 }
 
-/* Column widths - Adjusted to fit all columns without horizontal scroll */
+/* Column widths - Adjusted to include CTC column */
 table.candidates th:nth-child(1),
 table.candidates td:nth-child(1) { width: 4%; } /* Expander */
 
@@ -60,31 +60,31 @@ table.candidates th:nth-child(2),
 table.candidates td:nth-child(2) { width: 4%; } /* Checkbox */
 
 table.candidates th:nth-child(3),
-table.candidates td:nth-child(3) { width: 8%; } /* Name */
+table.candidates td:nth-child(3) { width: 7%; } /* Name */
 
 table.candidates th:nth-child(4),
-table.candidates td:nth-child(4) { width: 10%; } /* Skills */
+table.candidates td:nth-child(4) { width: 9%; } /* Skills */
 
 table.candidates th:nth-child(5),
-table.candidates td:nth-child(5) { width: 10%; } /* Email */
+table.candidates td:nth-child(5) { width: 9%; } /* Email */
 
 table.candidates th:nth-child(6),
 table.candidates td:nth-child(6) { width: 5%; } /* IT Exp */
 
 table.candidates th:nth-child(7),
-table.candidates td:nth-child(7) { width: 7%; } /* Location */
+table.candidates td:nth-child(7) { width: 6%; } /* Location */
 
 table.candidates th:nth-child(8),
-table.candidates td:nth-child(8) { width: 7%; } /* Contact */
+table.candidates td:nth-child(8) { width: 6%; } /* Contact */
 
 table.candidates th:nth-child(9),
-table.candidates td:nth-child(9) { width: 6%; } /* Rel Exp */
+table.candidates td:nth-child(9) { width: 5%; } /* Rel Exp */
 
 table.candidates th:nth-child(10),
-table.candidates td:nth-child(10) { width: 6%; } /* Education */
+table.candidates td:nth-child(10) { width: 5%; } /* Education */
 
 table.candidates th:nth-child(11),
-table.candidates td:nth-child(11) { width: 7%; } /* Company */
+table.candidates td:nth-child(11) { width: 6%; } /* Company */
 
 table.candidates th:nth-child(12),
 table.candidates td:nth-child(12) { width: 4%; } /* Resume */
@@ -96,16 +96,19 @@ table.candidates th:nth-child(14),
 table.candidates td:nth-child(14) { width: 5%; } /* Notice */
 
 table.candidates th:nth-child(15),
-table.candidates td:nth-child(15) { width: 8%; } /* Comment */
+table.candidates td:nth-child(15) { width: 5%; } /* CTC */
 
 table.candidates th:nth-child(16),
-table.candidates td:nth-child(16) { width: 8%; } /* Recruiter Notes */
+table.candidates td:nth-child(16) { width: 7%; } /* Comment */
 
 table.candidates th:nth-child(17),
-table.candidates td:nth-child(17) { width: 6%; } /* Stage */
+table.candidates td:nth-child(17) { width: 7%; } /* Recruiter Notes */
 
 table.candidates th:nth-child(18),
-table.candidates td:nth-child(18) { width: 5%; } /* AI Score */
+table.candidates td:nth-child(18) { width: 6%; } /* Stage */
+
+table.candidates th:nth-child(19),
+table.candidates td:nth-child(19) { width: 5%; } /* AI Score */
 
 /* ellipsis helpers */
 .ellipsis{ display:block; min-width:0; font-size:0.86rem; }
@@ -380,6 +383,47 @@ table.candidates tbody tr.main-row.expanded + tr.expanded-row{ display:table-row
   border-color: var(--accent);
 }
 
+/* Editable fields (Notice Period & CTC) */
+.editable-field {
+  position: relative;
+  cursor: pointer;
+}
+
+.editable-display {
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: border-color 0.2s ease;
+  min-height: 20px;
+  line-height: 1.4;
+}
+
+.editable-display:hover {
+  border-color: var(--border);
+  background-color: #f8f9fa;
+}
+
+.editable-display:focus {
+  outline: none;
+  border-color: var(--accent);
+  background-color: white;
+}
+
+.editable-edit {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  box-sizing: border-box;
+}
+
+.editable-edit:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* AI Score styling */
 .ai-score {
   display: inline-block;
@@ -533,8 +577,8 @@ table.candidates tbody tr.main-row.expanded + tr.expanded-row{ display:table-row
   }
   
   /* Adjust column widths for mobile */
-  table.candidates th:nth-child(16),
-  table.candidates td:nth-child(16) { width: 8%; } /* Recruiter Notes */
+  table.candidates th:nth-child(17),
+  table.candidates td:nth-child(17) { width: 8%; } /* Recruiter Notes */
 }
 
 /* ===========================

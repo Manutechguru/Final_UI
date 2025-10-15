@@ -456,6 +456,10 @@ Output only a JSON array and nothing else.
 """
 
 def extract_jd_features(jd_text: str) -> Dict[str, str]:
+    """
+    Extracts 'skills', 'experience', 'location', 'summary' from JD text using the model.
+    Returns dict with keys possibly empty. Does not invent missing fields.
+    """
     if not jd_text:
         return {"skills": "", "experience": "", "location": "", "summary": ""}
 
@@ -480,12 +484,27 @@ def extract_jd_features(jd_text: str) -> Dict[str, str]:
             parsed = None
 
     if isinstance(parsed, dict):
+        # Clean skills into a short comma-separated canonical list, but do NOT invent skills.
+        skills_raw = (parsed.get("skills") or "").strip()
+        if skills_raw:
+            # split conservatively on commas/newlines/semicolons
+            tokens = [s.strip() for s in re.split(r"[,;\n]+", skills_raw) if s.strip()]
+            # preserve order & dedupe
+            skills = ", ".join(dict.fromkeys(tokens))
+        else:
+            skills = ""
+
+        experience = (parsed.get("experience") or "").strip()
+        location = (parsed.get("location") or "").strip()
+        summary = (parsed.get("summary") or "").strip()
+
         return {
-            "skills": (parsed.get("skills") or "").strip(),
-            "experience": (parsed.get("experience") or "").strip(),
-            "location": (parsed.get("location") or "").strip(),
-            "summary": (parsed.get("summary") or "").strip(),
+            "skills": skills,
+            "experience": experience,
+            "location": location,
+            "summary": summary,
         }
+
     logger.error("extract_jd_features: unable to parse JSON from model output")
     return {"skills": "", "experience": "", "location": "", "summary": ""}
 
