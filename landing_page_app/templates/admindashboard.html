@@ -49,7 +49,6 @@
         <a href="/templates"
            class="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white px-3 py-1.5 rounded"
            title="User View">
-          <!-- eye icon -->
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/>
@@ -60,7 +59,6 @@
         <a href="/logout"
            class="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded"
            title="Logout">
-          <!-- power icon -->
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 3v9m5.657-5.657A8 8 0 1 1 6.343 6.343"/>
@@ -153,7 +151,7 @@
             </thead>
             <tbody>
               {% for row in logs_summary %}
-              <tr class="row" id="row-{{ row.user_id }}">
+              <tr class="row">
                 <td>
                   <div class="font-semibold">{{ row.username }}</div>
                   <div class="text-xs text-gray-500">ID: {{ row.user_id }}</div>
@@ -164,56 +162,13 @@
                   <button
                     type="button"
                     class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                    onclick="toggleUserDetails({{ row.user_id }})"
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-              <!-- inline details expander -->
-              <tr id="details-{{ row.user_id }}" class="hidden">
-                <td colspan="4">
-                  <div id="details-body-{{ row.user_id }}" class="border border-gray-200 rounded-xl p-4 bg-white text-sm">
-                    <div class="text-gray-500">Loading…</div>
-                  </div>
+                    onclick="openLogModal({{ row.user_id }}, '{{ row.username|e }}')"
+                  >View</button>
                 </td>
               </tr>
               {% endfor %}
             </tbody>
           </table>
-
-          <!-- Pagination for summary -->
-          <div class="mt-3 flex items-center justify-center gap-3">
-            <div class="text-sm text-gray-500">
-              Showing {{ summary_skip + 1 if summary_total_users else 0 }}–{{ (summary_skip + summary_limit) if (summary_skip + summary_limit) < summary_total_users else summary_total_users }} of {{ summary_total_users }}
-            </div>
-            <div class="flex items-center gap-2">
-              {% if summary_skip > 0 %}
-              <form method="get" action="/admin">
-                <input type="hidden" name="tab" value="logs"/>
-                <input type="hidden" name="logs_view" value="summary"/>
-                <input type="hidden" name="summary_skip" value="{{ summary_skip - summary_limit if summary_skip - summary_limit > 0 else 0 }}"/>
-                <input type="hidden" name="summary_limit" value="{{ summary_limit }}"/>
-                <input type="hidden" name="log_days" value="{{ log_days }}"/>
-                {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
-                {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
-                <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Previous</button>
-              </form>
-              {% endif %}
-              {% if (summary_skip + summary_limit) < summary_total_users %}
-              <form method="get" action="/admin">
-                <input type="hidden" name="tab" value="logs"/>
-                <input type="hidden" name="logs_view" value="summary"/>
-                <input type="hidden" name="summary_skip" value="{{ summary_skip + summary_limit }}"/>
-                <input type="hidden" name="summary_limit" value="{{ summary_limit }}"/>
-                <input type="hidden" name="log_days" value="{{ log_days }}"/>
-                {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
-                {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
-                <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Next</button>
-              </form>
-              {% endif %}
-            </div>
-          </div>
         {% else %}
           <div class="empty">No activity in the selected window.</div>
         {% endif %}
@@ -243,36 +198,6 @@
             </tbody>
           </table>
         </div>
-
-        <div class="mt-3 flex items-center justify-center gap-3">
-          <div class="text-sm text-gray-500">Showing {{ display_start }}–{{ display_end }} of {{ total_count }}</div>
-          <div class="flex items-center gap-2">
-            {% if has_prev %}
-            <form method="get" action="/admin">
-              <input type="hidden" name="tab" value="logs"/>
-              <input type="hidden" name="logs_view" value="events"/>
-              <input type="hidden" name="log_skip" value="{{ prev_skip }}"/>
-              <input type="hidden" name="log_limit" value="{{ log_limit }}"/>
-              <input type="hidden" name="log_days" value="{{ log_days }}"/>
-              {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
-              {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
-              <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Previous</button>
-            </form>
-            {% endif %}
-            {% if has_next %}
-            <form method="get" action="/admin">
-              <input type="hidden" name="tab" value="logs"/>
-              <input type="hidden" name="logs_view" value="events"/>
-              <input type="hidden" name="log_skip" value="{{ next_skip }}"/>
-              <input type="hidden" name="log_limit" value="{{ log_limit }}"/>
-              <input type="hidden" name="log_days" value="{{ log_days }}"/>
-              {% if q %}<input type="hidden" name="q" value="{{ q }}"/>{% endif %}
-              {% if action_filter %}<input type="hidden" name="action_filter" value="{{ action_filter }}"/>{% endif %}
-              <button type="submit" class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300">Next</button>
-            </form>
-            {% endif %}
-          </div>
-        </div>
       </div>
     </section>
 
@@ -292,7 +217,7 @@
             <th>Name / ID</th>
             <th>Email</th>
             <th>Status</th>
-            <th style="width:140px; text-align:right">Actions</th>
+            <th style="width:220px; text-align:right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -311,7 +236,11 @@
               {% endif %}
             </td>
             <td>
-              <div class="flex justify-end">
+              <div class="flex justify-end gap-2">
+                <a href="/admin/users/{{ user.id }}/view"
+                   class="px-3 py-1 rounded border text-sm hover:bg-gray-50">View</a>
+                <a href="/admin/users/{{ user.id }}/edit"
+                   class="px-3 py-1 rounded border text-sm hover:bg-gray-50">Edit</a>
                 <form method="post" action="/admin/remove/{{ user.id }}" onsubmit="return confirm('Remove {{ user.full_name }}? This deletes the account.');">
                   <button class="px-3 py-1 rounded bg-rose-500 text-white hover:bg-rose-600" type="submit">Remove</button>
                 </form>
@@ -328,7 +257,7 @@
     </section>
 
     <!-- ========== UPLOAD CSV (working form) ========== -->
-    <section id="uploadcsv" class="tab-content {{ '' if active_tab=='uploadcsv' else 'hidden' }}">
+    <section id="uploadcsv" class="tab-content {{ '' if active_tab=='uploadcsv' else 'hidden' }} ">
       <h2 class="text-lg font-semibold mb-3">Upload CSV</h2>
       <form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="bg-white border border-gray-200 rounded-xl p-5 max-w-lg">
         <div class="mb-3">
@@ -342,8 +271,29 @@
 
   </main>
 
+  <!-- User Logs Modal (popup) -->
+  <div id="log-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeLogModal()"></div>
+    <div class="relative z-10 mx-auto mt-16 w-11/12 max-w-2xl rounded-xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b px-5 py-3">
+        <h3 id="log-modal-title" class="text-lg font-semibold">User Activity</h3>
+        <button class="px-2 py-1 text-gray-600 hover:text-gray-900" onclick="closeLogModal()">✕</button>
+      </div>
+      <div id="log-modal-body" class="max-h-[60vh] overflow-auto px-5 py-4 text-sm">
+        <div class="text-gray-500">Loading…</div>
+      </div>
+      <div class="flex items-center justify-between gap-3 border-t px-5 py-3">
+        <div class="text-xs text-gray-500">Tip: press <kbd class="rounded border px-1">M</kbd> to load more</div>
+        <div class="flex gap-2">
+          <button id="log-more-btn" class="rounded border px-3 py-1.5 hover:bg-gray-50" onclick="loadMoreLogs()">Load more</button>
+          <button class="rounded bg-gray-800 px-3 py-1.5 text-white hover:bg-gray-900" onclick="closeLogModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Toggle between grouped summary and all events + persist in URL
+    /* Toggle inside Logs tab; does NOT change the 'tab' URL param anymore */
     function showLogsView(which) {
       const summary = document.getElementById('logs-summary');
       const events  = document.getElementById('logs-events');
@@ -364,53 +314,82 @@
         b1.classList.remove('active');
       }
 
-      // Persist selection in URL without reloading
       try {
         const url = new URL(window.location.href);
-        url.searchParams.set('tab', 'logs');
+        /* DO NOT touch the 'tab' param here */
         url.searchParams.set('logs_view', w);
         history.replaceState(null, '', url.toString());
-      } catch (e) {
-        /* noop if URL API not available */
-      }
+      } catch (e) {/* noop */}
     }
 
-    // Expand/collapse a single user's recent events (lazy fetch JSON)
-    async function toggleUserDetails(userId) {
-      const row = document.getElementById('details-' + userId);
-      const body = document.getElementById('details-body-' + userId);
+    // ----- Modal-based user logs -----
+    let _logModalState = { userId: null, skip: 0, limit: 10, days: {{ log_days }}, username: '' };
 
-      if (!row.classList.contains('hidden')) {
-        row.classList.add('hidden');
-        return;
-      }
-      row.classList.remove('hidden');
-      body.innerHTML = '<div class="text-gray-500">Loading…</div>';
+    function openLogModal(userId, username) {
+      _logModalState.userId = userId;
+      _logModalState.skip = 0;
+      _logModalState.limit = 10;
+      _logModalState.username = username || '';
+      document.getElementById('log-modal-title').textContent = `Activity for ${username || ('User ' + userId)}`;
+      document.getElementById('log-modal').classList.remove('hidden');
+      fetchAndRenderLogs(true);
+    }
 
+    function closeLogModal() {
+      document.getElementById('log-modal').classList.add('hidden');
+    }
+
+    async function fetchAndRenderLogs(reset=false) {
+      const body = document.getElementById('log-modal-body');
+      if (reset) body.innerHTML = '<div class="text-gray-500">Loading…</div>';
+
+      const { userId, skip, limit, days } = _logModalState;
       try {
-        const resp = await fetch(`/admin/logs/user/${userId}.json?days={{ log_days }}&skip=0&limit=50`, { credentials: 'same-origin' });
+        const resp = await fetch(`/admin/logs/user/${userId}.json?days=${encodeURIComponent(days)}&skip=${skip}&limit=${limit}`, { credentials: 'same-origin' });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
-        if (!data.items || data.items.length === 0) {
-          body.innerHTML = '<div class="text-gray-500">No events found for this user in the selected window.</div>';
-          return;
-        }
-        // Render list
-        let html = '<ul class="space-y-1">';
-        for (const it of data.items) {
-          html += `<li class="flex items-start gap-2">
+
+        const list = (data.items || []).map(it => {
+          const ts = escapeHtml(it.timestamp || '');
+          const act = escapeHtml(it.action || '');
+          return `<li class="flex items-start gap-2">
                     <span class="mt-1 inline-block h-2 w-2 rounded-full bg-gray-400"></span>
-                    <div><span class="font-medium">${escapeHtml(it.action)}</span>
-                    <span class="text-gray-500 ml-2">${escapeHtml(it.timestamp)}</span></div>
+                    <div><span class="font-medium">${act}</span>
+                      <span class="ml-2 text-gray-500">${ts}</span></div>
                   </li>`;
+        }).join('');
+
+        if (reset) {
+          body.innerHTML = list ? `<ul id="log-list" class="space-y-1">${list}</ul>` :
+            '<div class="text-gray-500">No events found for this user in the selected window.</div>';
+        } else {
+          const ul = document.getElementById('log-list');
+          if (ul) ul.insertAdjacentHTML('beforeend', list);
         }
-        html += '</ul>';
-        body.innerHTML = html;
-      } catch (err) {
+      } catch (e) {
         body.innerHTML = '<div class="text-rose-600">Failed to load events.</div>';
-        console.error(err);
+        console.error(e);
       }
     }
+
+    function loadMoreLogs() {
+      _logModalState.skip += _logModalState.limit;
+      fetchAndRenderLogs(false);
+    }
+
+    document.addEventListener('keydown', (ev) => {
+      const modal = document.getElementById('log-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        if (ev.key === 'm' || ev.key === 'M') {
+          ev.preventDefault();
+          loadMoreLogs();
+        }
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          closeLogModal();
+        }
+      }
+    });
 
     function escapeHtml(str) {
       return (str ?? '').toString()
@@ -421,11 +400,64 @@
         .replaceAll("'",'&#39;');
     }
 
-    // Initialize logs view from server-provided default
+    /* Only initialize the logs view if you're actually on the Logs tab */
     document.addEventListener('DOMContentLoaded', () => {
-      const initial = "{{ logs_view|default('summary') }}";
-      showLogsView(initial === 'events' ? 'events' : 'summary');
+      if ("{{ active_tab }}".trim() === "logs") {
+        const initial = "{{ logs_view|default('summary') }}";
+        showLogsView(initial === 'events' ? 'events' : 'summary');
+      }
     });
   </script>
+
+  {% block scripts %}
+  <script>
+  (function() {
+    function setCookie(name, value, maxAgeSeconds) {
+      document.cookie = name + "=" + encodeURIComponent(value) + "; path=/; max-age=" + (maxAgeSeconds || 86400);
+    }
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+    function setURLTabParam(tab) {
+      var url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.replaceState({}, "", url.toString());
+    }
+    function activateTab(tab) {
+      document.querySelectorAll("[data-tab]").forEach(function(el){
+        if (el.getAttribute("data-tab") === tab) el.classList.add("active");
+        else el.classList.remove("active");
+      });
+    }
+
+    document.querySelectorAll("[data-tab]").forEach(function(el) {
+      el.addEventListener("click", function(e) {
+        if (el.getAttribute("href") === "#" || el.getAttribute("href") === "") e.preventDefault();
+        const tab = el.getAttribute("data-tab");
+        if (!tab) return;
+        setCookie("admin_last_tab", tab, 86400);
+        try { localStorage.setItem("admin_last_tab", tab); } catch(e) {}
+        setURLTabParam(tab);
+        activateTab(tab);
+      });
+    });
+
+    (function initFromServerOrStorage() {
+      var serverActive = "{{ active_tab }}".trim();
+      var url = new URL(window.location.href);
+      var urlTab = url.searchParams.get("tab");
+      var saved = getCookie("admin_last_tab") || (function(){
+        try { return localStorage.getItem("admin_last_tab"); } catch(e) { return null; }
+      })();
+      var tab = urlTab || serverActive || saved || "pending";
+      if (!urlTab) setURLTabParam(tab);
+      setCookie("admin_last_tab", tab, 86400);
+      try { localStorage.setItem("admin_last_tab", tab); } catch(e) {}
+      activateTab(tab);
+    })();
+  })();
+  </script>
+  {% endblock %}
 </body>
 </html>

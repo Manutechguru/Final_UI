@@ -2,10 +2,11 @@
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus
 from pathlib import Path
+from passlib.hash import bcrypt
 from typing import Optional
 import csv, io
 
-from fastapi import APIRouter, Depends, Request, Cookie, Query, UploadFile, File
+from fastapi import APIRouter, Depends, Request, Cookie, Query, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import or_, func, desc
 from sqlalchemy.orm import Session
@@ -61,7 +62,8 @@ def admin_dashboard(
     db: Session = Depends(get_db),
     user_email: str | None = Cookie(None),
 
-    tab: str = Query("pending", description="pending|logs|allusers|uploadcsv"),
+    # CHANGED: make tab optional so we can restore it from cookie if missing
+    tab: str | None = Query(None, description="pending|logs|allusers|uploadcsv"),
 
     # toast / feedback
     msg: str | None = Query(None),
@@ -93,6 +95,10 @@ def admin_dashboard(
         return redirect
 
     allowed_tabs = {"pending", "logs", "allusers", "uploadcsv"}
+
+    # NEW: remember last active tab via cookie if query param is missing
+    if not tab:
+        tab = request.cookies.get("admin_last_tab", "pending")
     if tab not in allowed_tabs:
         tab = "pending"
 
@@ -149,7 +155,7 @@ def admin_dashboard(
     has_prev = log_skip > 0
     has_next = (log_skip + log_limit) < total_count
     prev_skip = max(0, log_skip - log_limit)
-    next_skip = log_skip + log_limit
+    next_skip = log_limit + log_skip
     display_start = 0 if total_count == 0 else (log_skip + 1)
     display_end = total_count if (log_skip + log_limit) > total_count else (log_skip + log_limit)
 
@@ -191,48 +197,222 @@ def admin_dashboard(
         .all()
     )
 
+    # BUILD CONTEXT ONCE, THEN RETURN AND SET COOKIE
+    context = {
+        "request": request,
+        "admin": admin,
+        "active_tab": tab,
+
+        "pending_users": pending_users,
+
+        "all_users_page": all_users_page,
+        "users_total": users_total,
+        "users_page": users_page,
+        "users_page_size": users_page_size,
+        "users_total_pages": users_total_pages,
+        "users_q": users_q or "",
+
+        "user_logs": user_logs,
+        "total_count": total_count,
+        "log_days": log_days,
+        "q": q or "",
+        "action_filter": action_filter or "",
+        "log_skip": log_skip,
+        "log_limit": log_limit,
+        "has_prev": has_prev,
+        "has_next": has_next,
+        "prev_skip": prev_skip,
+        "next_skip": next_skip,
+        "display_start": display_start,
+        "display_end": display_end,
+
+        "logs_summary": logs_summary,
+        "summary_total_users": summary_total_users,
+        "summary_skip": summary_skip,
+        "summary_limit": summary_limit,
+
+        "logs_view": logs_view,
+
+        "msg": msg,
+        "error": error,
+        "duplicates": duplicates.split(",") if duplicates else [],
+    }
+
+    resp = templates.TemplateResponse("admindashboard.html", context)
+    # NEW: remember last selected tab for 24 hours
+    resp.set_cookie("admin_last_tab", tab, max_age=86400)
+    return resp
+
+
+# ----------------------- admin: view & edit user -----------------------
+
+def _coerce_role(value: str | None) -> UserRole | None:
+    if not value:
+        return None
+    try:
+        # value might be "ADMIN" / "USER" / etc.
+        normalized = str(value).strip().upper()
+        return UserRole[normalized] if hasattr(UserRole, normalized) else None
+    except Exception:
+        return None
+
+
+def _build_user_dashboard_context(db: Session, user: User) -> dict:
+    """
+    Safe defaults so the user dashboard template never crashes.
+    If you already have a real context builder for the user dashboard,
+    import and call it here instead of this shim.
+    """
+    return {
+        "user": user,
+        "kpis": {},
+        "clients": [],
+        "jobs": [],
+        "logs": [],
+        "filters": {},
+        "admin_preview": True,
+    }
+
+
+@router.get("/users/{user_id}/view", response_class=HTMLResponse)
+def admin_view_user(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db),
+    user_email: str | None = Cookie(None),
+):
+    # Admin check
+    admin, redirect = _require_admin(db, user_email)
+    if redirect:
+        return redirect
+
+    target = db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Build context expected by the normal user dashboard
+    ctx = _build_user_dashboard_context(db, target)
+    ctx["request"] = request
+    ctx["admin"] = admin
+
+    # Try likely template names so we don't 500 on filename mismatch
+    candidate_templates = [
+        "userdashboard.html",
+        "user_dashboard.html",
+        "dashboard.html",
+        "users/dashboard.html",
+    ]
+    last_err = None
+    for tname in candidate_templates:
+        try:
+            return templates.TemplateResponse(tname, ctx)
+        except Exception as e:
+            last_err = e
+            # Try the next candidate
+
+    # Final safe fallback: render a small HTML so we never 500
+    safe_html = f"""
+    <!doctype html>
+    <html>
+      <head><meta charset="utf-8"><title>Admin Preview</title></head>
+      <body style="font-family: system-ui, sans-serif; padding:16px">
+        <h2>Admin preview of {getattr(target, 'full_name', None) or target.email}</h2>
+        <p>Could not find a matching user dashboard template.</p>
+        <p>Tried: {', '.join(candidate_templates)}.</p>
+        <p><small>{last_err!s}</small></p>
+        <p><a href="/admin/?tab=allusers">← Back to All Users</a></p>
+      </body>
+    </html>
+    """
+    return HTMLResponse(content=safe_html, status_code=200)
+
+
+@router.get("/users/{user_id}/edit", response_class=HTMLResponse)
+def admin_edit_user_form(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db),
+    user_email: str | None = Cookie(None),
+):
+    admin, redirect = _require_admin(db, user_email)
+    if redirect:
+        return redirect
+
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
     return templates.TemplateResponse(
-        "admindashboard.html",
+        "admin_user_edit.html",  # create this template
         {
             "request": request,
             "admin": admin,
-            "active_tab": tab,
-
-            "pending_users": pending_users,
-
-            "all_users_page": all_users_page,
-            "users_total": users_total,
-            "users_page": users_page,
-            "users_page_size": users_page_size,
-            "users_total_pages": users_total_pages,
-            "users_q": users_q or "",
-
-            "user_logs": user_logs,
-            "total_count": total_count,
-            "log_days": log_days,
-            "q": q or "",
-            "action_filter": action_filter or "",
-            "log_skip": log_skip,
-            "log_limit": log_limit,
-            "has_prev": has_prev,
-            "has_next": has_next,
-            "prev_skip": prev_skip,
-            "next_skip": next_skip,
-            "display_start": display_start,
-            "display_end": display_end,
-
-            "logs_summary": logs_summary,
-            "summary_total_users": summary_total_users,
-            "summary_skip": summary_skip,
-            "summary_limit": summary_limit,
-
-            "logs_view": logs_view,
-
-            "msg": msg,
-            "error": error,
-            "duplicates": duplicates.split(",") if duplicates else [],
+            "user": user,
+            "roles": [r.name for r in UserRole] if hasattr(UserRole, "__members__") else ["ADMIN", "USER"],
         },
     )
+
+
+@router.post("/users/{user_id}/edit")
+def admin_update_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user_email: str | None = Cookie(None),
+
+    full_name: str = Form(...),
+    email: str = Form(...),
+    is_active: bool = Form(False),
+    role: str | None = Form(None),
+
+    # NEW: optional admin-set password fields
+    new_password: str | None = Form(None),
+    confirm_password: str | None = Form(None),
+    force_password_change: str | None = Form(None),  # checkbox => "on" or None
+):
+    admin, redirect = _require_admin(db, user_email)
+    if redirect:
+        return redirect
+
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Basic info
+    user.full_name = (full_name or "").strip()
+    user.email = (email or "").strip()
+    user.is_active = bool(is_active)
+
+    # Role
+    coerced = _coerce_role(role)
+    if coerced is not None:
+        user.role = coerced
+
+    # Password change (optional)
+    did_change_password = False
+    if new_password:
+        if not confirm_password or new_password != confirm_password:
+            return RedirectResponse(
+                url=f"/admin/users/{user_id}/edit?error=Passwords+do+not+match",
+                status_code=303,
+            )
+        # IMPORTANT: adjust the attribute if your model uses a different name
+        user.hashed_password = bcrypt.hash(new_password)
+        did_change_password = True
+
+    # Optional: mark for forced reset on next login (if your model has the column)
+    if hasattr(user, "must_change_password"):
+        if force_password_change or did_change_password:
+            user.must_change_password = True
+
+    db.add(user)
+
+    # Logging
+    if did_change_password:
+        db.add(UserLog(user_id=admin.id, action=f"RESET PASSWORD for {user.email}"))
+    db.add(UserLog(user_id=admin.id, action=f"EDITED USER {user.email}"))
+    db.commit()
+
+    return RedirectResponse(url="/admin?tab=allusers&msg=User%20updated", status_code=302)
 
 
 # -------------------------- user moderation --------------------------
