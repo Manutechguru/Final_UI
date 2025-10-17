@@ -9,7 +9,7 @@ load_dotenv()
 # Try reading from .env, else use a default connection string
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg2://postgres:YourRealPwd@localhost:5432/teetli"
+    "postgresql+psycopg2://postgres:Manu%405566@localhost:5432/Teetli"
 )
 
 # Print the connection URL for debugging (hide password)

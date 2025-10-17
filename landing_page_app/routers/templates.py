@@ -17,9 +17,6 @@ router = APIRouter(tags=["Templates"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 
 
-<<<<<<< HEAD
-# -------------------- ROOT PAGE --------------------
-=======
 # ---------- helper: check admin ----------
 def _is_admin(user: User | None) -> bool:
     if not user:
@@ -32,7 +29,6 @@ def _is_admin(user: User | None) -> bool:
         return str(role).upper() == "ADMIN"
 
 
->>>>>>> 80ef2f58427ecb4ae22fb2dcb09e926ea69f8946
 @router.get("/", response_class=HTMLResponse)
 async def root(
     request: Request,
@@ -82,15 +78,6 @@ async def search_page(
     user: User = Depends(get_current_user),  # NEW
 ):
     if not skills and not location and not experience:
-<<<<<<< HEAD
-        return templates.TemplateResponse("search.html", {
-            "request": request,
-            "skills": skills,
-            "location": location,
-            "experience": experience,
-            "results": []
-        })
-=======
         return templates.TemplateResponse(
             "search.html",
             {
@@ -103,7 +90,6 @@ async def search_page(
                 "user": user,
             },
         )
->>>>>>> 80ef2f58427ecb4ae22fb2dcb09e926ea69f8946
 
     with SessionLocal() as db:
         query = db.query(Candidate)
@@ -165,27 +151,14 @@ async def search_page(
     )
 
 
-<<<<<<< HEAD
-# -------------------- NEW ARRIVALS PAGE --------------------
-@router.get("/new_arrivals", response_class=HTMLResponse)
-async def new_arrivals_page(request: Request):
-    """Show latest clients in descending order by creation date"""
-=======
 @router.get("/new-arrivals", response_class=HTMLResponse)
 async def new_arrivals_page(
     request: Request,
     user: User = Depends(get_current_user),  # NEW
 ):
->>>>>>> 80ef2f58427ecb4ae22fb2dcb09e926ea69f8946
     with SessionLocal() as db:
         clients_data = db.query(Client).order_by(Client.created_at.desc()).limit(10).all()
 
-<<<<<<< HEAD
-    return templates.TemplateResponse("new_arrivals.html", {
-        "request": request,
-        "clients": clients_data
-    })
-=======
     return templates.TemplateResponse(
         "new_arrivals.html",
         {
@@ -195,4 +168,3 @@ async def new_arrivals_page(
             "user": user,
         },
     )
->>>>>>> 80ef2f58427ecb4ae22fb2dcb09e926ea69f8946

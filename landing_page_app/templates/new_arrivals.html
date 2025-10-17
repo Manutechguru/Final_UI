@@ -6,217 +6,247 @@
 <link rel="stylesheet" href="{{ url_for('static', path='css/new_arrivals.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<div class="page-container">
-    <div class="header-container">
-        <div class="header-content">
-            <h1><i class="fas fa-users"></i> Client Management</h1>
-            <p>Manage your clients, vendors, and jobs in one place</p>
-        </div>
-        <button class="btn-primary" onclick="showCreateDialog()">
-            <i class="fas fa-plus"></i> Create Client
+<div class="page-wrapper flex min-h-screen" id="clientsPageContainer">
+  <!-- Filters Sidebar -->
+  <aside id="filterSidebar" class="w-64 bg-white border-r border-gray-200 shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-300 fixed lg:static h-screen lg:h-auto z-40">
+    <div class="p-4">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-semibold text-gray-800">Filters</h3>
+        <button id="closeFilters" class="lg:hidden text-gray-500 hover:text-gray-700" aria-label="Close filters">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
+      </div>
+
+      <!-- Search -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+        <input id="searchBox" type="text" placeholder="Search clients by name..." class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+      </div>
+
+      <!-- Status Filter -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+        <select id="statusFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
+      <!-- Sort -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+        <select id="sortFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="recent">Recently Created</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
+
+      <button id="clearFilters" class="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium">Clear Filters</button>
+    </div>
+  </aside>
+
+  <!-- Mobile overlay -->
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden"></div>
+
+  <!-- Main Content -->
+  <div class="flex-1 p-6 lg:p-8 main-content">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+      <div class="flex items-center mb-4 lg:mb-0">
+        <button id="filterToggle" class="mr-3 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200" aria-pressed="false" title="Toggle filters">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"/></svg>
+        </button>
+
+        <h2 class="text-2xl lg:text-3xl font-bold text-gray-800">All Clients</h2>
+        <div id="activeFilters" class="flex flex-wrap gap-2 mb-4 lg:mb-0 ml-3"></div>
+      </div>
+
+      <div>
+        <button id="createClientBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+          <i class="fas fa-plus mr-2"></i> Create Client
+        </button>
+      </div>
     </div>
 
-    <div id="notification-toast"></div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+            <tr>
+              <th class="px-6 py-4 text-left font-semibold">Client Name</th>
+              <th class="px-6 py-4 text-left font-semibold">ID</th>
+              <th class="px-6 py-4 text-left font-semibold">Status</th>
+              <th class="px-6 py-4 text-left font-semibold">Created At</th>
+              <th class="px-6 py-4 text-left font-semibold">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200" id="clientsTableBody">
+            {% for client in clients %}
+            <tr class="hover:bg-gray-50 transition-colors duration-200" data-client-id="{{ client.client_id }}" data-status="{{ client.status or '' }}" data-created="{{ client.created_at.strftime('%Y-%m-%d %H:%M:%S') if client.created_at else '' }}">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ client.client_name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ client.client_id }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <!-- toggle -->
+                <label class="switch inline-flex items-center gap-2">
+                  <input type="checkbox" onchange="toggleActive('{{ client.client_id }}', this)" {% if client.status == 'active' %}checked{% endif %}>
+                  <span class="status-text inline-block text-sm">
+                    {{ 'Active' if client.status == 'active' else 'Inactive' }}
+                  </span>
+                </label>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{% if client.created_at %}{{ client.created_at.strftime("%Y-%m-%d %H:%M:%S") }}{% else %}-{% endif %}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <div class="flex items-center gap-2">
+                  <a href="{{ url_for('list_managers', client_id=client.client_id) }}" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">View Managers</a>
 
-    <div class="summary-container">
-        <div class="summary-card active">
-            <div class="card-icon">
-                <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="card-content">
-                <h2 id="activeCount">{{ active_count or 0 }}</h2>
-                <p>Active Clients</p>
-            </div>
-        </div>
-        <div class="summary-card inactive">
-            <div class="card-icon">
-                <i class="fas fa-pause-circle"></i>
-            </div>
-            <div class="card-content">
-                <h2 id="inactiveCount">{{ inactive_count or 0 }}</h2>
-                <p>Inactive Clients</p>
-            </div>
-        </div>
-        <div class="summary-card total">
-            <div class="card-icon">
-                <i class="fas fa-building"></i>
-            </div>
-            <div class="card-content">
-                <h2 id="totalCount">{{ clients|length }}</h2>
-                <p>Total Clients</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="controls-container">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchBox" placeholder="Search clients by name...">
-        </div>
-    </div>
-
-    <div class="table-container">
-        <table class="clients-table">
-            <thead>
-                <tr>
-                    <th>Client Name</th>
-                    <th>ID</th>
-                    <th>Status</th>
-                    <th>Created Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="clientsTableBody">
-                {% for client in clients %}
-                <tr id="client-{{ client.client_id }}">
-                    <td class="client-name">{{ client.client_name }}</td>
-                    <td class="client-id">{{ client.client_id }}</td>
-                    <td class="status-cell">
-                        <label class="switch">
-                            <input type="checkbox" onchange="toggleActive('{{ client.client_id }}', this)" {% if client.status == 'active' %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
-                        <span class="status-text">{{ 'Active' if client.status == 'active' else 'Inactive' }}</span>
-                    </td>
-                    <td class="created-date">{% if client.created_at %} {{ client.created_at.strftime("%Y-%m-%d %H:%M:%S") }} {% else %} N/A {% endif %}</td>
-                    <td class="actions-cell">
-                        <div class="action-buttons">
-                            <a href="{{ url_for('list_managers', client_id=client.client_id) }}" class="btn-icon view-btn" title="View Vendors">
-                                <i class="fas fa-store"></i>
-                            </a>
-                            <button class="btn-icon edit-btn" onclick="showEditDialog('{{ client.client_id }}', '{{ client.client_name }}')" title="Edit Client">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-icon delete-btn" onclick="showDeleteDialog('{{ client.client_id }}', '{{ client.client_name }}')" title="Delete Client">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Create Client Modal -->
-<div id="createModal" class="modal">
-    <div class="modal-content large-modal">
-        <div class="modal-header">
-            <h3><i class="fas fa-plus-circle"></i> Create New Client</h3>
-            <span class="close-modal" onclick="closeCreateModal()">&times;</span>
-        </div>
-        <form id="createClientForm" method="post" action="{{ url_for('add_new_client') }}">
-            <div class="modal-body">
-                <!-- Client Section -->
-                <div class="form-section">
-                    <h4>Client Information</h4>
-                    <div class="form-group">
-                        <label for="clientName">Client Name *</label>
-                        <input type="text" id="clientName" name="client_name" required placeholder="Enter client name">
-                    </div>
-                </div>
-
-                <!-- Vendor Section (mandatory now) -->
-                <div class="form-section">
-                    <h4>Vendor Information</h4>
-                    <div class="form-group">
-                        <label for="managerName">Vendor Name *</label>
-                        <input type="text" id="managerName" name="manager_name" required placeholder="Enter vendor name">
-                    </div>
-                </div>
-
-                <!-- Jobs Section (dynamic multiple jobs) -->
-                <div class="form-section">
-                    <h4>Job Details (At least one required)</h4>
-                    <div id="jobsContainer">
-                        <div class="job-item">
-                            <div class="form-group">
-                                <label>Job Title *</label>
-                                <input type="text" name="job_titles" required placeholder="Enter job title">
-                            </div>
-                            <div class="form-group">
-                                <label>Job Description</label>
-                                <textarea name="job_descriptions" rows="3" placeholder="Enter job description"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" class="btn-secondary small-btn" onclick="addJobField()">
-                        <i class="fas fa-plus"></i> Add Another Job
+                  <!-- Three dots dropdown -->
+                  <div class="relative inline-block">
+                    <button class="dropdown-toggle focus:outline-none p-2 rounded-full border hover:bg-gray-100" data-client-id="{{ client.client_id }}" aria-expanded="false" title="More actions">
+                      <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
                     </button>
+                    <div class="dropdown-menu origin-top-right absolute right-0 mt-2 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                      <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 edit-action" data-client-id="{{ client.client_id }}">Edit</a>
+                      <button class="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100 delete-action" data-client-id="{{ client.client_id }}">Delete</button>
+                    </div>
+                  </div>
                 </div>
-            </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeCreateModal()">Cancel</button>
-                <button type="submit" class="btn-primary">Create Client</button>
-            </div>
-        </form>
+      <div id="loadingState" class="hidden p-8 text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <p class="mt-4 text-gray-600">Loading clients...</p>
+      </div>
+
+      <div id="emptyState" class="hidden p-8 text-center">
+        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
+        <p class="text-gray-600 mb-4">Try adjusting your filters to see more results.</p>
+        <button id="clearFiltersEmpty" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Clear Filters</button>
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div id="deleteModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h3>
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>Are you sure you want to delete client: <strong id="clientToDeleteName"></strong>?</p>
-            <p class="warning-text">This action cannot be undone and will delete all associated vendors and jobs.</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn-danger" id="confirmDeleteBtn">Delete</button>
-        </div>
+<!-- CREATE CLIENT Modal (fallback - full earlier-style form) -->
+<div id="createModal" class="hidden fixed inset-0 z-50 items-center justify-center">
+  <div class="absolute inset-0 bg-black opacity-40"></div>
+  <div class="relative bg-white max-w-2xl w-full mx-4 rounded-lg shadow-lg z-10 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold">Create New Client</h3>
+      <button id="closeCreateModal" class="p-2 rounded hover:bg-gray-100" title="Close">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
     </div>
+
+    <form id="createClientForm" method="post" action="{{ url_for('add_new_client') }}">
+      <div class="modal-body grid grid-cols-1 gap-4">
+        <!-- Client -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Client Name *</label>
+          <input id="createClientName" name="client_name" type="text" class="mt-1 block w-full border rounded px-3 py-2" required />
+        </div>
+
+        <!-- Vendor/Manager -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Vendor (Manager) Name *</label>
+          <input id="createManagerName" name="manager_name" type="text" class="mt-1 block w-full border rounded px-3 py-2" required />
+        </div>
+
+        <!-- Jobs area - dynamic -->
+        <div id="jobsContainer">
+          <div class="job-item grid grid-cols-1 gap-2">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Job Title *</label>
+              <input type="text" name="job_titles" class="mt-1 block w-full border rounded px-3 py-2" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Job Description</label>
+              <textarea name="job_descriptions" rows="3" class="mt-1 block w-full border rounded px-3 py-2"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <button type="button" id="addJobField" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">
+            <i class="fas fa-plus"></i> Add Another Job
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center gap-3 justify-end">
+        <button type="button" id="cancelCreate" class="text-gray-600 hover:underline">Cancel</button>
+        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Create</button>
+      </div>
+    </form>
+  </div>
 </div>
 
-<!-- Edit Client Modal -->
-<div id="editModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-edit"></i> Edit Client Name</h3>
-            <span class="close-modal" onclick="closeEditModal()">&times;</span>
-        </div>
-        <form id="editClientForm">
-            <div class="modal-body">
-                <input type="hidden" id="clientToEditId">
-                <div class="form-group">
-                    <label for="newClientName">Client Name:</label>
-                    <input type="text" id="newClientName" required>
-                    <div id="editError" class="error-message" style="color: var(--danger); display: none;"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn-primary">Update</button>
-            </div>
-        </form>
+<!-- Edit Modal (fallback) -->
+<div id="editModal" class="hidden fixed inset-0 z-50 items-center justify-center">
+  <div class="absolute inset-0 bg-black opacity-40"></div>
+  <div class="relative bg-white max-w-2xl w-full mx-4 rounded-lg shadow-lg z-10 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold">Edit Client</h3>
+      <button id="closeEditModal" class="p-2 rounded hover:bg-gray-100" title="Close">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
     </div>
+
+    <form id="editClientForm" method="post" action="">
+      <input type="hidden" name="client_id" id="modalClientId" />
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Client Name</label>
+          <input id="modalClientName" name="client_name" type="text" class="mt-1 block w-full border rounded px-3 py-2" required />
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center gap-3 justify-end">
+        <button type="button" id="cancelEdit" class="text-gray-600 hover:underline">Cancel</button>
+        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Save</button>
+      </div>
+    </form>
+  </div>
 </div>
 
-<script>
-function addJobField() {
-    const jobsContainer = document.getElementById("jobsContainer");
-    const jobItem = document.createElement("div");
-    jobItem.classList.add("job-item");
-    jobItem.innerHTML = `
-        <hr>
-        <div class="form-group">
-            <label>Job Title *</label>
-            <input type="text" name="job_titles" required placeholder="Enter job title">
+<!-- Delete Modal (polished design) -->
+<div id="deleteModal" class="hidden fixed inset-0 z-50 items-center justify-center">
+  <div class="absolute inset-0 bg-black opacity-40"></div>
+  <div class="relative bg-white max-w-md w-full mx-4 rounded-lg shadow-lg z-10">
+    <div class="p-4 border-b">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold">Confirm Delete</h3>
+        <button id="closeDeleteModal" class="p-2 rounded hover:bg-gray-100">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0 bg-pink-50 rounded-lg p-3">
+          <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" /></svg>
         </div>
-        <div class="form-group">
-            <label>Job Description</label>
-            <textarea name="job_descriptions" rows="3" placeholder="Enter job description"></textarea>
+        <div>
+          <p class="font-semibold text-gray-900 mb-1">Are you sure you want to delete this client?</p>
+          <p class="text-gray-600">This action cannot be undone.</p>
         </div>
-    `;
-    jobsContainer.appendChild(jobItem);
-}
-</script>
+      </div>
+    </div>
+
+    <div class="p-4 border-t flex items-center justify-end gap-3">
+      <button id="cancelDelete" class="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">Cancel</button>
+      <button id="confirmDelete" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete Client</button>
+    </div>
+  </div>
+</div>
 
 <script src="{{ url_for('static', path='js/new_arrivals.js') }}"></script>
 {% endblock %}

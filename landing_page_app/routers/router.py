@@ -1,6 +1,8 @@
 # landing_page_app/routers/router.py
 from landing_page_app.routers import auth, admin, status_history, templates as template_router
 from landing_page_app.routers import uploadCSV
+from landing_page_app.routers import user_activity
+
 
 # clients sub-routers
 from landing_page_app.routers.clients import base as clients_base
@@ -20,6 +22,8 @@ from landing_page_app.routers import pages
 def include_routers(app):
     # Pages (HTML templates)
     app.include_router(pages.router)
+    app.include_router(user_activity.router, tags=["User Activity"])
+
 
     # Auth & Admin
     app.include_router(auth.router, tags=["Auth"])

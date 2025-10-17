@@ -1,0 +1,259 @@
+{# landing_page_app/templates/user_activity.html #}
+{% extends "base.html" %}
+{% block title %}Your activity{% endblock %}
+
+{% block content %}
+<div class="container mx-auto mt-6">
+  <div class="card">
+    <!-- Header / Controls -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900">{{ username or "User" }}</h1>
+        <div class="mt-1 text-sm text-gray-500">
+          <span>ID: <span class="font-medium text-gray-800">{{ user_id }}</span></span>
+          <span class="mx-2">•</span>
+          <span>Last <strong id="daysLabel">{{ days }}</strong> days</span>
+          <span class="mx-2">•</span>
+          <span class="text-indigo-600 font-semibold">{{ total }}</span> events
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Days input: removed Apply button; will auto-reload with debounce -->
+        <div class="flex items-center gap-2">
+          <label for="days" class="text-sm text-gray-600 hidden md:inline">Days</label>
+          <input id="days" name="days" type="number" min="1" max="90" value="{{ days }}"
+                 class="w-20 rounded border px-2 py-1 text-sm border-gray-200 focus:ring-2 focus:ring-indigo-200" />
+        </div>
+
+        <!-- Search -->
+        <div class="relative">
+          <input id="activitySearch" type="search" placeholder="Search actions, jobs, clients..." aria-label="Search actions"
+                 class="w-56 md:w-72 rounded-lg border px-3 py-2 text-sm border-gray-200 focus:ring-2 focus:ring-indigo-200" />
+          <i class="fas fa-search absolute right-3 top-2.5 text-gray-400"></i>
+        </div>
+
+        <!-- Type dropdown (restored & improved) -->
+        <div class="relative">
+          <label for="activityType" class="sr-only">Filter by type</label>
+          <select id="activityType" class="rounded-lg border px-3 py-2 text-sm border-gray-200 bg-white focus:ring-2 focus:ring-indigo-200">
+            <option value="">All types</option>
+            <option value="Link">Link</option>
+            <option value="Edit">Edit</option>
+            <option value="Download">Download</option>
+            <option value="Login">Login</option>
+            <option value="Logout">Logout</option>
+            <option value="Delete">Delete</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <a href="/templates" class="inline-flex items-center gap-2 px-3 py-1.5 border rounded text-sm bg-white hover:bg-gray-50">
+          <i class="fas fa-arrow-left text-sm"></i> Back
+        </a>
+      </div>
+    </div>
+
+    <!-- Two-column table (Action | When) -->
+    {% if items and items|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[720px] divide-y shadow-sm" id="activityTable">
+        <thead class="bg-gradient-to-r from-indigo-50 to-white sticky top-0 z-10">
+          <tr>
+            <th class="text-left p-3 text-sm font-semibold text-gray-700 w-3/5">Action</th>
+            <th class="text-left p-3 text-sm font-semibold text-gray-700 w-2/5">When</th>
+          </tr>
+        </thead>
+
+        <tbody class="bg-white divide-y" id="activityTbody">
+          {% for r in items %}
+          <tr class="activity-row hover:bg-gray-50 transition-colors">
+            <td class="p-3 align-top">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 mt-0.5">
+                  <!-- accent -->
+                  <span class="inline-block w-3 h-3 rounded-full bg-indigo-500 shadow-sm" aria-hidden="true"></span>
+                </div>
+                <div class="flex-1">
+                  <div class="text-sm font-semibold text-gray-800 leading-snug">{{ r.action }}</div>
+                  <!-- small meta line (optional) -->
+                  <div class="text-xs text-gray-400 mt-1 small-meta"></div>
+                </div>
+              </div>
+            </td>
+
+            <td class="p-3 align-top text-sm text-gray-600">
+              {% if r.timestamp %}
+                <div class="timestamp-iso">{{ r.timestamp.isoformat() }}</div>
+                <div class="timestamp-local text-xs text-gray-400 mt-1"></div>
+              {% else %}
+                <div class="text-gray-400">—</div>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-between mt-4">
+      <div class="text-sm text-gray-600">
+        Showing {{ skip + 1 if total>0 else 0 }} - {{ (skip + limit) if (skip + limit) < total else total }} of {{ total }}
+      </div>
+      <div class="flex items-center gap-2">
+        {% set prev_skip = (skip - limit) if (skip - limit) >= 0 else 0 %}
+        {% set next_skip = skip + limit %}
+        <a href="?days={{ days }}&skip={{ prev_skip }}&limit={{ limit }}" class="px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm">Prev</a>
+        <a href="?days={{ days }}&skip={{ next_skip }}&limit={{ limit }}" class="px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm">Next</a>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="p-10 text-center text-gray-500">
+      <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-14 w-14 text-indigo-100" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3" />
+      </svg>
+      <h3 class="text-lg font-semibold mt-4 text-gray-900">No activity found</h3>
+      <p class="text-sm text-gray-500 mt-1">No events recorded in the last <strong id="noDays">{{ days }}</strong> days.</p>
+      <div class="mt-4"><a href="/templates" class="text-indigo-600 hover:underline">Back to dashboard</a></div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Client-side JS: auto-submit days (debounced), search, type dropdown filtering, friendly timestamps -->
+<script>
+(function () {
+  // debounce helper
+  function debounce(fn, wait) {
+    let t;
+    return function(...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), wait);
+    };
+  }
+
+  // friendly relative time
+  function timeAgo(date) {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return seconds + 's ago';
+    const mins = Math.floor(seconds / 60);
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    return days + 'd ago';
+  }
+
+  // format timestamp cells
+  document.querySelectorAll('.timestamp-iso').forEach(function(el) {
+    try {
+      const iso = el.textContent.trim();
+      if (!iso) return;
+      const d = new Date(iso);
+      if (isNaN(d)) return;
+      const local = d.toLocaleString();
+      const rel = timeAgo(d);
+      const localEl = el.parentElement.querySelector('.timestamp-local');
+      if (localEl) localEl.textContent = `${local} • ${rel}`;
+    } catch (e) {
+      // ignore formatting errors
+    }
+  });
+
+  // classifier for type - reintroduced for dropdown filtering and for visual hint
+  function classifyType(text) {
+    const a = (text || '').toLowerCase();
+    if (a.includes('link') || a.includes('linked')) return 'Link';
+    if (a.includes('edit') || a.includes('update') || a.includes('updated') || a.includes('modified')) return 'Edit';
+    if (a.includes('download') || a.includes('export')) return 'Download';
+    if (a.includes('login')) return 'Login';
+    if (a.includes('logout')) return 'Logout';
+    if (a.includes('delete') || a.includes('removed')) return 'Delete';
+    return 'Other';
+  }
+
+  // attach small hint (type) into each row meta (purely visual, non-backend)
+  document.querySelectorAll('.activity-row').forEach(function(row){
+    try {
+      const actionText = row.querySelector('td:nth-child(1) .text-sm').innerText;
+      const t = classifyType(actionText);
+      const hintEl = row.querySelector('.small-meta');
+      if (hintEl) hintEl.textContent = t;
+      // set a data-type attribute for filtering
+      row.setAttribute('data-atype', t);
+    } catch(e) { /* ignore */ }
+  });
+
+  // client-side search
+  const searchInput = document.getElementById('activitySearch');
+  function applyFilters() {
+    const q = searchInput.value.trim().toLowerCase();
+    const selectedType = document.getElementById('activityType').value;
+    document.querySelectorAll('#activityTbody tr').forEach(function(tr){
+      const text = tr.innerText.toLowerCase();
+      const rowType = tr.getAttribute('data-atype') || '';
+      let visible = true;
+      if (q && text.indexOf(q) === -1) visible = false;
+      if (selectedType && selectedType !== '' && rowType !== selectedType) visible = false;
+      tr.style.display = visible ? '' : 'none';
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(applyFilters, 150));
+  }
+
+  // type dropdown filter restored and connected
+  const typeSelect = document.getElementById('activityType');
+  if (typeSelect) {
+    typeSelect.addEventListener('change', function() {
+      applyFilters();
+    });
+  }
+
+  // Days input: when changed, auto-reload the page with new ?days=X&skip=0&limit=<limit>
+  const daysInput = document.getElementById('days');
+  const daysLabel = document.getElementById('daysLabel');
+  const noDays = document.getElementById('noDays');
+  const currentParams = new URLSearchParams(window.location.search);
+  const currentLimit = currentParams.get('limit') || '{{ limit }}';
+
+  function reloadWithDays(val) {
+    // clamp to 1..90 on client
+    let d = parseInt(val) || 1;
+    if (d < 1) d = 1;
+    if (d > 90) d = 90;
+    // update label
+    if (daysLabel) daysLabel.textContent = d;
+    if (noDays) noDays.textContent = d;
+    // update URL params and reload
+    const params = new URLSearchParams(window.location.search);
+    params.set('days', d);
+    params.set('skip', 0);
+    params.set('limit', currentLimit);
+    // reload to server to fetch new dataset
+    const newUrl = window.location.pathname + '?' + params.toString();
+    window.location.href = newUrl;
+  }
+
+  if (daysInput) {
+    // debounce to prevent instant reload on every keypress
+    daysInput.addEventListener('input', debounce(function(e){
+      const v = e.target.value;
+      // If empty, don't reload yet
+      if (!v) return;
+      reloadWithDays(v);
+    }, 600));
+  }
+
+  // on page load, apply client filters if search/type already present in page state (keeps consistent)
+  document.addEventListener('DOMContentLoaded', function(){
+    // apply initial filters
+    applyFilters();
+  });
+
+})();
+</script>
+{% endblock %}
