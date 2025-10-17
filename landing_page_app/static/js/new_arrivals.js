@@ -80,6 +80,7 @@
     const trs = Array.from(clientsTableBody.querySelectorAll('tr'));
     trs.forEach(tr => {
       const clone = tr.cloneNode(true);
+      // ensure dataset entries exist
       if (!clone.dataset.clientId) {
         const idCell = clone.querySelectorAll('td')[1];
         if (idCell) clone.dataset.clientId = idCell.textContent.trim();
@@ -142,7 +143,6 @@
     activeFilters.innerHTML = '';
     if (searchBox && searchBox.value) addBadge('Search', searchBox.value, 'search');
     if (statusFilter && statusFilter.value) addBadge('Status', statusFilter.options[statusFilter.selectedIndex].text, 'status');
-    // if (sortFilter && sortFilter.value) addBadge('Sort', sortFilter.options[sortFilter.selectedIndex].text, 'sort');
   }
 
   function addBadge(label, value, type) {
@@ -215,13 +215,28 @@
       });
     });
 
-    // status toggles (input[data-toggle-client-id] expected in template)
-    document.querySelectorAll('input[data-toggle-client-id]').forEach(chk => {
-      chk.onchange = null;
-      chk.addEventListener('change', (ev) => {
-        const clientId = chk.getAttribute('data-toggle-client-id');
-        if (clientId) window.toggleActive(clientId, chk);
-      });
+    // status toggles: note - template uses inline onchange="toggleActive('{id}', this)" so we don't rely on data attr
+    // but we still ensure any dynamically-rendered checkboxes behave if they were added without inline handler.
+    document.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+      // only attach if checkbox appears to be a status toggle (has a .status-text sibling) to avoid interfering with other checkboxes
+      const statusText = chk.closest('td')?.querySelector('.status-text');
+      if (!statusText) return;
+      // ensure an onchange exists
+      if (!chk.getAttribute('data-toggle-bound')) {
+        chk.setAttribute('data-toggle-bound', '1');
+        chk.addEventListener('change', function () {
+          // prefer inline handler if present, otherwise call our toggle
+          const clientIdInline = chk.getAttribute('data-toggle-client-id');
+          if (clientIdInline) {
+            window.toggleActive(clientIdInline, chk);
+          } else {
+            // try to retrieve id from row data
+            const row = chk.closest('tr');
+            const idFromRow = row ? (row.dataset.clientId || (row.querySelectorAll('td')[1] || {}).textContent || '').toString().trim() : '';
+            if (idFromRow) window.toggleActive(idFromRow, chk);
+          }
+        });
+      }
     });
   }
 
@@ -245,7 +260,7 @@
           editModal && editModal.classList.add('hidden');
           updateClientNameInCache(id, newName);
           applyFilters();
-          alert('Client updated successfully.');
+          // alert('Client updated successfully.');
           return;
         } else {
           const text = await safeText(res);
@@ -332,7 +347,7 @@
           return cid !== pending;
         });
         applyFilters();
-        alert('Client deleted successfully.');
+        //alert('Client deleted successfully.');
         this.disabled = false;
         this.textContent = 'Delete';
         return;
@@ -380,46 +395,89 @@
   });
 
   // ---------- Toggle active/inactive (primary endpoint POST /clients/toggle/{id}) ----------
+  // Optimistic UI update: update immediately and persist the state into originalRows (checkbox + label) so future re-renders keep it.
   window.toggleActive = window.toggleActive || async function (clientId, checkboxEl) {
-    if (!clientId) return;
+    if (!clientId || !checkboxEl) return;
+
+    const newChecked = !!checkboxEl.checked; // current desired state
+    // optimistic update: immediately update label text in DOM
+    const statusTextEl = checkboxEl.closest('td')?.querySelector('.status-text');
+    if (statusTextEl) statusTextEl.textContent = newChecked ? 'Active' : 'Inactive';
+
+    // *** Update the cached originalRows FULLY (dataset + internal checkbox + status text)
+    originalRows.forEach(or => {
+      const cid = (or.dataset.clientId || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
+      if (cid == clientId) {
+        // update dataset status
+        or.dataset.status = newChecked ? 'active' : 'inactive';
+        // update any status-text element inside cached row
+        const st = or.querySelector('.status-text');
+        if (st) st.textContent = newChecked ? 'Active' : 'Inactive';
+        // update checkbox inside cached row if present
+        const chk = or.querySelector('input[type="checkbox"]');
+        if (chk) {
+          // set attribute & property
+          if (newChecked) chk.setAttribute('checked', 'checked');
+          else chk.removeAttribute('checked');
+          chk.checked = newChecked;
+        }
+      }
+    });
+
+    // disable while the request runs
+    checkboxEl.disabled = true;
+
+    // Attempt primary endpoint first
     const primary = `/clients/toggle/${clientId}`;
     try {
       const res = await fetch(primary, { method: 'POST' });
-      if (res.ok) {
-        const statusTextEl = checkboxEl.closest('td')?.querySelector('.status-text');
-        const newStatus = checkboxEl.checked ? 'Active' : 'Inactive';
-        if (statusTextEl) statusTextEl.textContent = newStatus;
-        originalRows.forEach(or => {
-          const cid = (or.dataset.clientId || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
-          if (cid == clientId) or.dataset.status = newStatus.toLowerCase();
-        });
+      if (res && res.ok) {
+        checkboxEl.disabled = false;
         return;
       }
     } catch (err) {
       console.warn('toggleActive POST failed:', err);
     }
 
+    // fallback: try POST to likely endpoints with JSON body
     const fallbackUrls = [`/clients/${clientId}`, `/clients/all_clients/${clientId}`];
-    const body = JSON.stringify({ status: checkboxEl.checked ? 'active' : 'inactive' });
+    const body = JSON.stringify({ status: newChecked ? 'active' : 'inactive' });
     const res2 = await tryEndpointsSequentially(fallbackUrls, (url) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body }));
     if (res2.ok) {
-      const statusTextEl = checkboxEl.closest('td')?.querySelector('.status-text');
-      if (statusTextEl) statusTextEl.textContent = checkboxEl.checked ? 'Active' : 'Inactive';
-      originalRows.forEach(or => {
-        const cid = (or.dataset.clientId || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
-        if (cid == clientId) or.dataset.status = checkboxEl.checked ? 'active' : 'inactive';
-      });
+      checkboxEl.disabled = false;
       return;
     }
 
-    checkboxEl.checked = !checkboxEl.checked;
-    alert('Failed to change status. Check server logs for the toggle endpoint.');
+    // second fallback: PATCH attempts
+    const res3 = await tryEndpointsSequentially(fallbackUrls, (url) => ({ method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body }));
+    if (res3.ok) {
+      checkboxEl.disabled = false;
+      return;
+    }
+
+    // If we reach here: all attempts failed to return ok.
+    // We keep the optimistic UI change (prevent immediate flick-back) but inform the user.
+    checkboxEl.disabled = false;
+    console.warn(`toggleActive: couldn't confirm server update for client ${clientId}. UI kept optimistic state.`);
+    setTimeout(() => {
+      alert('Status change could not be confirmed by the server right now. UI updated optimistically — refresh later to confirm.');
+    }, 50);
   };
 
   // ---------- Create modal and add-job dynamic fields ----------
   createClientBtn?.addEventListener('click', () => createModal && createModal.classList.remove('hidden'));
-  closeCreateModal?.addEventListener('click', () => createModal && createModal.classList.add('hidden'));
-  cancelCreate?.addEventListener('click', () => createModal && createModal.classList.add('hidden'));
+  // ---------- Edit modal close handlers ----------
+const closeEditModal = document.getElementById('closeEditModal');
+const cancelEdit = document.getElementById('cancelEdit');
+closeEditModal?.addEventListener('click', () => editModal && editModal.classList.add('hidden'));
+cancelEdit?.addEventListener('click', () => editModal && editModal.classList.add('hidden'));
+
+// ---------- Delete modal close handlers ----------
+const closeDeleteModal = document.getElementById('closeDeleteModal');
+const cancelDelete = document.getElementById('cancelDelete');
+closeDeleteModal?.addEventListener('click', () => deleteModal && deleteModal.classList.add('hidden'));
+cancelDelete?.addEventListener('click', () => deleteModal && deleteModal.classList.add('hidden'));
+
 
   addJobFieldBtn?.addEventListener('click', () => {
     if (!jobsContainer) return;
@@ -444,15 +502,11 @@
   });
 
   // ---------- Sidebar toggle & layout expand/shrink ----------
-  // When the sidebar is hidden we add class `.expanded-by-sidebar` to .main-content
-  // so the main content (table) expands to occupy the freed space.
   function setSidebarHiddenState(hidden) {
     if (!filterSidebar || !mainContentEl) return;
     if (hidden) {
-      // hide sidebar
       filterSidebar.classList.add('hidden-desktop');
       mainContentEl.classList.add('expanded-by-sidebar');
-      // mobile overlay ensure hidden
       sidebarOverlay && sidebarOverlay.classList.add('hidden');
       filterToggle && filterToggle.setAttribute('aria-pressed', 'true');
     } else {
@@ -468,7 +522,6 @@
       desktopHidden = !desktopHidden;
       setSidebarHiddenState(desktopHidden);
     } else {
-      // on mobile show sidebar as overlay
       filterSidebar.classList.remove('-translate-x-full');
       sidebarOverlay && sidebarOverlay.classList.remove('hidden');
     }
@@ -495,13 +548,10 @@
     attachFilterControls();
     attachRowActionListeners();
     applyFilters();
-    // ensure state consistent on load
     if (window.innerWidth >= 1024) {
-      // treat as desktop default: show sidebar unless desktopHidden set earlier
       if (desktopHidden) setSidebarHiddenState(true);
       else setSidebarHiddenState(false);
     } else {
-      // mobile defaults
       filterSidebar && filterSidebar.classList.add('-translate-x-full');
       sidebarOverlay && sidebarOverlay.classList.add('hidden');
     }
@@ -512,7 +562,6 @@
       sidebarOverlay && sidebarOverlay.classList.add('hidden');
       if (desktopHidden) setSidebarHiddenState(true); else setSidebarHiddenState(false);
     } else {
-      // mobile
       filterSidebar && filterSidebar.classList.remove('show');
       filterSidebar && filterSidebar.classList.add('-translate-x-full');
     }
