@@ -514,7 +514,7 @@ try {
             bodyEl.innerHTML = `<div>This candidate is already linked under:</div>${linesHtml}<div style="margin-top:12px;">Do you want to also link the candidate to the selected job?</div>`;
             // set pending toggle with prevChecked recorded (current visual state)
             window._nxg_pending_toggle = { checkbox, candidateId, jobId: Number(jobId), linked: true, row, prevChecked: !!checkbox.checked };
-            try { modal.dataset.pending = JSON.stringify({ candidateId: Number(jobId) ? candidateId : candidateId, jobId: Number(jobId), linked: true, prevChecked: !!checkbox.checked }); } catch(e) {}
+            try { modal.dataset.pending = JSON.stringify({ candidateId: Number(candidateId), jobId: Number(jobId), linked: true, prevChecked: !!checkbox.checked }); } catch(e) {}
             modal.style.display = 'flex';
             try { document.body.style.overflow = 'hidden'; } catch (e) {}
             return;
@@ -534,7 +534,7 @@ try {
         const cid = explainBtn.dataset.id;
         if (!cid) return;
         try {
-          showAiProgress({ title:'Fetching explanation', subtitle:'Please wait...' });
+          showAiProgress({ title:'Fetching explanation', subtitle:'Please wait.' });
           const res = await fetch(`/candidates/ai-explanation/${encodeURIComponent(cid)}`);
           const data = await res.json().catch(()=>null);
           hideAiProgress();
@@ -662,7 +662,10 @@ if (isLinkingToDifferent) {
                                 ${linesHtml}
                                 <div style="margin-top:12px;">Proceed to unlink?</div>`;
           }
+          // set pending with the actual checkbox/row reference (so confirm handler can use them)
           _nxg_pending_toggle = { checkbox, candidateId, jobId, linked, row, prevChecked: !linked };
+          // also persist pending on the modal dataset so confirm handler can rebuild if the global var is lost
+          try { modal.dataset.pending = JSON.stringify({ candidateId: Number(candidateId), jobId: Number(jobId), linked: linked, prevChecked: !!(!linked) ? true : !!linked }); } catch(e) {}
           modal.style.display = 'flex';
           try { document.body.style.overflow = 'hidden'; } catch(e){}
           return; // wait for modal confirm/cancel
@@ -725,9 +728,10 @@ if (isLinkingToDifferent) {
           pending = {
             candidateId: raw.candidateId,
             jobId: raw.jobId,
-            linked: true,
+            // respect the original pending.linked value (if provided)
+            linked: (raw.linked === false ? false : true),
             row: null,
-            prevChecked: true
+            prevChecked: !!raw.prevChecked
           };
         }
       } catch (e) {
@@ -740,12 +744,12 @@ if (isLinkingToDifferent) {
       return;
     }
 
-    // ✅ Actually perform the toggle/link
+    // ✅ Actually perform the toggle/link/unlink
     try {
       closeModalAndRestore(false);
       await _nxg_perform_toggle(pending);
     } catch (err) {
-      console.error('Toggle link failed', err);
+      console.error('Toggle link/unlink failed', err);
     }
   });
   }
@@ -760,7 +764,8 @@ if (isLinkingToDifferent) {
 
 // actual network + UI update logic (extracted from original code so behavior is preserved)
 async function _nxg_perform_toggle({ checkbox, candidateId, jobId, linked, row }) {
-  if (!checkbox || !row) return;
+  // NOTE: relaxed guard — perform the server call if we have identifiers even if DOM refs are missing.
+  if (!candidateId || !jobId) return;
   try {
     showAiProgress({ title: linked ? 'Linking candidate' : 'Unlinking candidate', subtitle: 'Please wait...' });
     const resp = await fetch('/candidates/toggle-link', {
@@ -778,40 +783,44 @@ async function _nxg_perform_toggle({ checkbox, candidateId, jobId, linked, row }
         const arr = raw ? JSON.parse(raw) : [];
         if (!arr.includes(candidateId)) { arr.push(candidateId); localStorage.setItem(RECENTLY_KEY, JSON.stringify(arr)); }
       } catch(e){}
-      // update row metadata but DO NOT hide the row
-      row.classList.add('recently-linked-highlight');
+      // update row metadata but only if we have a row DOM reference
+      if (row) row.classList.add('recently-linked-highlight');
       setTimeout(() => {
-        row.classList.remove('recently-linked-highlight');
-        row.dataset.linked = 'true';
-        // append jobId into existing_jd_ids if not present
-        const existing = (row.dataset.existingJdIds || '').split(',').map(s => s.trim()).filter(Boolean);
-        if (!existing.includes(String(jobId))) existing.push(String(jobId));
-        row.dataset.existingJdIds = existing.join(',');
-        // append human-readable display from selects (best-effort)
-        try {
-          const clientName = clientSelectEl() ? (clientSelectEl().selectedOptions[0]?.textContent || '') : '';
-          const vendorName = vendorSelectEl() ? (vendorSelectEl().selectedOptions[0]?.textContent || '') : '';
-          const jobName = jdSelectEl() ? (jdSelectEl().selectedOptions[0]?.textContent || '') : '';
-          const newDisp = `${clientName} > ${vendorName} > ${jobName}`;
-          row.dataset.mappingDisplay = row.dataset.mappingDisplay ? (row.dataset.mappingDisplay + ' | ' + newDisp) : newDisp;
-        } catch(e){}
-        serializeSnapshot();
-        renderPagination();
+        if (row) {
+          row.classList.remove('recently-linked-highlight');
+          row.dataset.linked = 'true';
+          // append jobId into existing_jd_ids if not present
+          const existing = (row.dataset.existingJdIds || '').split(',').map(s => s.trim()).filter(Boolean);
+          if (!existing.includes(String(jobId))) existing.push(String(jobId));
+          row.dataset.existingJdIds = existing.join(',');
+          // append human-readable display from selects (best-effort)
+          try {
+            const clientName = clientSelectEl() ? (clientSelectEl().selectedOptions[0]?.textContent || '') : '';
+            const vendorName = vendorSelectEl() ? (vendorSelectEl().selectedOptions[0]?.textContent || '') : '';
+            const jobName = jdSelectEl() ? (jdSelectEl().selectedOptions[0]?.textContent || '') : '';
+            const newDisp = `${clientName} > ${vendorName} > ${jobName}`;
+            row.dataset.mappingDisplay = row.dataset.mappingDisplay ? (row.dataset.mappingDisplay + ' | ' + newDisp) : newDisp;
+          } catch(e){}
+        }
+        try { serializeSnapshot(); } catch(e){}
+        try { renderPagination(); } catch(e){}
       }, 420);
       showToast('Candidate linked','success',3000);
     } else {
       // unlink
       removeLinkedId(candidateId);
-      // remove jobId from existing_jd_ids
-      const existing = (row.dataset.existingJdIds || '').split(',').map(s => s.trim()).filter(Boolean).filter(id => id !== String(jobId));
-      row.dataset.existingJdIds = existing.join(',');
-      if (existing.length === 0) row.dataset.linked = 'false';
+      // remove jobId from existing_jd_ids only if row exists
+      if (row) {
+        const existing = (row.dataset.existingJdIds || '').split(',').map(s => s.trim()).filter(Boolean).filter(id => id !== String(jobId));
+        row.dataset.existingJdIds = existing.join(',');
+        if (existing.length === 0) row.dataset.linked = 'false';
+      }
       serializeSnapshot(); renderPagination();
     }
   } catch (err) {
     alert('Failed to toggle link: ' + (err.message || err));
-    // revert checkbox on failure
-    try { checkbox.checked = !checkbox.checked; } catch(e){}
+    // revert checkbox on failure (only if checkbox ref exists)
+    try { if (checkbox) checkbox.checked = !checkbox.checked; } catch(e){}
   } finally {
     hideAiProgress();
   }
