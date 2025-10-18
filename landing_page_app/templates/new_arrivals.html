@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Client Management - New Arrivals{% endblock %}
+{% set user = user or request.state.user %}
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/new_arrivals.css') }}">

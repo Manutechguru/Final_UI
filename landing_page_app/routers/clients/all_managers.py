@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Request, Query, HTTPException
+# landing_page_app/routers/clients/all_managers.py
+from fastapi import APIRouter, Request, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import joinedload
 from sqlalchemy import desc
@@ -8,17 +9,28 @@ from landing_page_app.models.clients import Client
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 
+# ✅ user injection imports (minimal additions)
+from landing_page_app.models.user import User
+from landing_page_app.routers.auth import get_current_user
+
 router = APIRouter(prefix="/clients/all_managers", tags=["All Managers"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 
 
 @router.get("")
 @router.get("/")
-def all_managers_page(request: Request):
+def all_managers_page(request: Request, user: User = Depends(get_current_user)):
     """Render the All Managers HTML page."""
     with SessionLocal() as db:
         clients = db.query(Client).order_by(Client.client_name).all()
-    return templates.TemplateResponse("all_managers.html", {"request": request, "clients": clients})
+    return templates.TemplateResponse(
+        "all_managers.html",
+        {
+            "request": request,
+            "clients": clients,
+            "user": user,   # <-- added so header/profile works here
+        },
+    )
 
 
 @router.get("/data")

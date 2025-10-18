@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% set user = user or request.state.user %}
+
 {% block content %}
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">

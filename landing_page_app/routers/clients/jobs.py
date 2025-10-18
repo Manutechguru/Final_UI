@@ -1,3 +1,4 @@
+# landing_page_app/routers/managers/jobs.py
 from fastapi import APIRouter, Request, Form, HTTPException, Depends, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -14,6 +15,10 @@ from landing_page_app.routers.utils.jobs_utils import (
 )
 from landing_page_app.models.jobs import Job
 
+# NEW imports for user injection
+from landing_page_app.models.user import User
+from landing_page_app.routers.auth import get_current_user
+
 router = APIRouter(prefix="/managers/jobs", tags=["Jobs"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 
@@ -26,7 +31,8 @@ def manager_jobs_page(
     request: Request,
     manager_id: int,
     db: Session = Depends(get_db),
-    message: str = ""
+    message: str = "",
+    user: User = Depends(get_current_user),  # <-- added
 ):
     manager = get_manager_by_id(db, manager_id)
     if not manager:
@@ -35,7 +41,7 @@ def manager_jobs_page(
     jobs = get_jobs_by_manager(db, manager_id)
     return templates.TemplateResponse(
         "client_jobs.html",
-        {"request": request, "manager": manager, "jobs": jobs, "message": message}
+        {"request": request, "manager": manager, "jobs": jobs, "message": message, "user": user}  # <-- added user
     )
 
 
@@ -122,13 +128,13 @@ def delete_job_route(manager_id: int, job_id: int, db: Session = Depends(get_db)
 # 5. View Job JD
 # -----------------------------
 @router.get("/view-jd/{job_id}", name="view_job_jd")
-def view_job_jd(request: Request, job_id: int, db: Session = Depends(get_db)):
+def view_job_jd(request: Request, job_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     job = db.query(Job).filter(Job.job_id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return templates.TemplateResponse(
         "view_jd.html",
-        {"request": request, "job": job}
+        {"request": request, "job": job, "user": user}  # <-- added user
     )
 
 

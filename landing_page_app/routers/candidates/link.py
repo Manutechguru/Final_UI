@@ -1,3 +1,4 @@
+# landing_page_app/routers/candidates/link.py
 from fastapi import APIRouter, Body, HTTPException, Depends, Request, Query
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -18,6 +19,10 @@ from landing_page_app.routers.utils.link_utils import (
 
 # Import templates
 from landing_page_app.config import templates
+
+# NEW imports for user
+from landing_page_app.models.user import User
+from landing_page_app.deps import get_current_user
 
 router = APIRouter(prefix="/candidates", tags=["Candidates Linking"])
 
@@ -62,7 +67,8 @@ def jd_candidates_page(
     jd_id: int,
     request: Request,
     stage: Optional[str] = Query(None, description="Filter candidates by stage"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),  # <-- added
 ):
     """
     Render JD candidates page. If `stage` is provided, filter candidates by that stage.
@@ -80,7 +86,8 @@ def jd_candidates_page(
             "jd_id": jd_id,
             "candidates": candidates,
             "status_options": STATUS_OPTIONS,
-            "selected_stage": stage or "All"
+            "selected_stage": stage or "All",
+            "user": user,  # <-- added so header/profile works here
         }
     )
 

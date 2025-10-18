@@ -1,3 +1,4 @@
+# landing_page_app/routers/vendors.py
 from fastapi import APIRouter, Request, Form, HTTPException, Depends, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -10,6 +11,7 @@ from zoneinfo import ZoneInfo
 from landing_page_app.database import get_db
 from landing_page_app.models.clients import Client
 from landing_page_app.models.jobs import Job
+# get_current_user already imported here in your original file:
 from landing_page_app.routers.auth import get_current_user
 from landing_page_app.routers.utils.vendors_utils import (
     get_manager_by_id,
@@ -25,10 +27,13 @@ from landing_page_app.routers.utils.vendors_utils import (
 from landing_page_app.routers.utils.jobs_utils import (
     get_jobs_by_manager,
     add_new_job,
-    toggle_job_status_single,  # ← ADD THIS
-    delete_job_single,         # ← ADD THIS  
-    get_jobs_by_manager_with_status,  # ← ADD THIS
+    toggle_job_status_single,  # ← existing helper usage
+    delete_job_single,         # ← existing helper usage  
+    get_jobs_by_manager_with_status,  # ← existing helper usage
 )
+
+# NEW imports: User model so we can inject into templates
+from landing_page_app.models.user import User
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
@@ -78,8 +83,15 @@ async def parse_desired_status(request: Request) -> Optional[str]:
 
 # ---------- Routes ----------
 
+# Note: added `user: User = Depends(get_current_user)` and "user": user in template context
 @router.get("/client/{client_id}", name="list_managers")
-def list_managers_page(request: Request, client_id: int, db: Session = Depends(get_db), message: str = ""):
+def list_managers_page(
+    request: Request,
+    client_id: int,
+    db: Session = Depends(get_db),
+    message: str = "",
+    user: User = Depends(get_current_user),   # <-- added
+):
     client = get_client_or_404(db, client_id)
     managers = get_managers_for_client(db, client_id)
     
@@ -153,7 +165,8 @@ def list_managers_page(request: Request, client_id: int, db: Session = Depends(g
             "client": client, 
             "managers": managers_with_jobs, 
             "message": message,
-            "get_jobs_by_manager": get_jobs_by_manager
+            "get_jobs_by_manager": get_jobs_by_manager,
+            "user": user,   # <-- added
         },
     )
 
@@ -287,12 +300,14 @@ def edit_manager_route(
 
 # ---------- Jobs for a Manager ----------
 
+# Note: added `user` injection and context
 @router.get("/jobs/{manager_id}", name="vendor_jobs")
 def vendor_jobs(
     request: Request, 
     manager_id: int, 
     status: str = None,  # Add status filter parameter
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),   # <-- added
 ):
     manager = get_manager_by_id(db, manager_id)
     if not manager:
@@ -326,6 +341,7 @@ def vendor_jobs(
             "client_id": client_id,
             "jobs": jobs,
             "current_filter": status or 'all',  # Pass current filter to template
+            "user": user,   # <-- added
         },
     )
 

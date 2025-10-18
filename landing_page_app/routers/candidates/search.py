@@ -37,6 +37,8 @@ except Exception:
     def parse_text_experience_to_months(x):
         return 0
 
+from landing_page_app.models.user import User
+from landing_page_app.deps import get_current_user
 
 templates = Jinja2Templates(directory="landing_page_app/templates")
 router = APIRouter(prefix="/candidates", tags=["candidates"])
@@ -246,7 +248,8 @@ async def search(request: Request,
                  skills: Optional[str] = Query(None),
                  location: Optional[str] = Query(None),
                  experience: Optional[str] = Query(None),
-                 db: Session = Depends(get_db)):
+                 db: Session = Depends(get_db),
+                 user: User = Depends(get_current_user)):
 
     min_m, max_m = None, None
 
@@ -261,6 +264,7 @@ async def search(request: Request,
             "location": location or "",
             "experience": experience or "",
             "clients": clients,
+            "user": user,
         })
 
     # 1) Start from all candidates
@@ -467,6 +471,7 @@ async def search(request: Request,
         "location": location or "",
         "experience": experience or "",
         "clients": clients,
+        "user": user, 
     })
 
 # -------------------------
@@ -1077,7 +1082,8 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
             "location": "",
             "experience": "",
             "clients": _get_active_clients(db),
-            "error": "Invalid job selected."
+            "error": "Invalid job selected.",
+            "user": user,
         })
 
     # find a JD link on the job object using common attribute names
@@ -1213,4 +1219,5 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
         "prefill_location": pre_location,
         "prefill_experience": pre_experience,
         "clients": clients,
+        "user": user,
     })

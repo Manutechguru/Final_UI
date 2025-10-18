@@ -1,3 +1,4 @@
+# landing_page_app/routers/clients/base.py
 from fastapi import APIRouter, Request, Form, HTTPException, Depends, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -12,6 +13,10 @@ from landing_page_app.models.managers import Manager
 from landing_page_app.models.candidate_status_history import CandidateJDMapping
 from landing_page_app.routers.utils.clients_utils import toggle_client_status
 
+# NEW: user injection imports (minimal)
+from landing_page_app.models.user import User
+from landing_page_app.routers.auth import get_current_user
+
 # Define IST timezone
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -25,7 +30,12 @@ templates = Jinja2Templates(directory="landing_page_app/templates")
 # 1. List all clients
 # ------------------------------
 @router.get("/new-arrivals", name="new_arrivals_page")
-def new_arrivals_page(request: Request, db: Session = Depends(get_db), message: str = ""):
+def new_arrivals_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    message: str = "",
+    user: User = Depends(get_current_user),   # <-- added
+):
     clients = db.query(Client).order_by(Client.created_at.desc()).all()
     active_count = db.query(Client).filter(Client.status == "active").count()
     inactive_count = db.query(Client).filter(Client.status == "inactive").count()
@@ -38,6 +48,7 @@ def new_arrivals_page(request: Request, db: Session = Depends(get_db), message: 
             "active_count": active_count,
             "inactive_count": inactive_count,
             "message": message,
+            "user": user,   # <-- added
         },
     )
 
@@ -170,7 +181,12 @@ def get_client_stats(db: Session = Depends(get_db)):
 # 6. View Client and Jobs
 # ------------------------------
 @router.get("/{client_id}", name="client_detail_page")
-def client_detail(request: Request, client_id: int, db: Session = Depends(get_db)):
+def client_detail(
+    request: Request,
+    client_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),   # <-- added
+):
     client = db.query(Client).filter(Client.client_id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -182,7 +198,7 @@ def client_detail(request: Request, client_id: int, db: Session = Depends(get_db
 
     return templates.TemplateResponse(
         "client_jobs.html",
-        {"request": request, "client": client, "jobs": jobs}
+        {"request": request, "client": client, "jobs": jobs, "user": user}  # <-- added user
     )
 
 # ------------------------------

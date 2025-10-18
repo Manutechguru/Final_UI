@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Request, Query, HTTPException
+# landing_page_app/routers/clients/alljobs.py
+from fastapi import APIRouter, Request, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import joinedload
 from sqlalchemy import desc
@@ -9,13 +10,20 @@ from landing_page_app.models.managers import Manager
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 
+# ✅ Added imports for user injection
+from landing_page_app.models.user import User
+from landing_page_app.routers.auth import get_current_user
+
 router = APIRouter(prefix="/clients/all_jobs", tags=["All Jobs"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 
 
 @router.get("")
 @router.get("/")
-def all_jobs_page(request: Request):
+def all_jobs_page(
+    request: Request,
+    user: User = Depends(get_current_user),  # ✅ Added dependency
+):
     """Render the All Jobs HTML page."""
     with SessionLocal() as db:
         clients = db.query(Client).order_by(Client.client_name).all()
@@ -23,7 +31,12 @@ def all_jobs_page(request: Request):
 
     return templates.TemplateResponse(
         "all_jobs.html",
-        {"request": request, "clients": clients, "managers": managers}
+        {
+            "request": request,
+            "clients": clients,
+            "managers": managers,
+            "user": user,  # ✅ Added user context
+        },
     )
 
 
@@ -90,7 +103,11 @@ def delete_job(job_id: int):
 
 
 @router.get("/edit/{job_id}")
-def edit_job_page(request: Request, job_id: int):
+def edit_job_page(
+    request: Request,
+    job_id: int,
+    user: User = Depends(get_current_user),  # ✅ Added dependency
+):
     """Render a basic edit page for a job. (Kept for compatibility.)"""
     with SessionLocal() as db:
         job = db.query(Job).filter(Job.job_id == job_id).first()
@@ -99,7 +116,16 @@ def edit_job_page(request: Request, job_id: int):
         clients = db.query(Client).order_by(Client.client_name).all()
         managers = db.query(Manager).order_by(Manager.manager_name).all()
 
-    return templates.TemplateResponse("job_edit.html", {"request": request, "job": job, "clients": clients, "managers": managers})
+    return templates.TemplateResponse(
+        "job_edit.html",
+        {
+            "request": request,
+            "job": job,
+            "clients": clients,
+            "managers": managers,
+            "user": user,  # ✅ Added user context
+        },
+    )
 
 
 @router.post("/edit/{job_id}")
