@@ -1039,6 +1039,8 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
     Trigger AI matching by selecting a Job from the dropdowns.
     This reads the job record, obtains the JD link, extracts features and runs the same
     ai_match_jd_with_resumes batching logic used by advanced_search. Returns the search page.
+
+    NOTE: Modified to include already-linked candidates (previously they were excluded).
     """
     # Resolve job record robustly (support multiple id column names)
     job = None
@@ -1164,25 +1166,156 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
 
     results = []
     if matched_ids:
-        # Exclude any candidate already linked to any job (consistent)
-        mapped_ids = set()
-        try:
-            rows_mapped = db.query(CandidateJDMapping.candidate_id).distinct().all()
-            for r in rows_mapped:
-                mapped_ids.add(r[0] if isinstance(r, tuple) else getattr(r, "candidate_id", None))
-        except Exception:
-            mapped_ids = set()
+        # NOTE: changed here — do NOT exclude already-mapped candidates.
+        # Instead we will include mapped candidates and attach mapping metadata so UI can display them.
 
+        # Fetch the candidate rows for matched ids
         found_q = db.query(Candidate).filter(Candidate.candidates_id.in_(list(matched_ids)))
-        if mapped_ids:
-            try:
-                found_q = found_q.filter(~Candidate.candidates_id.in_(list(mapped_ids)))
-            except Exception:
-                pass
-
         found = found_q.all()
+
+        # Build mapping rows for the found candidates so we can attach mapping metadata (is_linked, existing_jd_ids, mapping_display)
+        from collections import defaultdict
+        cand_ids = [getattr(c, "candidates_id", None) for c in found if getattr(c, "candidates_id", None) is not None]
+        mappings_by_cid = defaultdict(list)
+        if cand_ids:
+            try:
+                map_rows = db.query(CandidateJDMapping).filter(CandidateJDMapping.candidate_id.in_(cand_ids)).all()
+                for r in map_rows:
+                    cid_key = getattr(r, "candidate_id", None)
+                    if cid_key is not None:
+                        mappings_by_cid[cid_key].append(r)
+            except Exception:
+                mappings_by_cid = defaultdict(list)
+
+        # Build job/manager/client lookup maps (best-effort) similar to manual search logic so mapping_display is useful
+        mapping_info_map = {}
+        try:
+            all_job_ids = set()
+            for lst in mappings_by_cid.values():
+                for m in lst:
+                    jid = getattr(m, "jd_id", None)
+                    if jid is not None:
+                        try:
+                            all_job_ids.add(int(jid))
+                        except Exception:
+                            all_job_ids.add(jid)
+
+            job_map = {}
+            if all_job_ids:
+                id_col = _first_column(Job, ["job_id", "id", "jobId"])
+                if id_col is not None:
+                    try:
+                        jobs = db.query(Job).filter(id_col.in_(list(all_job_ids))).all()
+                    except Exception:
+                        jobs = []
+                    for j in jobs:
+                        try:
+                            job_id_val = _first_attr(j, ["job_id", "id", "jobId"])
+                            job_key = int(job_id_val) if isinstance(job_id_val, (int, str)) and str(job_id_val).isdigit() else job_id_val
+                            job_map[job_key] = j
+                        except Exception:
+                            continue
+
+            # collect manager (vendor) ids from jobs
+            manager_ids = set()
+            for j in job_map.values():
+                mid = _first_attr(j, ["manager_id", "managerId", "manager", "vendor_id"])
+                if mid is not None:
+                    try:
+                        manager_ids.add(int(mid))
+                    except Exception:
+                        manager_ids.add(mid)
+
+            manager_map = {}
+            if manager_ids:
+                mgr_col = _first_column(Manager, ["manager_id", "id", "vendor_id", "managerId"])
+                if mgr_col is not None:
+                    try:
+                        managers = db.query(Manager).filter(mgr_col.in_(list(manager_ids))).all()
+                    except Exception:
+                        managers = []
+                    for m in managers:
+                        try:
+                            mid_val = _first_attr(m, ["manager_id", "id", "vendor_id", "managerId"])
+                            key = int(mid_val) if isinstance(mid_val, (int, str)) and str(mid_val).isdigit() else mid_val
+                            manager_map[key] = m
+                        except Exception:
+                            continue
+
+            # collect client ids from managers
+            client_ids = set()
+            for m in manager_map.values():
+                cid = _first_attr(m, ["client_id", "clientId", "client"])
+                if cid is not None:
+                    try:
+                        client_ids.add(int(cid))
+                    except Exception:
+                        client_ids.add(cid)
+
+            client_map = {}
+            if client_ids:
+                ccol = _first_column(Client, ["client_id", "id", "clientId"])
+                if ccol is not None:
+                    try:
+                        clients = db.query(Client).filter(ccol.in_(list(client_ids))).all()
+                    except Exception:
+                        clients = []
+                    for cobj in clients:
+                        try:
+                            cid_val = _first_attr(cobj, ["client_id", "id", "clientId"])
+                            key = int(cid_val) if isinstance(cid_val, (int, str)) and str(cid_val).isdigit() else cid_val
+                            client_map[key] = cobj
+                        except Exception:
+                            continue
+
+            # now build mapping_info_map per candidate id
+            for cid_key, lst in mappings_by_cid.items():
+                info_list = []
+                for m in lst:
+                    jid = getattr(m, "jd_id", None)
+                    job = None
+                    job_title = ""
+                    vendor_name = ""
+                    client_name = ""
+                    try:
+                        jkey = int(jid) if isinstance(jid, (int, str)) and str(jid).isdigit() else jid
+                        job = job_map.get(jkey)
+                    except Exception:
+                        job = None
+                    if job:
+                        job_title = _first_attr(job, ["job_title", "title", "jobTitle"]) or ""
+                        mid = _first_attr(job, ["manager_id", "managerId", "manager", "vendor_id"])
+                        try:
+                            mkey = int(mid) if isinstance(mid, (int, str)) and str(mid).isdigit() else mid
+                        except Exception:
+                            mkey = mid
+                        manager = manager_map.get(mkey)
+                        if manager:
+                            vendor_name = _first_attr(manager, ["manager_name", "name", "vendor_name", "managerName"]) or ""
+                            client_id_ref = _first_attr(manager, ["client_id", "clientId", "client"])
+                            try:
+                                ck = int(client_id_ref) if isinstance(client_id_ref, (int, str)) and str(client_id_ref).isdigit() else client_id_ref
+                            except Exception:
+                                ck = client_id_ref
+                            client_obj = client_map.get(ck)
+                            if client_obj:
+                                client_name = _first_attr(client_obj, ["client_name", "name", "clientName"]) or ""
+                    info_list.append({
+                        "jd_id": jid,
+                        "job_title": job_title or "",
+                        "vendor_name": vendor_name or "",
+                        "client_name": client_name or "",
+                        "mapping_id": getattr(m, "id", None) or getattr(m, "mapping_id", None)
+                    })
+                mapping_info_map[cid_key] = info_list
+
+        except Exception:
+            mapping_info_map = {}
+
+        # produce result rows with mapping metadata attached
         for c in found:
             cid = getattr(c, "candidates_id", None)
+            # attach AI score & explanation (best-effort)
             if cid in score_map:
                 try:
                     setattr(c, "ai_score", score_map[cid])
@@ -1193,8 +1326,22 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
                     setattr(c, "ai_explanation", expl_map[cid])
                 except Exception:
                     pass
-            results.append(_candidate_to_row(c, None))
-        
+
+            mapping_list = mappings_by_cid.get(cid, [])
+            base_map = mapping_list[0] if mapping_list else None
+            row = _candidate_to_row(c, base_map)
+
+            info = mapping_info_map.get(cid, [])
+            row["is_linked"] = bool(info)
+            row["existing_jd_ids"] = [i.get("jd_id") for i in info]
+
+            try:
+                row["mapping_display"] = " | ".join([ (f"{(i.get('client_name') or '').strip() + (' > ' if (i.get('client_name') or '') else '')}{(i.get('vendor_name') or '')}{(' > ' if (i.get('vendor_name') or '') else '')}{(i.get('job_title') or '')}").strip(" > ") for i in info ]) or ""
+            except Exception:
+                row["mapping_display"] = ""
+
+            results.append(row)
+
         # --- sort AI-matched results by ai_score (descending) ---
         try:
             results.sort(key=lambda r: int(r.get('ai_score') or r.get('score') or 0), reverse=True)
