@@ -471,7 +471,6 @@ async def search(request: Request,
         "location": location or "",
         "experience": experience or "",
         "clients": clients,
-        "user": user, 
     })
 
 # -------------------------
@@ -1083,7 +1082,6 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
             "experience": "",
             "clients": _get_active_clients(db),
             "error": "Invalid job selected.",
-            "user": user,
         })
 
     # find a JD link on the job object using common attribute names
@@ -1219,5 +1217,4 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
         "prefill_location": pre_location,
         "prefill_experience": pre_experience,
         "clients": clients,
-        "user": user,
     })

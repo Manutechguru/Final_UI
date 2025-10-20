@@ -280,3 +280,28 @@
   .results-block { max-height: 52vh !important; }
   .results-inner { max-height: 48vh !important; }
 }
+
+/* --- Toast container safety overrides (non-invasive) --- */
+#richToastContainer {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 99999 !important; /* ensure always above overlays */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none; /* allows clicks to pass through */
+}
+
+.rich-toast {
+  pointer-events: all;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+.rich-toast.success {
+  background: linear-gradient(90deg,#10b981,#059669);
+  color: #fff;
+}
+.rich-toast.error {
+  background: linear-gradient(90deg,#ef4444,#dc2626);
+}

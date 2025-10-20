@@ -514,7 +514,10 @@ try {
             bodyEl.innerHTML = `<div>This candidate is already linked under:</div>${linesHtml}<div style="margin-top:12px;">Do you want to also link the candidate to the selected job?</div>`;
             // set pending toggle with prevChecked recorded (current visual state)
             window._nxg_pending_toggle = { checkbox, candidateId, jobId: Number(jobId), linked: true, row, prevChecked: !!checkbox.checked };
-            try { modal.dataset.pending = JSON.stringify({ candidateId: Number(candidateId), jobId: Number(jobId), linked: true, prevChecked: !!checkbox.checked }); } catch(e) {}
+            try {
+              // === EDITED: ensure modal.dataset.pending explicitly includes linked:true ===
+              modal.dataset.pending = JSON.stringify({ candidateId: Number(candidateId), jobId: Number(jobId), linked: true, prevChecked: !!checkbox.checked });
+            } catch(e) {}
             modal.style.display = 'flex';
             try { document.body.style.overflow = 'hidden'; } catch (e) {}
             return;
@@ -665,7 +668,10 @@ if (isLinkingToDifferent) {
           // set pending with the actual checkbox/row reference (so confirm handler can use them)
           _nxg_pending_toggle = { checkbox, candidateId, jobId, linked, row, prevChecked: !linked };
           // also persist pending on the modal dataset so confirm handler can rebuild if the global var is lost
-          try { modal.dataset.pending = JSON.stringify({ candidateId: Number(candidateId), jobId: Number(jobId), linked: linked, prevChecked: !!(!linked) ? true : !!linked }); } catch(e) {}
+          try {
+            // === EDITED: write explicit linked boolean into modal.dataset.pending ===
+            modal.dataset.pending = JSON.stringify({ candidateId: Number(candidateId), jobId: Number(jobId), linked: !!linked, prevChecked: !!(!linked) ? true : !!linked });
+          } catch(e) {}
           modal.style.display = 'flex';
           try { document.body.style.overflow = 'hidden'; } catch(e){}
           return; // wait for modal confirm/cancel
@@ -725,11 +731,24 @@ if (isLinkingToDifferent) {
           ? JSON.parse(modal.dataset.pending)
           : null;
         if (raw && raw.candidateId && raw.jobId) {
+          // === EDITED: robustly parse the linked flag. Ensure boolean and fall back to title inference ===
+          let parsedLinked;
+          if (typeof raw.linked === 'boolean') {
+            parsedLinked = raw.linked;
+          } else if (raw.linked === 'true' || raw.linked === 'false') {
+            parsedLinked = (raw.linked === 'true');
+          } else {
+            // fallback: infer from modal title (Confirm unlink => unlink)
+            const titleEl = document.getElementById('mappingWarningTitle');
+            const titleText = titleEl ? (titleEl.textContent || '') : '';
+            parsedLinked = !(/unlink/i.test(titleText)); // if title contains 'unlink' => parsedLinked=false
+          }
+
           pending = {
             candidateId: raw.candidateId,
             jobId: raw.jobId,
-            // respect the original pending.linked value (if provided)
-            linked: (raw.linked === false ? false : true),
+            // respect the original pending.linked value if provided, otherwise parsedLinked
+            linked: (typeof raw.linked === 'boolean') ? raw.linked : !!parsedLinked,
             row: null,
             prevChecked: !!raw.prevChecked
           };
@@ -814,8 +833,22 @@ async function _nxg_perform_toggle({ checkbox, candidateId, jobId, linked, row }
         const existing = (row.dataset.existingJdIds || '').split(',').map(s => s.trim()).filter(Boolean).filter(id => id !== String(jobId));
         row.dataset.existingJdIds = existing.join(',');
         if (existing.length === 0) row.dataset.linked = 'false';
+        // ensure checkbox reflects unlink
+        try {
+          const cb = row.querySelector('.candidate-link-checkbox');
+          if (cb) cb.checked = false;
+        } catch(e){}
+        // visual cue for unlink (short highlight)
+        try {
+          row.classList.add('recently-unlinked-highlight');
+          setTimeout(()=>{ row.classList.remove('recently-unlinked-highlight'); }, 550);
+        } catch(e){}
       }
+      // ensure local storage/pagination reflect change immediately
       serializeSnapshot(); renderPagination();
+
+      // show unlink toast (same style as link)
+      showToast('Candidate unlinked','success',3000);
     }
   } catch (err) {
     alert('Failed to toggle link: ' + (err.message || err));
