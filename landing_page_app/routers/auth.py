@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Request, Depends, Form, Response, Cookie, Form, HTTPException
+# landing_page_app/routers/auth.py
+from fastapi import APIRouter, Request, Depends, Form, Response, Cookie, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from landing_page_app.database import get_db
@@ -93,7 +94,43 @@ async def login(
 
     redirect_url = "/admin" if user.role == UserRole.ADMIN else "/templates"
     response = RedirectResponse(url=redirect_url, status_code=303)
-    response.set_cookie(key="user_email", value=user.email)
+
+    # -----------------------
+    # Cookie flags: choose conservative defaults for localhost and secure defaults for production
+    # - When developing on localhost/127.0.0.1: use SameSite=Lax and secure=False (works on http://localhost)
+    # - In production (non-localhost) prefer SameSite=None and secure=True (required for cross-site OAuth on HTTPS)
+    # You can override behavior by setting COOKIE_SECURE env var to "True" or "False" if desired.
+    # -----------------------
+    try:
+        host = (request.url.hostname or "").lower()
+    except Exception:
+        host = ""
+
+    is_localhost = host in ("localhost", "127.0.0.1", "0.0.0.0")
+
+    # If an explicit env override exists, use it. Otherwise auto-detect from host.
+    cookie_secure_env = os.getenv("COOKIE_SECURE")
+    if cookie_secure_env is not None:
+        cookie_secure = cookie_secure_env.lower() in ("1", "true", "yes")
+    else:
+        cookie_secure = not is_localhost
+
+    # Choose SameSite policy appropriate to environment
+    if is_localhost:
+        cookie_samesite = "Lax"     # local dev: Lax is more permissive for redirects on localhost
+    else:
+        cookie_samesite = "None"    # production: None required for third-party redirects (must be secure=True)
+
+    # Set cookie (minimal change: only cookie flags adjusted)
+    # max_age optional (here 7 days)
+    response.set_cookie(
+        key="user_email",
+        value=user.email,
+        httponly=True,
+        samesite=cookie_samesite,
+        secure=cookie_secure,
+        max_age=60 * 60 * 24 * 7
+    )
     return response
 
 # ------------------------------

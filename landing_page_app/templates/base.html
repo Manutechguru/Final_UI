@@ -358,6 +358,163 @@
         .animate-fadeIn {
             animation: fadeIn 0.5s ease forwards;
         }
+
+
+        /* ===== Custom Compose Styles (Gmail-like) ===== */
+        .compose-wrap {
+            max-width: 1000px;
+            margin: 1.5rem auto;
+        }
+
+        .compose-card {
+            border-radius: 12px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .compose-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(90deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .compose-toolbar {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .compose-toolbar select, .compose-toolbar button {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        .compose-address {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            background: #fff;
+        }
+
+        .compose-address .row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .compose-address label {
+            min-width: 60px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .compose-address input[type="text"],
+        .compose-address input[type="email"],
+        .compose-address input[type="password"],
+        .compose-address input[type="search"] {
+            flex: 1;
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 0.98rem;
+        }
+
+        .compose-cc-bcc {
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .compose-editor {
+            border-top: 1px solid var(--border-color);
+            background: #fff;
+            min-height: 360px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: #fbfcfd;
+            align-items: center;
+        }
+
+        .editor-toolbar button {
+            border: none;
+            background: transparent;
+            padding: 0.35rem;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .editor-toolbar button:hover {
+            background: rgba(15,23,42,0.04);
+        }
+
+        .editor-body {
+            padding: 1rem;
+            flex: 1;
+        }
+
+        /* keep textarea styles but make it large and visually like Gmail */
+        .editor-body textarea {
+            width: 100%;
+            height: 100%;
+            min-height: 260px;
+            resize: vertical;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            line-height: 1.5;
+            font-family: "Inter", Arial, sans-serif;
+        }
+
+        .compose-actions {
+            padding: 0.8rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            border-top: 1px solid var(--border-color);
+            background: #fff;
+        }
+
+        .small-muted {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* attachment list */
+        .attachments {
+            display:flex;
+            gap:0.5rem;
+            align-items:center;
+        }
+
+        .attachment-pill {
+            background:#f1f5f9;
+            padding:0.35rem 0.6rem;
+            border-radius:8px;
+            font-size:0.9rem;
+            display:inline-flex;
+            gap:0.5rem;
+            align-items:center;
+        }
+
     </style>
 
     {% block head %}{% endblock %}
@@ -403,20 +560,11 @@
                         <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='42' height='42'><circle cx='21' cy='14' r='11' fill='%23f3f4f6' /><rect x='5' y='26' width='32' height='14' rx='7' fill='%23f3f4f6' /></svg>" alt="Profile" class="avatar" style="width:42px;height:42px;">
                     {% endif %}
 
-                    {# ========== Robust display_name and display_id calculation ==========
-                       - Always prefer explicit fields from `user` (full_name, name, username).
-                       - If only an email is available, show only the left-hand part before '@' (never the full email).
-                       - If `user` is not provided, fall back to cookies, again showing only the portion before '@' if it's an email.
-                       - This block avoids showing full email on pages where `user` isn't passed by the route.
-                    ===================================================================== #}
-
-                    {# initialize #}
+                    {# ========== Robust display_name and display_id calculation ========== #}
                     {% set display_name = None %}
                     {% set display_id = None %}
 
-                    {# 1) If route provided `user` (object, dict, or string), try to extract name/id #}
                     {% if user is defined and user %}
-                        {# If user is an object/dict with fields #}
                         {% if user.full_name is defined and user.full_name %}
                             {% set display_name = user.full_name %}
                         {% elif user.name is defined and user.name %}
@@ -424,10 +572,8 @@
                         {% elif user.username is defined and user.username %}
                             {% set display_name = user.username %}
                         {% elif user.email is defined and user.email %}
-                            {# only use the portion before @ #}
                             {% set display_name = user.email.split('@')[0] %}
                         {% else %}
-                            {# user might be a plain string (e.g., an email or username) -- coerce to string and use left of @ if present #}
                             {% if user is string %}
                                 {% if '@' in user %}
                                     {% set display_name = user.split('@')[0] %}
@@ -437,7 +583,6 @@
                             {% endif %}
                         {% endif %}
 
-                        {# id extraction from common fields #}
                         {% if user.id is defined and user.id %}
                             {% set display_id = user.id %}
                         {% elif user.user_id is defined and user.user_id %}
@@ -447,8 +592,7 @@
                         {% endif %}
                     {% endif %}
 
-                    {# 2) If still missing, try cookies (common cookie names) #}
-                    {% if not display_name or display_name == '' %}
+                    {% if not display_name %}
                         {% set cookie_email = request.cookies.get('user_email') or request.cookies.get('email') or request.cookies.get('username') %}
                         {% if cookie_email %}
                             {% if '@' in cookie_email %}
@@ -466,7 +610,6 @@
                         {% endif %}
                     {% endif %}
 
-                    {# 3) final fallbacks #}
                     {% if not display_name %}
                         {% set display_name = 'User' %}
                     {% endif %}
@@ -484,7 +627,17 @@
                     </div>
                 </div>
 
-                {# enable activity link only when we have an actual id (not '-') #}
+                {# ===== INSERT Work update link (minimal, non-invasive) ===== #}
+                {% if display_id and display_id != '-' %}
+                    <a class="item" href="/work-update" role="menuitem">
+                {% else %}
+                    <a class="item" href="#" role="menuitem" onclick="return false;">
+                {% endif %}
+                    <i class="fas fa-briefcase" style="width:18px;text-align:center;"></i>
+                    Work update
+                </a>
+
+                {# existing activity link (unchanged) #}
                 {% if display_id and display_id != '-' %}
                     <a class="item" href="/user/{{ display_id }}/activity" role="menuitem">
                 {% else %}
@@ -503,6 +656,139 @@
         </div>
     </nav>
 </header>
+
+{# ===== Work Update Compose UI (rendered inline when path is /work-update) ===== #}
+{% if request.url.path == '/work-update' %}
+<section class="work-update-wrap container animate-fadeIn compose-wrap" aria-label="Work Update Compose" style="max-width:1000px;margin:1.5rem auto;">
+    <div class="card compose-card" style="box-shadow:0 8px 30px rgba(15,23,42,0.06);">
+        <!-- Top bar: title + small send button -->
+        <div class="compose-topbar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <strong style="font-size:1rem;">Work update — Compose</strong>
+                <span class="small-muted">Send updates to managers quickly</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <!-- mimic Gmail's "Send" and "Discard" -->
+                <a href="/" class="btn btn-outline" style="padding:0.45rem 0.7rem;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;">Discard</a>
+                <button id="topSendBtn" class="btn" style="padding:0.45rem 0.9rem;border-radius:8px;display:inline-flex;align-items:center;">
+                    <i class="fas fa-paper-plane"></i>&nbsp;<span>Send</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- toolbar (font family, size) -->
+        <div class="compose-toolbar" style="padding:0.6rem 1rem;border-bottom:1px solid var(--border-color);background:#ffffff;">
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+                <select id="fontSelect" title="Font family" style="min-width:120px;">
+                    <option value="Inter, Arial, sans-serif">Inter</option>
+                    <option value="Poppins, Arial, sans-serif">Poppins</option>
+                    <option value="Times New Roman, serif">Times New Roman</option>
+                </select>
+                <select id="fontSizeSelect" title="Font size">
+                    <option value="14px">14</option>
+                    <option value="16px" selected>16</option>
+                    <option value="18px">18</option>
+                    <option value="20px">20</option>
+                </select>
+            </div>
+
+            <div style="flex:1;"></div>
+
+            <div class="compose-toolbar" style="align-items:center;">
+                <button type="button" class="icon-btn" title="Attach (not wired)" id="attachBtn"><i class="fas fa-paperclip"></i></button>
+                <button type="button" class="icon-btn" title="Insert emoji" id="emojiBtn"><i class="far fa-smile"></i></button>
+            </div>
+        </div>
+
+        <!-- Address fields -->
+        <div class="compose-address">
+            <form id="workUpdateForm" action="/work-update/send" method="post" style="display:flex;flex-direction:column;gap:0.6rem;">
+                <div class="row">
+                    <label for="from_email">From</label>
+                    <input type="email"
+                           id="from_email"
+                           name="from_email"
+                           value="{{ from_email or (user.email if user is defined and user.email is defined else '') }}"
+                           required
+                           readonly
+                           style="background:#f8fafc;">
+                </div>
+
+                <div class="row">
+                    <label for="to_email">To</label>
+                    <input type="text"
+                           id="to_email"
+                           name="to_email"
+                           value="{{ manager_email or '' }}"
+                           placeholder="manager@example.com"
+                           required>
+                    <button type="button" id="toggleCcBtn" class="btn btn-outline" style="padding:0.35rem 0.5rem;height:36px;">Cc</button>
+                    <button type="button" id="toggleBccBtn" class="btn btn-outline" style="padding:0.35rem 0.5rem;height:36px;">Bcc</button>
+                </div>
+
+                <div class="compose-cc-bcc" id="ccBccArea" style="">
+                    <div class="row">
+                        <label for="cc_email">Cc</label>
+                        <input type="text" id="cc_email" name="cc_email" placeholder="coworker@example.com">
+                    </div>
+                    <div class="row">
+                        <label for="bcc_email">Bcc</label>
+                        <input type="text" id="bcc_email" name="bcc_email" placeholder="hidden@example.com">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <label for="subject">Subject</label>
+                    <input type="text"
+                           id="subject"
+                           name="subject"
+                           value="{{ subject or '' }}"
+                           placeholder="e.g., Today's progress on XYZ">
+                </div>
+
+                <!-- editor toolbar -->
+                <div class="editor-toolbar" role="toolbar" aria-label="Editor toolbar">
+                    <button type="button" title="Bold" data-cmd="bold"><i class="fas fa-bold"></i></button>
+                    <button type="button" title="Italic" data-cmd="italic"><i class="fas fa-italic"></i></button>
+                    <button type="button" title="Underline" data-cmd="underline"><i class="fas fa-underline"></i></button>
+                    <button type="button" title="Bullet list" data-cmd="ul"><i class="fas fa-list-ul"></i></button>
+                    <button type="button" title="Numbered list" data-cmd="ol"><i class="fas fa-list-ol"></i></button>
+                    <button type="button" title="Insert link" data-cmd="link"><i class="fas fa-link"></i></button>
+
+                    <div style="flex:1;"></div>
+
+                    <div class="attachments" id="attachList" aria-hidden="true"></div>
+                </div>
+
+                <!-- editor body: we keep the textarea (name="body") so backend stays exactly the same.
+                     A hidden contenteditable is used as a lightweight WYSIWYG buffer.
+                     On submit we copy innerHTML/text to the textarea. -->
+                <div class="compose-editor">
+                    <div class="editor-body">
+                        <!-- WYSIWYG buffer (for richer typing) -->
+                        <div id="wysiwyg" contenteditable="true" style="min-height:220px;border:1px solid var(--border-color);border-radius:8px;padding:0.8rem;outline:none;font-size:16px;overflow:auto;">
+                            {{ body or '' }}
+                        </div>
+
+                        <!-- The form textarea that backend expects -->
+                        <textarea id="bodyTextarea" name="body" style="display:none;">{{ body or '' }}</textarea>
+                    </div>
+
+                    <div class="compose-actions">
+                        <div class="small-muted">Draft saved at <span id="draftTime">—</span></div>
+                        <div style="display:flex;gap:0.6rem;">
+                            <a href="/" class="btn btn-outline" style="padding:0.5rem 0.75rem;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;">Cancel</a>
+                            <button type="submit" id="sendBtn" class="btn" style="padding:0.55rem 0.9rem;border-radius:8px;"><i class="fas fa-paper-plane"></i>&nbsp;Send</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endif %}
+{# ===== end work update inline UI ===== #}
 
 <main class="container">
     {% block content %}{% endblock %}
@@ -529,7 +815,7 @@
         }
     });
 
-    // Profile dropdown logic
+    // Profile dropdown logic (unchanged)
     (function() {
         const profileBtn = document.getElementById('profileBtn');
         const dropdown = document.getElementById('profileDropdown');
@@ -580,6 +866,109 @@
             }
         }
     });
+
+
+    /************** Compose UI client-side behavior (keeps backend names intact) **************/
+    (function() {
+        // only run when on /work-update (form exists)
+        const form = document.getElementById('workUpdateForm');
+        if (!form) return;
+
+        const wysiwyg = document.getElementById('wysiwyg');
+        const textarea = document.getElementById('bodyTextarea');
+        const sendBtn = document.getElementById('sendBtn');
+        const topSendBtn = document.getElementById('topSendBtn');
+        const toggleCcBtn = document.getElementById('toggleCcBtn');
+        const toggleBccBtn = document.getElementById('toggleBccBtn');
+        const ccBccArea = document.getElementById('ccBccArea');
+        const fontSelect = document.getElementById('fontSelect');
+        const fontSizeSelect = document.getElementById('fontSizeSelect');
+        const editorToolbar = document.querySelector('.editor-toolbar');
+        const attachBtn = document.getElementById('attachBtn');
+        const attachList = document.getElementById('attachList');
+        const draftTimeEl = document.getElementById('draftTime');
+
+        // simple draft time display (client-only)
+        function showDraftSaved() {
+            const d = new Date();
+            draftTimeEl.textContent = d.toLocaleTimeString();
+        }
+        showDraftSaved();
+
+        // CC/BCC toggles
+        toggleCcBtn.addEventListener('click', function() {
+            ccBccArea.style.display = ccBccArea.style.display === 'flex' ? 'none' : 'flex';
+        });
+        toggleBccBtn.addEventListener('click', function() {
+            ccBccArea.style.display = ccBccArea.style.display === 'flex' ? 'none' : 'flex';
+        });
+
+        // apply font family / size to the wysiwyg buffer
+        fontSelect.addEventListener('change', function() {
+            wysiwyg.style.fontFamily = this.value;
+        });
+        fontSizeSelect.addEventListener('change', function() {
+            wysiwyg.style.fontSize = this.value;
+        });
+
+        // editor toolbar actions (basic)
+        editorToolbar.addEventListener('click', function(e) {
+            const btn = e.target.closest('button[data-cmd]');
+            if (!btn) return;
+            const cmd = btn.getAttribute('data-cmd');
+
+            if (cmd === 'bold') {
+                document.execCommand('bold');
+            } else if (cmd === 'italic') {
+                document.execCommand('italic');
+            } else if (cmd === 'underline') {
+                document.execCommand('underline');
+            } else if (cmd === 'ul') {
+                document.execCommand('insertUnorderedList');
+            } else if (cmd === 'ol') {
+                document.execCommand('insertOrderedList');
+            } else if (cmd === 'link') {
+                const url = prompt('Enter URL', 'https://');
+                if (url) document.execCommand('createLink', false, url);
+            }
+            wysiwyg.focus();
+        });
+
+        // Attach button: very light front-end simulation (does not upload)
+        attachBtn && attachBtn.addEventListener('click', function() {
+            const name = prompt('Enter attachment filename to simulate (UI only):', 'document.pdf');
+            if (name) {
+                const pill = document.createElement('span');
+                pill.className = 'attachment-pill';
+                pill.textContent = name;
+                attachList.appendChild(pill);
+                attachList.setAttribute('aria-hidden','false');
+            }
+        });
+
+        // send button at top mirrors the main send
+        topSendBtn && topSendBtn.addEventListener('click', function() {
+            sendBtn.click();
+        });
+
+        // before submit: copy WYSIWYG text (as HTML) into the textarea so backend receives it in "body"
+        form.addEventListener('submit', function(e) {
+            // copy innerHTML (or fallback to textContent)
+            // NOTE: this keeps field name "body" unchanged so backend processing is unaffected.
+            // If your backend expects plain text, you can strip tags server-side (recommended).
+            textarea.value = wysiwyg.innerHTML.trim();
+            // allow normal submission to proceed
+        });
+
+        // small accessibility: allow Ctrl+Enter to send
+        wysiwyg.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                sendBtn.click();
+            }
+        });
+
+    })();
 </script>
 
 {% block scripts %}{% endblock %}

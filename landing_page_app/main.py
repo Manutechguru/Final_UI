@@ -8,6 +8,22 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 from typing import Generator
+from landing_page_app.routers import work_update
+
+# ==============================
+# Load .env (if python-dotenv available)
+# ==============================
+# This ensures environment variables such as GOOGLE_CLIENT_ID,
+# GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, SMTP_USERNAME, etc.
+# are available to your application at runtime.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # loads variables from .env into environment
+except Exception:
+    # python-dotenv not installed or failed to load — continue without crashing.
+    # In that case, ensure env vars are provided by your deployment environment.
+    pass
+
 
 # ---------------------------------------------------
 # App creation
@@ -77,3 +93,4 @@ async def attach_user_to_request(request: Request, call_next):
 # Include all routers (delegated to router.py)
 # ---------------------------------------------------
 include_routers(app)
+app.include_router(work_update.router)
