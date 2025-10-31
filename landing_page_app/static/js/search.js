@@ -435,8 +435,7 @@ try {
         <td style="padding:12px; color:#374151;">${escapeHtml(email)}</td>
         <td style="padding:12px; color:#374151;">${escapeHtml(contact)}</td>
         <td style="padding:12px; color:#374151;">${escapeHtml(itExp)}</td>
-        <td style="padding:12px; text-align:center;"><div style="display:flex; gap:8px; align-items:center; justify-content:center;"><span class="ai-score-cell" data-id="${escapeHtml(cid)}" style="font-weight:800;">${escapeHtml(score)}</span><button type="button" class="ai-explain-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #e5e7eb; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button><button type="button" class="ai-reset-btn" data-id="${escapeHtml(cid)}" style="border:1px solid #ffe4e6; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Reset</button></div></td>
-        <td style="padding:12px;">${resume}</td>
+        <td style="padding:12px; text-align:center;"><div style="display:flex; gap:8px; align-items:center; justify-content:center;"><span class="ai-score-cell" data-id="${escapeHtml(cid)}" style="font-weight:800;">${escapeHtml(score)}</span>
         <td style="padding:12px; color:#374151;">${escapeHtml(loc)}</td>
       </tr>
     `;

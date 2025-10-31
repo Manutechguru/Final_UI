@@ -176,9 +176,7 @@
                   <td style="padding:12px; vertical-align:middle; color:#374151;">{{ candidate.it_experience or candidate.it_exp or 'N/A' }}</td>
                   <td style="padding:12px; vertical-align:middle; text-align:center;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                      <span class="ai-score-cell" data-id="{{ cid }}" style="font-weight:800;">{{ (candidate.score | default(candidate.ai_score)) }}</span>
-                      <button type="button" class="ai-explain-btn" data-id="{{ cid }}" title="Explain" style="border:1px solid #e5e7eb; background:#fff; padding:4px 6px; border-radius:6px; cursor:pointer; font-size:12px;">Explain</button>
-                    </div>
+                      <span class="ai-score-cell" data-id="{{ cid }}" style="font-weight:800;">{{ (candidate.score | default(candidate.ai_score)) }}</span>                    </div>
                   </td>
                   <td style="padding:12px; vertical-align:middle;">
                     {% if candidate.resumelinks %}

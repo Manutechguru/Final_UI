@@ -2,16 +2,13 @@
 """
 Robust search utilities for candidate search page.
 
-Exports:
-- parse_experience_filter_input
-- parse_text_experience_to_months
-- fetch_text_from_url
-- extract_jd_features
-- ai_match_jd_with_resumes
-
-Designed to be a drop-in replacement. Keeps function names/signatures used across the app.
+This file:
+- Extracts JD features (skills, experience, location, summary).
+- Calls a Gemini-like model with key rotation (if configured).
+- Scores candidates vs JD and enforces JD_MATCH_THRESHOLD (default 70).
+- Sends candidate resumes to the model in batches (default 10) and aggregates results.
+- Produces minimal model outputs (id + score) to drastically reduce latency.
 """
-
 from pathlib import Path
 import os
 import re
@@ -441,18 +438,19 @@ Extract the primary REQUIRED items and output ONLY a single JSON object with key
 Return strictly valid JSON object and nothing else.
 """
 
+# === MODIFIED: minimal scoring prompt (only id and score required) ===
 PROMPT_SCORE = """
 You are an expert technical recruiter. Compare the JOB_DESCRIPTION and each candidate's resume_text and profile below.
-Return a JSON array of objects. Each object must contain:
+Return a JSON array of objects. Each object MUST contain:
 - id (integer): candidate id as provided,
-- score (integer 0-100): how close the candidate is to the JD,
-- reasons (short string): 1-2 short sentences explaining main reasons for the score.
+- score (integer 0-100): how close the candidate is to the JD.
 
 Scoring guidance:
 - Skills: 60% of score
 - Experience: 25%
 - Location: 15%
-Output only a JSON array and nothing else.
+
+Return ONLY the JSON array. Do NOT produce explanations, reasons, or matched skills. No extra text.
 """
 
 def extract_jd_features(jd_text: str) -> Dict[str, str]:
@@ -488,7 +486,7 @@ def extract_jd_features(jd_text: str) -> Dict[str, str]:
         skills_raw = (parsed.get("skills") or "").strip()
         if skills_raw:
             # split conservatively on commas/newlines/semicolons
-            tokens = [s.strip() for s in re.split(r"[,;\n]+", skills_raw) if s.strip()]
+            tokens = [s.strip() for s in re.split(r"[,\n;]+", skills_raw) if s.strip()]
             # preserve order & dedupe
             skills = ", ".join(dict.fromkeys(tokens))
         else:
@@ -508,89 +506,137 @@ def extract_jd_features(jd_text: str) -> Dict[str, str]:
     logger.error("extract_jd_features: unable to parse JSON from model output")
     return {"skills": "", "experience": "", "location": "", "summary": ""}
 
-def ai_match_jd_with_resumes(jd_text: str, candidates: List[object]) -> List[Dict[str, Any]]:
-    if not candidates:
-        return []
+# -------------------------
+# helper: normalize candidate dict row shape used in payload
+# -------------------------
+def _build_candidate_payload_row(c) -> Dict[str, Any]:
+    cid = getattr(c, "candidates_id", None) or getattr(c, "candidate_id", None)
+    raw_links = getattr(c, "resumelinks", "") or ""
+    resume_text = ""
+    if raw_links and isinstance(raw_links, str):
+        parts = [p.strip() for p in re.split(r"[\n,;]+", raw_links) if p.strip()]
+        for link in parts:
+            try:
+                t = fetch_text_from_url(link)
+                if t:
+                    resume_text += " " + t
+            except Exception as e:
+                logger.debug("fetch resume %s for %s failed: %s", link, cid, e)
+    resume_text = _clean_text_whitespace(resume_text)
+    row = {
+        "id": int(cid) if cid is not None else None,
+        "name": getattr(c, "candidate_name", "") or getattr(c, "name", "") or "",
+        "email": getattr(c, "email", "") or "",
+        "contact": getattr(c, "contact", "") or "",
+        "location": getattr(c, "location", "") or "",
+        "skillset": getattr(c, "skillset", "") or "",
+        "it_experience": getattr(c, "it_experience", "") or getattr(c, "it_exp", "") or "",
+        "relevant_experience": getattr(c, "relevant_experience", "") or "",
+        "education": getattr(c, "education", "") or "",
+        "company": getattr(c, "company", "") or "",
+        "recruitment_notes": getattr(c, "recruitment_notes", "") or "",
+        "resume_text": resume_text[:200000] if resume_text else "",
+    }
+    return row
 
-    payload = []
-    id_to_row = {}
-    for c in candidates:
-        cid = getattr(c, "candidates_id", None) or getattr(c, "candidate_id", None)
-        raw_links = getattr(c, "resumelinks", "") or ""
-        resume_text = ""
-        if raw_links and isinstance(raw_links, str):
-            parts = [p.strip() for p in re.split(r"[\n,;]+", raw_links) if p.strip()]
-            for link in parts:
-                try:
-                    t = fetch_text_from_url(link)
-                    if t:
-                        resume_text += " " + t
-                except Exception as e:
-                    logger.debug("ai_match_jd_with_resumes: fetch resume %s for %s failed: %s", link, cid, e)
-        resume_text = _clean_text_whitespace(resume_text)
-        row = {
-            "id": int(cid) if cid is not None else None,
-            "name": getattr(c, "candidate_name", "") or getattr(c, "name", "") or "",
-            "email": getattr(c, "email", "") or "",
-            "contact": getattr(c, "contact", "") or "",
-            "location": getattr(c, "location", "") or "",
-            "skillset": getattr(c, "skillset", "") or "",
-            "it_experience": getattr(c, "it_experience", "") or getattr(c, "it_exp", "") or "",
-            "relevant_experience": getattr(c, "relevant_experience", "") or "",
-            "education": getattr(c, "education", "") or "",
-            "company": getattr(c, "company", "") or "",
-            "recruitment_notes": getattr(c, "recruitment_notes", "") or "",
-            "resume_text": resume_text[:200000] if resume_text else "",
-        }
-        payload.append(row)
-        id_to_row[row["id"]] = row
-
-    prompt = PROMPT_SCORE + "\n\nJOB_DESCRIPTION:\n" + (jd_text or "") + "\n\nCANDIDATES:\n" + json.dumps(payload, ensure_ascii=False)
-
-    try:
-        raw = _call_gemini_with_rotation(prompt, max_output_tokens=4096, temperature=0.25)
-    except Exception as e:
-        logger.error("ai_match_jd_with_resumes: model call failed (all keys tried): %s", e)
-        return []
-
-    parsed = None
+def _parse_model_array(raw: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    Try to extract a JSON array from the model's raw output.
+    Returns list or None.
+    """
+    if not raw:
+        return None
     match = re.search(r"(\[.*\])", raw, flags=re.S)
     if match:
         try:
-            parsed = json.loads(match.group(1))
+            return json.loads(match.group(1))
         except Exception:
-            parsed = None
-    if parsed is None:
-        try:
-            parsed = json.loads(raw)
-        except Exception:
-            parsed = None
+            pass
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return parsed
+    except Exception:
+        pass
+    return None
 
-    if not isinstance(parsed, list):
-        logger.error("ai_match_jd_with_resumes: model response not a JSON array")
+def ai_match_jd_with_resumes(jd_text: str, candidates: List[object], batch_size: int = 10, max_output_tokens_per_batch: int = 1024) -> List[Dict[str, Any]]:
+    """
+    Score candidates relative to jd_text using the model, sending resumes in batches.
+
+    - batch_size: how many candidates to send to the model per request (default 10)
+    - The model is asked to return only id and score for each batch (no explanations).
+    - Aggregates and returns rows similar to previous shape used by the app:
+        each row contains candidate fields (from DB object) and 'candidates_id', 'score'
+    - Only candidates with score >= JD_MATCH_THRESHOLD are returned.
+    """
+    if not candidates:
         return []
 
-    results = []
-    for item in parsed:
-        if not isinstance(item, dict):
-            continue
-        try:
-            cid = int(item.get("id"))
-        except Exception:
-            continue
-        try:
-            score = int(float(item.get("score", 0)))
-        except Exception:
-            score = 0
-        reasons = (item.get("reasons") or item.get("reason") or item.get("explanation") or "")[:2000]
-        if score >= JD_MATCH_THRESHOLD:
-            row = id_to_row.get(cid, {}).copy()
-            row.update({"candidates_id": cid, "score": max(0, min(100, score)), "reasons": reasons})
-            results.append(row)
+    # Build payload rows and id_to_row map
+    rows = []
+    id_to_row = {}
+    for c in candidates:
+        r = _build_candidate_payload_row(c)
+        rows.append(r)
+        id_to_row[r["id"]] = r
 
-    results.sort(key=lambda r: int(r.get("score", 0)), reverse=True)
-    return results
+    results_accum: Dict[int, int] = {}  # cid -> best score observed
+    # Query-level: split into batches
+    for i in range(0, len(rows), batch_size):
+        batch_rows = rows[i:i+batch_size]
+        payload = batch_rows  # list of dicts ready to json.dumps
+        prompt = PROMPT_SCORE + "\n\nJOB_DESCRIPTION:\n" + (jd_text or "") + "\n\nCANDIDATES:\n" + json.dumps(payload, ensure_ascii=False)
 
+        try:
+            raw = _call_gemini_with_rotation(prompt, max_output_tokens=max_output_tokens_per_batch, temperature=0.12)
+        except Exception as e:
+            logger.warning("ai_match_jd_with_resumes: model call failed for batch starting at %d: %s", i, e)
+            raw = ""
+
+        parsed = _parse_model_array(raw)
+        if not parsed:
+            # if parsing failed, try a conservative fallback: skip this batch
+            logger.debug("ai_match_jd_with_resumes: parsing returned none for batch starting at %d; raw starts: %.200s", i, (raw or "")[:200])
+            continue
+
+        # parsed should be an array of {id:..., score:...}
+        for item in parsed:
+            if not isinstance(item, dict):
+                continue
+            try:
+                cid = int(item.get("id"))
+            except Exception:
+                continue
+            try:
+                score = int(float(item.get("score", 0)))
+            except Exception:
+                score = 0
+            # keep the highest score if duplicate batches encountered
+            prev = results_accum.get(cid)
+            if prev is None or score > prev:
+                results_accum[cid] = max(0, min(100, score))
+
+    # Build final result list using id_to_row and applying JD_MATCH_THRESHOLD
+    out_rows: List[Dict[str, Any]] = []
+    for cid, score in results_accum.items():
+        if score < JD_MATCH_THRESHOLD:
+            continue
+        base = id_to_row.get(cid, {}).copy() if cid in id_to_row else {"id": cid}
+        # maintain backward-compatible field names
+        base.update({
+            "candidates_id": cid,
+            "score": score,
+            "ai_score": score,
+            # previously 'reasons' existed; we intentionally leave empty string (no verbose output).
+            "reasons": "",
+            "ai_explanation": "",
+        })
+        out_rows.append(base)
+
+    # Sort by score desc
+    out_rows.sort(key=lambda r: int(r.get("score", 0)), reverse=True)
+    return out_rows
 
 # -------------------------
 # Manual search helper: AI match using manual keywords
@@ -614,7 +660,7 @@ def _build_pseudo_jd_from_keywords(skills: str, experience: str, location: str) 
 def ai_match_keywords_with_resumes(skills: str, experience: str, location: str, candidates: List[Dict[str, Any]]):
     """Thin wrapper that reuses ai_match_jd_with_resumes with a pseudo-JD built
     from the manual search keywords. Returns a list of dicts with candidate ids
-    and AI scores/explanations, tolerant to schema differences.
+    and AI scores/explanations (ai_explanation will be empty string since we no longer ask for reasons).
     """
     jd_text = _build_pseudo_jd_from_keywords(skills, experience, location)
     raw = ai_match_jd_with_resumes(jd_text, candidates) or []
@@ -622,7 +668,7 @@ def ai_match_keywords_with_resumes(skills: str, experience: str, location: str, 
     for row in raw:
         cid = row.get("candidate_id") or row.get("candidates_id") or row.get("id")
         score = row.get("ai_score") or row.get("score")
-        expl = row.get("ai_explanation") or row.get("reasons") or row.get("explanation")
+        expl = row.get("ai_explanation") or row.get("reasons") or ""
         out.append({
             "candidate_id": cid,
             "ai_score": score,

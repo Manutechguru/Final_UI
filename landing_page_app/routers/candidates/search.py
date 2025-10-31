@@ -44,6 +44,14 @@ templates = Jinja2Templates(directory="landing_page_app/templates")
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 logger = logging.getLogger(__name__)
 
+# Try to import add_user_log; fallback to noop (keeps main flow safe)
+try:
+    from landing_page_app.models.log import add_user_log
+except Exception:
+    def add_user_log(db: Session, user_id: int, action: str, commit: bool = False):
+        # noop fallback
+        return None
+
 # -------------------------
 # Small helpers to tolerate schema differences
 # -------------------------
@@ -581,7 +589,7 @@ async def get_mapped_candidates(job_id: int, db: Session = Depends(get_db)):
 # Toggle link/unlink mapping (AJAX)
 # -------------------------
 @router.post("/toggle-link")
-async def toggle_candidate_link(payload: dict = Body(...), db: Session = Depends(get_db)):
+async def toggle_candidate_link(payload: dict = Body(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     candidate_id = payload.get("candidate_id")
     job_id = payload.get("job_id")
     linked = bool(payload.get("linked", False))
@@ -590,6 +598,7 @@ async def toggle_candidate_link(payload: dict = Body(...), db: Session = Depends
     if not candidate_id or not job_id:
         return JSONResponse({"message": "candidate_id and job_id required"}, status_code=400)
     try:
+        actor = getattr(current_user, "full_name", None) or getattr(current_user, "name", None) or getattr(current_user, "email", None) or "Unknown User"
         if linked:
             mapping = db.query(CandidateJDMapping).filter(
                 CandidateJDMapping.candidate_id == candidate_id,
@@ -603,27 +612,66 @@ async def toggle_candidate_link(payload: dict = Body(...), db: Session = Depends
                         db.add(mapping); db.commit()
                 except Exception:
                     db.rollback()
+                # log update as 'linked' (since mapping already existed)
+                try:
+                    cand = db.query(Candidate).filter(Candidate.candidates_id == int(candidate_id)).first()
+                    job = db.query(Job).filter(_first_column(Job, ["job_id", "id", "jobId"]) == job_id).first() if _first_column(Job, ["job_id", "id", "jobId"]) is not None else db.query(Job).filter(Job.job_id == job_id).first()
+                    cand_name = getattr(cand, "candidate_name", None) or str(candidate_id)
+                    job_title = _first_attr(job, ["job_title", "title", "jobTitle"]) or str(job_id)
+                    log_msg = f"user {actor} linked candidate {cand_name} under job {job_title}"
+                    try:
+                        add_user_log(db, getattr(current_user, "id", None), log_msg, commit=True)
+                    except Exception:
+                        try:
+                            db.rollback()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
                 return JSONResponse({"message": "Updated mapping", "mapping_id": getattr(mapping, "id", None) or getattr(mapping, "mapping_id", None)})
             # create mapping safely (do not pass unknown kwargs)
             new_map = CandidateJDMapping(candidate_id=candidate_id, jd_id=job_id)
             try:
                 if ai_score is not None:
-                    setattr(new_map, "ai_score", int(ai_score))
+                    try:
+                        setattr(new_map, "ai_score", int(ai_score))
+                    except Exception:
+                        setattr(new_map, "ai_score", ai_score)
             except Exception:
                 pass
             try:
                 db.add(new_map); db.commit()
+                # log the creation
+                try:
+                    cand = db.query(Candidate).filter(Candidate.candidates_id == int(candidate_id)).first()
+                    job = db.query(Job).filter(_first_column(Job, ["job_id", "id", "jobId"]) == job_id).first() if _first_column(Job, ["job_id", "id", "jobId"]) is not None else db.query(Job).filter(Job.job_id == job_id).first()
+                    cand_name = getattr(cand, "candidate_name", None) or str(candidate_id)
+                    job_title = _first_attr(job, ["job_title", "title", "jobTitle"]) or str(job_id)
+                    log_msg = f"user {actor} linked candidate {cand_name} under job {job_title}"
+                    try:
+                        add_user_log(db, getattr(current_user, "id", None), log_msg, commit=True)
+                    except Exception:
+                        try:
+                            db.rollback()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
             except Exception:
                 db.rollback()
             return JSONResponse({"message": "Linked candidate", "mapping_id": getattr(new_map, "id", None) or getattr(new_map, "mapping_id", None)})
         else:
+            # unlink: collect mapping info first so we can log after delete
             deleted = False
+            deleted_entries = []  # list of (candidate_id, jd_id)
             rows = db.query(CandidateJDMapping).filter(
                 CandidateJDMapping.candidate_id == candidate_id,
                 CandidateJDMapping.jd_id == job_id
             ).all()
             for r in rows:
                 try:
+                    deleted_entries.append((getattr(r, "candidate_id", None), getattr(r, "jd_id", None)))
                     db.delete(r)
                     deleted = True
                 except Exception:
@@ -633,6 +681,32 @@ async def toggle_candidate_link(payload: dict = Body(...), db: Session = Depends
         except Exception:
             db.rollback()
             return JSONResponse({"message": "Unlinked candidate", "deleted": deleted})
+
+        # write unlink logs after commit (best-effort)
+        try:
+            for (cid, jid) in deleted_entries:
+                try:
+                    cand = db.query(Candidate).filter(Candidate.candidates_id == int(cid)).first()
+                except Exception:
+                    cand = None
+                try:
+                    job = db.query(Job).filter(_first_column(Job, ["job_id", "id", "jobId"]) == jid).first() if _first_column(Job, ["job_id", "id", "jobId"]) is not None else db.query(Job).filter(Job.job_id == jid).first()
+                except Exception:
+                    job = None
+                cand_name = getattr(cand, "candidate_name", None) or str(cid or "")
+                job_title = _first_attr(job, ["job_title", "title", "jobTitle"]) or str(jid or "")
+                log_msg = f"{actor} unlinked candidate {cand_name} under job {job_title}"
+                try:
+                    add_user_log(db, getattr(current_user, "id", None), log_msg, commit=True)
+                except Exception:
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        return JSONResponse({"message": "Unlinked candidate", "deleted": deleted})
     except Exception as exc:
         db.rollback()
         return JSONResponse({"message": f"Toggle failed: {exc}"}, status_code=500)
@@ -808,13 +882,14 @@ async def ai_reset(payload: dict = Body(...), db: Session = Depends(get_db)):
         return JSONResponse({"message": f"Failed to reset: {exc}"}, status_code=500)
 
 @router.post("/link-to-jd")
-async def link_selected_candidates(payload: dict = Body(...), db: Session = Depends(get_db)):
+async def link_selected_candidates(payload: dict = Body(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     jd_id = payload.get("jd_id")
     candidate_ids = payload.get("candidate_id", []) or []
     ai_scores = payload.get("ai_scores", {}) or {}
     if not jd_id or not candidate_ids:
         return JSONResponse({"message": "jd_id and candidate_id list required"}, status_code=400)
     added = 0; updated = 0
+    created_entries = []  # for logging (list of tuples (cid, jd_id))
     for cid in candidate_ids:
         try:
             exists = db.query(CandidateJDMapping).filter(CandidateJDMapping.candidate_id == cid, CandidateJDMapping.jd_id == jd_id).first()
@@ -829,14 +904,43 @@ async def link_selected_candidates(payload: dict = Body(...), db: Session = Depe
                 try:
                     if score_val is not None: setattr(m, "ai_score", score_val)
                 except Exception: pass
-                try: db.add(m); added += 1
-                except Exception: db.rollback()
+                try:
+                    db.add(m); added += 1
+                    created_entries.append((cid, jd_id))
+                except Exception:
+                    db.rollback()
         except Exception:
             continue
     try:
         db.commit()
     except Exception:
         db.rollback()
+
+    # Logging (best-effort) for newly created mappings
+    try:
+        actor = getattr(current_user, "full_name", None) or getattr(current_user, "name", None) or getattr(current_user, "email", None) or "Unknown User"
+        for (cid, jid) in created_entries:
+            try:
+                cand = db.query(Candidate).filter(Candidate.candidates_id == int(cid)).first()
+            except Exception:
+                cand = None
+            try:
+                job = db.query(Job).filter(_first_column(Job, ["job_id", "id", "jobId"]) == jid).first() if _first_column(Job, ["job_id", "id", "jobId"]) is not None else db.query(Job).filter(Job.job_id == jid).first()
+            except Exception:
+                job = None
+            cand_name = getattr(cand, "candidate_name", None) or str(cid or "")
+            job_title = _first_attr(job, ["job_title", "title", "jobTitle"]) or str(jid or "")
+            log_msg = f"{actor} linked candidate {cand_name} under job {job_title}"
+            try:
+                add_user_log(db, getattr(current_user, "id", None), log_msg, commit=True)
+            except Exception:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     return JSONResponse({"message": f"Linked {len(candidate_ids)} candidates (created={added} updated={updated})."})
 
 # -------------------------
@@ -1028,7 +1132,6 @@ async def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
 
 # -------------------------
 # End of file
-# -------------------------
 
 
 # -------------------------
