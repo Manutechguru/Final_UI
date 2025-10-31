@@ -2,224 +2,440 @@
 {% block title %}Managers for {{ client.client_name }}{% endblock %}
 
 {% block content %}
-
-<link rel="stylesheet" href="{{ url_for('static', path='css/managers.css') }}">
-
-<div class="managers-container">
-  <div class="managers-header">
-    <h1>Client Managers | {{ client.client_name }}</h1>
-    
-    <div class="managers-actions">
-      <div class="managers-filter">
-        <button class="managers-filter-btn active" data-status="all">All Managers</button>
-        <button class="managers-filter-btn" data-status="active">Active</button>
-        <button class="managers-filter-btn" data-status="inactive">Inactive</button>
+<div class="flex min-h-screen" id="managersPageContainer">
+  <!-- Filter Sidebar -->
+  <aside id="filterSidebar" class="w-64 bg-white border-r border-gray-200 shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-300 fixed lg:static h-screen lg:h-auto z-40">
+    <div class="p-4">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-semibold text-gray-800">Filters</h3>
+        <button id="closeFilters" class="lg:hidden text-gray-500 hover:text-gray-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
       </div>
 
-      <button id="openManagerDialog" class="managers-btn add">Add Manager</button>
-    </div>
-  </div>
-
-  <!-- Manager Creation Dialog -->
-  <div class="managers-dialog-overlay" id="managerCreationDialog">
-    <div class="managers-dialog-content">
-      <div class="managers-dialog-header">
-        <h3>Create New Manager</h3>
-        <button class="managers-dialog-close" id="closeManagerDialog">&times;</button>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Search Manager</label>
+        <input id="searchManager" type="text" placeholder="Search by name" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
       </div>
-      
-      <form id="managerCreationForm" action="{{ url_for('add_new_manager', client_id=client.client_id) }}" method="POST" class="managers-form">
-        <div class="managers-form-group">
-          <label for="manager_name">Manager Name *</label>
-          <input type="text" name="manager_name" id="manager_name" placeholder="Enter Manager Name" required>
-        </div>
-        
-        <div class="managers-jobs-section">
-          <h4>Jobs</h4>
-          <div id="jobsContainer">
-            <div class="managers-job-entry" data-job-index="0">
-              <div class="managers-form-group">
-                <label for="job_title_0">Job Title *</label>
-                <input type="text" name="job_title" id="job_title_0" placeholder="Enter Job Title" required>
-              </div>
-              <div class="managers-form-group">
-                <label for="job_description_0">Job Description</label>
-                <textarea name="job_description" id="job_description_0" placeholder="Enter Job Description (Optional)"></textarea>
-              </div>
-              <button type="button" class="managers-remove-job" style="display: none;">Remove</button>
-            </div>
-          </div>
-          
-          <button type="button" id="addAnotherJob" class="managers-btn secondary">Add Another Job</button>
-        </div>
-        
-        <div class="managers-dialog-actions">
-          <button type="button" class="managers-btn secondary" id="cancelManagerCreation">Cancel</button>
-          <button type="submit" class="managers-btn add">Create Manager</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- Edit Manager Dialog -->
-  <div class="managers-dialog-overlay" id="managerEditDialog">
-    <div class="managers-dialog-content">
-      <div class="managers-dialog-header">
-        <h3>Edit Manager</h3>
-        <button class="managers-dialog-close" id="closeEditDialog">&times;</button>
+      <!-- Status Filter -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+        <select id="statusFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
       </div>
-      
-      <form id="managerEditForm" class="managers-form">
-        <div class="managers-form-group">
-          <label for="edit_manager_name">Manager Name *</label>
-          <input type="text" name="manager_name" id="edit_manager_name" placeholder="Enter Manager Name" required>
-        </div>
-        
-        <div class="managers-dialog-actions">
-          <button type="button" class="managers-btn secondary" id="cancelEdit">Cancel</button>
-          <button type="submit" class="managers-btn add">Update Manager</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- Add Job Dialog -->
-  <div class="managers-dialog-overlay" id="addJobDialog">
-    <div class="managers-dialog-content">
-      <div class="managers-dialog-header">
-        <h3>Add New Job</h3>
-        <button class="managers-dialog-close" id="closeAddJobDialog">&times;</button>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+        <select id="recentFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          <option value="oldest">Oldest First</option>
+          <option value="recent">Recently Created</option>
+        </select>
       </div>
-      
-      <form id="addJobForm" class="managers-form" method="POST" action="">
-        <input type="hidden" name="manager_id" id="addJobManagerId">
-        <div class="managers-form-group">
-          <label for="add_job_title">Job Title *</label>
-          <input type="text" name="job_title" id="add_job_title" placeholder="Enter Job Title" required>
-        </div>
-        <div class="managers-form-group">
-          <label for="add_job_description">Job Description</label>
-          <textarea name="job_description" id="add_job_description" placeholder="Enter Job Description (Optional)"></textarea>
-        </div>
-        
-        <div class="managers-dialog-actions">
-          <button type="button" class="managers-btn secondary" id="cancelAddJob">Cancel</button>
-          <button type="submit" class="managers-btn add">Add Job</button>
-        </div>
-      </form>
+
+      <button id="clearFilters" class="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium">
+        Clear Filters
+      </button>
     </div>
-  </div>
+  </aside>
 
-  <!-- Toast Notification -->
-  <div class="managers-toast" id="managersToast">
-    <span id="managersToastMessage"></span>
-    <button class="managers-toast-close">&times;</button>
-  </div>
+  <!-- Overlay for mobile -->
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden"></div>
 
-  <!-- Confirmation Dialog -->
-  <div class="managers-dialog-overlay" id="managersConfirmationDialog">
-    <div class="managers-dialog-content confirmation">
-      <div class="managers-dialog-icon">⚠️</div>
-      <h3 id="managersDialogTitle">Confirm Deletion</h3>
-      <p id="managersDialogMessage">Are you sure you want to delete this manager and all associated jobs?</p>
-      <div class="managers-dialog-actions">
-        <button class="managers-btn secondary" id="managersDialogCancel">Cancel</button>
-        <button class="managers-btn danger" id="managersDialogConfirm">Delete</button>
+  <!-- Main Content -->
+  <div class="flex-1 p-6 lg:p-8 main-content">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+      <div class="flex items-center mb-4 lg:mb-0">
+        <!-- Filter toggle -->
+        <button id="filterToggle" class="mr-3 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200" aria-pressed="false" title="Toggle filters">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
+          </svg>
+        </button>
+        <h2 class="text-2xl lg:text-3xl font-bold text-gray-800">Managers for {{ client.client_name }}</h2>
+      </div>
+      <div class="flex items-center gap-4">
+        <div id="activeFilters" class="flex flex-wrap gap-2 mb-4 lg:mb-0"></div>
+
+        <button id="openManagerDialog" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-md">
+          <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          Add Manager
+        </button>
       </div>
     </div>
-  </div>
 
-  {% set has_vendor_jobs = (request.app.router.routes | selectattr('name','equalto','vendor_jobs') | list) | length > 0 %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="table-wrap overflow-x-auto">
+        <table class="min-w-full table-auto border-collapse">
+          <thead class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+            <tr>
+              <th class="px-6 py-3 text-left text-sm font-semibold tracking-wide">Manager Name</th>
+              <th class="px-6 py-3 text-center text-sm font-semibold tracking-wide">Status</th>
+              <th class="px-6 py-3 text-center text-sm font-semibold tracking-wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="managersTableBody" class="divide-y divide-gray-200">
+            {% for m in managers %}
+            <tr class="manager-row"
+                data-manager-id="{{ m.manager_id }}"
+                data-manager-name="{{ m.manager_name }}"
+                data-status="{{ m.status }}"
+                data-created-at="{{ m.created_at.isoformat() if m.created_at else '' }}"
+                data-created-by="{{ m.created_by_name if m.created_by_name else m.created_by or 'N/A' }}"
+                data-updated-at="{{ m.updated_at.isoformat() if m.updated_at else '' }}"
+                data-updated-by="{{ m.updated_by_name if m.updated_by_name else m.updated_by or 'N/A' }}">
+              
+              <!-- Manager Name -->
+              <td class="manager-name-text pl-10 py-4 text-left">
+                {{ m.manager_name }}
+              </td>
 
-  <div class="managers-table-container">
-    <table class="managers-table" id="managersTable" data-client-id="{{ client.client_id }}">
-      <thead>
-        <tr>
-          <th>Manager Name</th>
-          <th>Created By</th>
-          <th>Created At</th>
-          <th>Updated By</th>
-          <th>Updated At</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for m in managers %}
-        <tr class="manager-row" id="manager-{{ m.manager_id }}" data-status="{{ m.status }}">
-          <td class="manager-name">
-            <span class="manager-name-text">{{ m.manager_name }}</span>
-          </td>
-          <td class="manager-created-by">
-            <span class="manager-meta-value">{{ m.created_by_name if m.created_by_name else m.created_by or 'N/A' }}</span>
-          </td>
-          <td class="manager-created-at">
-            <span class="manager-meta-ts">{% if m.created_at %}{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}{% else %}N/A{% endif %}</span>
-          </td>
-          <td class="manager-updated-by">
-            <span class="manager-meta-value">{{ m.updated_by_name if m.updated_by_name else m.updated_by or 'N/A' }}</span>
-          </td>
-          <td class="manager-updated-at">
-            <span class="manager-meta-ts">{% if m.updated_at %}{{ m.updated_at.strftime('%Y-%m-%d %H:%M') }}{% else %}N/A{% endif %}</span>
-          </td>
-          <td class="manager-status">
-            <div class="manager-status-container">
-              <label class="manager-switch">
-                <input type="checkbox" 
-                       class="manager-toggle-input"
-                       data-toggle-url="{{ url_for('toggle_manager_status_route', manager_id=m.manager_id) }}"
-                       data-name="{{ m.manager_name | e }}"
-                       {% if m.status == 'active' %}checked{% endif %}>
-                <span class="manager-switch-slider"></span>
-              </label>
-              <span class="manager-status-badge {{ 'active' if m.status=='active' else 'inactive' }}">
-                {{ m.status|capitalize }}
-              </span>
-            </div>
-          </td>
-          <td class="manager-actions">
-            <div class="manager-action-buttons">
-              <a class="managers-btn view-jobs" href="{{ url_for('vendor_jobs', manager_id=m.manager_id) if has_vendor_jobs else ('/jobs/vendor/' ~ m.manager_id) }}">
-                View Jobs
-              </a>
-              <div class="manager-dropdown">
-                <button class="manager-dropdown-btn" title="More actions">⋮</button>
-                <div class="manager-dropdown-content">
-                  <button class="manager-add-job" 
-                          data-manager-id="{{ m.manager_id }}"
-                          data-manager-name="{{ m.manager_name | e }}"
-                          data-add-job-url="{{ url_for('add_job_from_list', manager_id=m.manager_id) }}">
-                    Add Job
-                  </button>
-                  <button class="manager-edit" 
-                          data-edit-url="{{ url_for('edit_manager_route', manager_id=m.manager_id) }}" 
-                          data-name="{{ m.manager_name | e }}"
-                          data-manager-id="{{ m.manager_id }}">
-                    Edit
-                  </button>
-                  <button class="manager-delete" 
-                          data-delete-url="{{ url_for('delete_manager_route', manager_id=m.manager_id) }}" 
-                          data-name="{{ m.manager_name | e }}">
-                    Delete
-                  </button>
+              <!-- Status -->
+              <td class="px-6 py-4 text-center align-middle">
+                <div class="flex items-center justify-center gap-2">
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox"
+                           class="sr-only peer manager-toggle-input"
+                           data-toggle-url="{{ url_for('toggle_manager_status_route', manager_id=m.manager_id) }}"
+                           data-name="{{ m.manager_name | e }}"
+                           data-manager-id="{{ m.manager_id }}"
+                           {% if m.status == 'active' %}checked{% endif %}>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full
+                                peer peer-checked:after:translate-x-full peer-checked:after:border-white
+                                after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                after:bg-white after:border-gray-300 after:border after:rounded-full
+                                after:h-5 after:w-5 after:transition-all
+                                peer-checked:bg-green-600">
+                    </div>
+                  </label>
+                  <!-- Updated badge to plain text only with black color and larger font -->
+                  <span class="manager-status-text text-sm font-medium text-gray-900">
+                    {{ m.status|capitalize }}
+                  </span>
                 </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="7" class="managers-empty">
-            <div class="no-managers-message">
-              No managers found for this client.
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+              </td>
+
+              <!-- Actions -->
+              <td class="px-6 py-4 text-center align-middle">
+                <div class="flex items-center justify-center gap-2">
+                  <!-- View Jobs Button -->
+                  <a href="{{ url_for('vendor_jobs', manager_id=m.manager_id) }}" 
+                     class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">
+                    View Jobs
+                  </a>
+
+                  <!-- Dropdown wrapper with relative -->
+                  <div class="dropdown-container relative">
+                    <!-- 3-dot vertical toggle button -->
+                    <button class="dropdown-toggle px-2 py-1 rounded hover:bg-gray-100 focus:outline-none" aria-expanded="false">
+                      <svg class="w-5 h-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 4a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
+                      </svg>
+                    </button>
+
+                    <!-- Dropdown menu -->
+                    <div class="dropdown-menu hidden w-44 bg-white shadow-lg rounded-lg border border-gray-200 py-2 z-50 absolute right-0 mt-1">
+                      <!-- View Details -->
+                      <button class="view-details-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              data-manager-id="{{ m.manager_id }}"
+                              data-manager-name="{{ m.manager_name }}"
+                              data-created-by="{{ m.created_by }}"
+                              data-created-at="{{ m.created_at }}"
+                              data-updated-by="{{ m.updated_by }}"
+                              data-updated-at="{{ m.updated_at }}">
+                        View Details
+                      </button>
+
+                      <!-- Add Job -->
+                      <button class="manager-add-job block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
+                              data-manager-id="{{ m.manager_id }}"
+                              data-add-job-url="{{ url_for('add_job_from_list', manager_id=m.manager_id) }}">
+                        Add Job
+                      </button>
+
+                      <!-- Edit -->
+                      <button class="manager-edit edit-manager-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
+                              data-edit-url="{{ url_for('edit_manager_route', manager_id=m.manager_id) }}"
+                              data-name="{{ m.manager_name | e }}"
+                              data-manager-id="{{ m.manager_id }}">
+                        Edit
+                      </button>
+
+                      <!-- Delete -->
+                      <button class="manager-delete instant-delete-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                              data-delete-url="{{ url_for('delete_manager_route', manager_id=m.manager_id) }}"
+                              data-name="{{ m.manager_name | e }}"
+                              data-manager-id="{{ m.manager_id }}">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" class="px-6 py-8 text-center text-gray-500">No managers found for this client.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="loadingState" class="hidden p-8 text-center">
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div>
+      <p class="mt-4 text-gray-600">Loading managers...</p>
+    </div>
+
+    <div id="emptyState" class="hidden p-8 text-center">
+      <p class="text-gray-600">No managers found. Try adjusting filters.</p>
+    </div>
   </div>
 </div>
 
+<!-- NEW Manager Creation Dialog with updated design -->
+<div id="managerCreationDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded-lg w-full max-w-3xl p-6 shadow-lg">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-semibold text-gray-900">Create New Manager</h2>
+      <button id="closeManagerDialog" class="text-gray-500 hover:text-gray-700">
+        ✕
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form id="managerCreationForm" action="{{ url_for('add_new_manager', client_id=client.client_id) }}" method="POST">
+      <!-- Manager Name -->
+      <label class="block text-gray-600 font-medium mb-1">Manager Name *</label>
+      <input type="text" name="manager_name" id="manager_name" required 
+             class="w-full border border-gray-300 rounded-md p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+      <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="manager_name_error">
+        <span class="text-red-600 text-sm font-medium">⚠ Please enter a manager name</span>
+      </div>
+
+      <!-- Jobs Section -->
+      <div class="mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Jobs</h3>
+        <div id="jobsContainer">
+          <div class="managers-job-entry bg-gray-50 border border-gray-200 rounded-md p-4 mb-4" data-job-index="0">
+            <label class="block text-gray-600 font-medium mb-1">Job Title *</label>
+            <input type="text" name="job_title" id="job_title_0" required 
+                   class="w-full border border-gray-300 rounded-md p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="job_title_0_error">
+              <span class="text-red-600 text-sm font-medium">⚠ Please enter a job title</span>
+            </div>
+
+            <label class="block text-gray-600 font-medium mb-1">Job Description</label>
+            <textarea name="job_description" id="job_description_0" 
+                      class="w-full border border-gray-300 rounded-md p-3 h-28 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"></textarea>
+            <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="job_description_0_error">
+              <span class="text-red-600 text-sm font-medium">⚠ Please enter a job description</span>
+            </div>
+            <button type="button" class="managers-remove-job text-red-600 hover:text-red-800 font-medium hidden">Remove Job</button>
+          </div>
+        </div>
+        
+        <!-- Add Another Job Button -->
+        <button type="button" id="addAnotherJob" 
+                class="flex items-center gap-2 border border-gray-300 rounded-md px-4 py-2 font-medium text-gray-700 hover:bg-gray-50 mb-6">
+          <span class="text-xl">+</span> Add Another Job
+        </button>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="flex justify-end gap-4">
+        <button type="button" id="cancelManagerCreation" 
+                class="text-gray-600 hover:text-gray-800 font-medium">Cancel</button>
+        <button type="submit" 
+                class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 font-medium">
+          Create Manager
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Manager Dialog with updated design -->
+<div id="editManagerModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded-lg w-full max-w-md p-6 shadow-lg">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-semibold text-gray-900">Edit Manager</h2>
+      <button class="edit-modal-close text-gray-500 hover:text-gray-700">
+        ✕
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form id="editManagerForm" class="managers-form">
+      <input type="hidden" id="editManagerId" name="manager_id">
+      
+      <label class="block text-gray-600 font-medium mb-1">Manager Name *</label>
+      <input type="text" id="editManagerName" name="manager_name" required 
+             class="w-full border border-gray-300 rounded-md p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+      <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="editManagerName_error">
+        <span class="text-red-600 text-sm font-medium">⚠ Please enter a manager name</span>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="flex justify-end gap-4">
+        <button type="button" class="edit-modal-cancel text-gray-600 hover:text-gray-800 font-medium">Cancel</button>
+        <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 font-medium">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Manager Details Modal with updated design -->
+<div id="managerDetailsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded-lg w-full max-w-md p-6 shadow-lg">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-semibold text-gray-900">Manager Details</h2>
+      <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+        ✕
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="space-y-4">
+      <div>
+        <label class="block text-gray-600 font-medium mb-1">Name</label>
+        <p class="text-gray-900" id="modalManagerName">-</p>
+      </div>
+      <div>
+        <label class="block text-gray-600 font-medium mb-1">Created By</label>
+        <p class="text-gray-900" id="modalCreatedBy">-</p>
+      </div>
+      <div>
+        <label class="block text-gray-600 font-medium mb-1">Created At</label>
+        <p class="text-gray-900" id="modalCreatedAt">-</p>
+      </div>
+      <div>
+        <label class="block text-gray-600 font-medium mb-1">Updated By</label>
+        <p class="text-gray-900" id="modalUpdatedBy">-</p>
+      </div>
+      <div>
+        <label class="block text-gray-600 font-medium mb-1">Updated At</label>
+        <p class="text-gray-900" id="modalUpdatedAt">-</p>
+      </div>
+    </div>
+
+    <!-- Footer Buttons -->
+    <div class="flex justify-end gap-4 mt-6">
+      <button type="button" id="closeDetailsButton" 
+              class="text-gray-600 hover:text-gray-800 font-medium">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Job Dialog with updated design -->
+<div id="addJobDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded-lg w-full max-w-md p-6 shadow-lg">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-semibold text-gray-900">Add New Job</h2>
+      <button id="closeAddJobDialog" class="text-gray-500 hover:text-gray-700">
+        ✕
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form id="addJobForm" class="managers-form" method="POST" action="">
+      <input type="hidden" name="manager_id" id="addJobManagerId">
+      
+      <label class="block text-gray-600 font-medium mb-1">Job Title *</label>
+      <input type="text" name="job_title" id="add_job_title" required 
+             class="w-full border border-gray-300 rounded-md p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+      <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="add_job_title_error">
+        <span class="text-red-600 text-sm font-medium">⚠ Please enter a job title</span>
+      </div>
+
+      <label class="block text-gray-600 font-medium mb-1">Job Description</label>
+      <textarea name="job_description" id="add_job_description" 
+                class="w-full border border-gray-300 rounded-md p-3 h-28 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"></textarea>
+      <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="add_job_description_error">
+        <span class="text-red-600 text-sm font-medium">⚠ Please enter a job description</span>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="flex justify-end gap-4">
+        <button type="button" id="cancelAddJob" 
+                class="text-gray-600 hover:text-gray-800 font-medium">Cancel</button>
+        <button type="submit" 
+                class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 font-medium">
+          Add Job
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal with new_arrivals design -->
+<div id="confirmDeleteModal" class="hidden fixed inset-0 z-50 items-center justify-center">
+  <div class="absolute inset-0 bg-black opacity-40"></div>
+  <div class="relative bg-white max-w-md w-full mx-4 rounded-lg shadow-lg z-10">
+    <div class="p-4 border-b">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold">Confirm Delete</h3>
+        <button class="confirm-cancel p-2 rounded hover:bg-gray-100">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0 bg-pink-50 rounded-lg p-3">
+          <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-gray-900 mb-1">Are you sure you want to delete this manager?</p>
+          <p class="text-gray-600">This action cannot be undone.</p>
+          <div class="mt-3 bg-red-50 border border-red-200 rounded-md p-3">
+            <p class="text-red-800 font-medium text-center" id="deleteManagerName">
+              <!-- Manager name will be inserted here -->
+            </p>
+          </div>
+          <p class="text-red-600 text-sm mt-3">
+            ⚠ All associated jobs and data will be permanently removed.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 border-t flex items-center justify-end gap-3">
+      <button class="confirm-cancel bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">Cancel</button>
+      <button id="confirmDeleteBtn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete Manager</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="managers-toast" id="managersToast">
+  <div class="flex items-center gap-3">
+    <div id="managersToastIcon"></div>
+    <span id="managersToastMessage" class="font-medium"></span>
+  </div>
+  <button class="managers-toast-close">&times;</button>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', path='css/managers.css') }}">
 <script src="{{ url_for('static', path='js/managers.js') }}"></script>
+
 {% endblock %}

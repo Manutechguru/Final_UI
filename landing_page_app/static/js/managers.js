@@ -1,18 +1,50 @@
 // static/js/managers.js
 document.addEventListener("DOMContentLoaded", () => {
   const managers = {
-    table: document.getElementById('managersTable'),
-    filterButtons: document.querySelectorAll('.managers-filter-btn'),
     toast: document.getElementById('managersToast'),
     toastMessage: document.getElementById('managersToastMessage'),
-    toastClose: document.querySelector('.managers-toast-close'),
-    confirmationDialog: document.getElementById('managersConfirmationDialog'),
-    dialogTitle: document.getElementById('managersDialogTitle'),
-    dialogMessage: document.getElementById('managersDialogMessage'),
-    dialogCancel: document.getElementById('managersDialogCancel'),
-    dialogConfirm: document.getElementById('managersDialogConfirm'),
-    pendingDelete: null
+    toastIcon: document.getElementById('managersToastIcon'),
+    toastClose: document.querySelector('.managers-toast-close')
   };
+
+  // Filter Sidebar Elements
+  const filterSidebar = document.getElementById('filterSidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  const filterToggle = document.getElementById('filterToggle');
+  const closeFilters = document.getElementById('closeFilters');
+  const mainContent = document.querySelector('.mainContent');
+  const searchManager = document.getElementById('searchManager');
+  const statusFilter = document.getElementById('statusFilter');
+  const recentFilter = document.getElementById('recentFilter');
+  const clearFilters = document.getElementById('clearFilters');
+  const activeFilters = document.getElementById('activeFilters');
+  const managersTableBody = document.getElementById('managersTableBody');
+  const loadingState = document.getElementById('loadingState');
+  const emptyState = document.getElementById('emptyState');
+
+  let desktopSidebarHidden = false;
+
+  // Modal Elements
+  const managerDetailsModal = document.getElementById("managerDetailsModal");
+  const modalManagerName = document.getElementById("modalManagerName");
+  const modalCreatedAt = document.getElementById("modalCreatedAt");
+  const modalCreatedBy = document.getElementById("modalCreatedBy");
+  const modalUpdatedAt = document.getElementById("modalUpdatedAt");
+  const modalUpdatedBy = document.getElementById("modalUpdatedBy");
+
+  // Delete Confirmation Modal Elements
+  const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+  const deleteManagerName = document.getElementById('deleteManagerName');
+  const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+  const cancelDeleteBtns = document.querySelectorAll('.confirm-cancel');
+
+  // Edit Manager Modal Elements
+  const editManagerModal = document.getElementById('editManagerModal');
+  const editManagerForm = document.getElementById('editManagerForm');
+  const editManagerId = document.getElementById('editManagerId');
+  const editManagerName = document.getElementById('editManagerName');
+  const editModalClose = document.querySelector('.edit-modal-close');
+  const editModalCancel = document.querySelector('.edit-modal-cancel');
 
   // Manager Creation Dialog Elements
   const managerCreationDialog = document.getElementById('managerCreationDialog');
@@ -32,22 +64,493 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentManagerId = null;
   let currentManagerName = null;
 
-  // Track toggle states to prevent unwanted changes
-  const toggleStates = new Map();
+  // Delete Confirmation Variables
+  let currentDeleteManagerId = null;
+  let currentDeleteManagerName = null;
+  let currentDeleteButton = null;
+
+  // Modal toggle functions
+  function toggleModal(modal, show) {
+    if (show) {
+      modal.classList.remove('hidden');
+    } else {
+      modal.classList.add('hidden');
+    }
+  }
+
+  // Filter toggle functionality
+  function initFilterToggle() {
+    if (!filterToggle || !filterSidebar) return;
+
+    filterToggle.addEventListener('click', () => {
+      if (window.innerWidth >= 1024) {
+        desktopSidebarHidden = !desktopSidebarHidden;
+        if (desktopSidebarHidden) {
+          filterSidebar.classList.add('hidden-desktop');
+          mainContent.classList.add('expanded-by-sidebar');
+          filterToggle.setAttribute('aria-pressed', 'true');
+        } else {
+          filterSidebar.classList.remove('hidden-desktop');
+          mainContent.classList.remove('expanded-by-sidebar');
+          filterToggle.setAttribute('aria-pressed', 'false');
+        }
+      } else {
+        const isOpen = !filterSidebar.classList.contains('-translate-x-full');
+        if (isOpen) {
+          filterSidebar.classList.add('-translate-x-full');
+          sidebarOverlay.classList.add('hidden');
+        } else {
+          filterSidebar.classList.remove('-translate-x-full');
+          sidebarOverlay.classList.remove('hidden');
+        }
+      }
+    });
+
+    closeFilters.addEventListener('click', () => {
+      filterSidebar.classList.add('-translate-x-full');
+      sidebarOverlay.classList.add('hidden');
+    });
+
+    sidebarOverlay.addEventListener('click', () => {
+      filterSidebar.classList.add('-translate-x-full');
+      sidebarOverlay.classList.add('hidden');
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 1024) {
+        sidebarOverlay.classList.add('hidden');
+        if (desktopSidebarHidden) {
+          filterSidebar.classList.add('hidden-desktop');
+        } else {
+          filterSidebar.classList.remove('hidden-desktop');
+        }
+      } else {
+        filterSidebar.classList.add('-translate-x-full');
+        sidebarOverlay.classList.add('hidden');
+      }
+    });
+  }
+
+  // Initialize filter sidebar functionality
+  function initFilterSidebar() {
+    if (!filterToggle || !filterSidebar) return;
+
+    // Filter event listeners
+    if (searchManager) {
+      searchManager.addEventListener('input', debounce(applyFilters, 300));
+    }
+
+    if (statusFilter) {
+      statusFilter.addEventListener('change', applyFilters);
+    }
+
+    if (recentFilter) {
+      recentFilter.addEventListener('change', applyFilters);
+    }
+
+    if (clearFilters) {
+      clearFilters.addEventListener('click', () => {
+        if (searchManager) searchManager.value = '';
+        if (statusFilter) statusFilter.value = '';
+        if (recentFilter) recentFilter.value = 'oldest';
+        applyFilters();
+      });
+    }
+  }
+
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  function applyFilters() {
+    if (!managersTableBody) return;
+
+    if (loadingState) loadingState.classList.remove('hidden');
+    if (emptyState) emptyState.classList.add('hidden');
+
+    updateActiveFilters();
+
+    try {
+      const managerRows = Array.from(managersTableBody.querySelectorAll('.manager-row'));
+      let filteredRows = [...managerRows];
+
+      // --- Search filter ---
+      if (searchManager && searchManager.value.trim()) {
+        const term = searchManager.value.toLowerCase().trim();
+        filteredRows = filteredRows.filter(row => {
+          const nameEl = row.querySelector('.manager-name-text');
+          return nameEl && nameEl.textContent.toLowerCase().includes(term);
+        });
+      }
+
+      // --- Status filter ---
+      if (statusFilter && statusFilter.value && statusFilter.value !== 'all') {
+        const statusVal = statusFilter.value.toLowerCase();
+        filteredRows = filteredRows.filter(row => (row.dataset.status || '').toLowerCase() === statusVal);
+      }
+
+      // --- Recent/Oldest sorting ---
+      if (recentFilter && recentFilter.value) {
+        filteredRows.sort((a, b) => {
+          const dateA = parseDate(a.dataset.createdAt);
+          const dateB = parseDate(b.dataset.createdAt);
+
+          if (recentFilter.value === 'recent') {
+            // Recently Created: newest first (descending)
+            return dateB - dateA;
+          } else if (recentFilter.value === 'oldest') {
+            // Oldest First: oldest first (ascending)
+            return dateA - dateB;
+          }
+          return 0;
+        });
+      }
+
+      // --- Show/hide rows ---
+      managerRows.forEach(row => {
+        row.style.display = filteredRows.includes(row) ? '' : 'none';
+      });
+
+      // --- Reorder the table based on filtered/sorted rows ---
+      filteredRows.forEach(row => {
+        managersTableBody.appendChild(row);
+      });
+
+      // --- Empty state ---
+      if (emptyState) {
+        const anyVisible = filteredRows.length > 0;
+        emptyState.classList.toggle('hidden', anyVisible);
+      }
+    } catch (err) {
+      console.error('Error filtering managers:', err);
+      if (emptyState) emptyState.classList.remove('hidden');
+    } finally {
+      if (loadingState) loadingState.classList.add('hidden');
+    }
+  }
+
+  // Helper function to parse dates safely
+  function parseDate(dateString) {
+    if (!dateString) return 0;
+    
+    // Try parsing ISO format first
+    let timestamp = Date.parse(dateString);
+    if (!isNaN(timestamp)) return timestamp;
+    
+    return 0; // Return 0 for invalid dates
+  }
+
+  function updateActiveFilters() {
+    if (!activeFilters) return;
+    activeFilters.innerHTML = '';
+
+    if (searchManager && searchManager.value.trim()) {
+      addActiveFilterBadge('Search', searchManager.value, 'search');
+    }
+    if (statusFilter && statusFilter.value) {
+      addActiveFilterBadge('Status', statusFilter.value, 'status');
+    }
+    if (recentFilter && recentFilter.value === 'recent') {
+      addActiveFilterBadge('Sort', 'Recently Created', 'recent');
+    }
+  }
+
+  function addActiveFilterBadge(label, value, type) {
+    const badge = document.createElement('div');
+    badge.className = 'bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm flex items-center border border-gray-200';
+    badge.innerHTML = `
+      <span class="font-medium">${label}:</span>
+      <span class="ml-1">${value}</span>
+      <button type="button" class="ml-2 text-gray-600 hover:text-gray-800 font-bold" data-filter-type="${type}">&times;</button>
+    `;
+    activeFilters.appendChild(badge);
+    
+    badge.querySelector('button').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFilter(type);
+    });
+  }
+
+  function removeFilter(type) {
+    switch(type) {
+      case 'search': 
+        if (searchManager) searchManager.value = ''; 
+        break;
+      case 'status': 
+        if (statusFilter) statusFilter.value = ''; 
+        break;
+      case 'recent': 
+        if (recentFilter) recentFilter.value = 'oldest'; 
+        break;
+    }
+    applyFilters();
+  }
+
+  // Initialize delete confirmation functionality
+  function initDeleteConfirmation() {
+    if (!confirmDeleteModal) return;
+
+    // Confirm delete button handler
+    confirmDeleteBtn.addEventListener('click', performDeletion);
+    
+    // Modal close handlers
+    cancelDeleteBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggleModal(confirmDeleteModal, false);
+        resetDeleteContext();
+      });
+    });
+    
+    // Close modal when clicking outside
+    confirmDeleteModal.addEventListener('click', (e) => {
+      if (e.target === confirmDeleteModal) {
+        toggleModal(confirmDeleteModal, false);
+        resetDeleteContext();
+      }
+    });
+  }
+
+  // Initialize edit manager modal functionality
+  function initEditManagerModal() {
+    if (!editManagerModal) return;
+
+    // Close modal handlers
+    editModalClose.addEventListener('click', () => toggleModal(editManagerModal, false));
+    editModalCancel.addEventListener('click', () => toggleModal(editManagerModal, false));
+
+    // Close modal when clicking outside
+    editManagerModal.addEventListener('click', (e) => {
+      if (e.target === editManagerModal) {
+        toggleModal(editManagerModal, false);
+      }
+    });
+
+    // Form submission handler
+    editManagerForm.addEventListener('submit', handleEditManager);
+  }
+
+  function openEditModal(managerId, managerName, editUrl) {
+    // Set form values
+    editManagerId.value = managerId;
+    editManagerName.value = managerName;
+    
+    // Clear any validation errors
+    editManagerName.classList.remove('error');
+    const errorElement = document.getElementById('editManagerName_error');
+    if (errorElement) {
+      errorElement.classList.add('hidden');
+    }
+    
+    // Store edit URL in form dataset
+    editManagerForm.dataset.editUrl = editUrl;
+    
+    // Show modal
+    toggleModal(editManagerModal, true);
+    editManagerName.focus();
+    
+    // Close any open dropdowns
+    closeAllDropdowns();
+  }
+
+  async function handleEditManager(e) {
+    e.preventDefault();
+    
+    const managerId = editManagerId.value;
+    const editUrl = editManagerForm.dataset.editUrl;
+    const newName = editManagerName.value.trim();
+    
+    // Validation
+    if (!newName) { 
+      editManagerName.classList.add('error');
+      const errorElement = document.getElementById('editManagerName_error');
+      if (errorElement) {
+        errorElement.classList.remove('hidden');
+      }
+      showToast('Manager name is required', true); 
+      return; 
+    }
+
+    const saveBtn = editManagerForm.querySelector('button[type="submit"]');
+    const originalText = saveBtn.textContent;
+    
+    try {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+        Saving...
+      `;
+      
+      const formData = new FormData();
+      formData.append('manager_name', newName);
+      formData.append('manager_id', managerId);
+
+      const response = await fetch(editUrl, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+      
+      // Try to parse as JSON, but if it fails, assume success
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If it's not JSON, assume the update was successful
+        data = { success: true, manager_name: newName };
+      }
+      
+      if (data.success || response.ok) {
+        // Update UI for all manager elements with this ID
+        const managerElements = document.querySelectorAll(`.manager-row[data-manager-id="${managerId}"]`);
+        
+        managerElements.forEach(managerElement => {
+          // Update name
+          const nameElement = managerElement.querySelector('.manager-name-text');
+          if (nameElement) nameElement.textContent = data.manager_name || newName;
+          
+          // Update the data-name attribute on the edit button
+          const editBtn = managerElement.querySelector('.edit-manager-btn');
+          if (editBtn) {
+            editBtn.dataset.name = data.manager_name || newName;
+          }
+          
+          // Update the data-name attribute on the delete button
+          const deleteBtn = managerElement.querySelector('.manager-delete');
+          if (deleteBtn) {
+            deleteBtn.dataset.name = data.manager_name || newName;
+          }
+        });
+        
+        showToast(data.message || `Manager "${data.manager_name || newName}" updated successfully`);
+        toggleModal(editManagerModal, false);
+      } else {
+        throw new Error(data.message || 'Failed to update manager');
+      }
+      
+    } catch(err) {
+      console.error('Edit manager error:', err);
+      
+      // If there's an error but the update actually worked (common with Flask redirects)
+      // We'll still update the UI and show success message
+      if (err.message.includes('redirect') || response && response.ok) {
+        // Update UI anyway since the request was successful
+        const managerElements = document.querySelectorAll(`.manager-row[data-manager-id="${managerId}"]`);
+        
+        managerElements.forEach(managerElement => {
+          const nameElement = managerElement.querySelector('.manager-name-text');
+          if (nameElement) nameElement.textContent = newName;
+          
+          const editBtn = managerElement.querySelector('.edit-manager-btn');
+          if (editBtn) editBtn.dataset.name = newName;
+          
+          const deleteBtn = managerElement.querySelector('.manager-delete');
+          if (deleteBtn) deleteBtn.dataset.name = newName;
+        });
+        
+        showToast(`Manager "${newName}" updated successfully`);
+        toggleModal(editManagerModal, false);
+      } else {
+        showToast('Error updating manager: ' + err.message, true);
+      }
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `Save Changes`;
+    }
+  }
+
+  function showDeleteConfirmation(managerName) {
+    // Update modal content with manager name
+    deleteManagerName.textContent = managerName;
+    
+    // Show modal
+    toggleModal(confirmDeleteModal, true);
+  }
+
+  async function performDeletion() {
+    if (!currentDeleteManagerId || !currentDeleteButton) return;
+
+    const managerId = currentDeleteManagerId;
+    const managerName = currentDeleteManagerName;
+    const deleteUrl = currentDeleteButton.dataset.deleteUrl;
+
+    // Get ALL manager elements
+    const managerElements = document.querySelectorAll(`.manager-row[data-manager-id="${managerId}"]`);
+    
+    // Add deleting class to ALL elements
+    managerElements.forEach(managerElement => {
+      managerElement.classList.add('deleting');
+    });
+
+    // Close modal
+    toggleModal(confirmDeleteModal, false);
+
+    try {
+      const res = await fetch(deleteUrl, {
+        method: "POST",
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (res.ok) {
+        setTimeout(() => {
+          // Remove ALL manager elements
+          managerElements.forEach(managerElement => {
+            managerElement.remove();
+          });
+          showToast(`"${managerName}" deleted successfully`);
+        }, 400);
+      } else {
+        // Remove deleting class if failed
+        managerElements.forEach(managerElement => {
+          managerElement.classList.remove('deleting');
+        });
+        showToast('Failed to delete manager', true);
+      }
+    } catch (err) {
+      console.error("Error deleting manager:", err);
+      // Remove deleting class if error
+      managerElements.forEach(managerElement => {
+        managerElement.classList.remove('deleting');
+      });
+      showToast('Network error', true);
+    } finally {
+      resetDeleteContext();
+    }
+  }
+
+  function resetDeleteContext() {
+    currentDeleteManagerId = null;
+    currentDeleteManagerName = null;
+    currentDeleteButton = null;
+  }
 
   // Initialize manager creation functionality
   function initManagerCreationDialog() {
     if (!managerCreationDialog) return;
     
     openManagerDialogBtn.addEventListener('click', () => {
-      managerCreationDialog.classList.add('active');
+      toggleModal(managerCreationDialog, true);
       managerCreationForm.reset();
       resetJobFields();
       document.getElementById('manager_name').focus();
     });
     
     function closeManagerDialog() {
-      managerCreationDialog.classList.remove('active');
+      toggleModal(managerCreationDialog, false);
     }
     
     closeManagerDialogBtn.addEventListener('click', closeManagerDialog);
@@ -72,7 +575,26 @@ document.addEventListener("DOMContentLoaded", () => {
       currentManagerName = managerName;
       addJobForm.reset();
       
-      // ✅ FIXED: Use the provided URL from data attribute
+      // Clear any previous validation errors
+      const titleInput = document.getElementById('add_job_title');
+      const descInput = document.getElementById('add_job_description');
+      if (titleInput) {
+        titleInput.classList.remove('error');
+      }
+      if (descInput) {
+        descInput.classList.remove('error');
+      }
+      
+      const titleError = document.getElementById('add_job_title_error');
+      const descError = document.getElementById('add_job_description_error');
+      if (titleError) {
+        titleError.classList.add('hidden');
+      }
+      if (descError) {
+        descError.classList.add('hidden');
+      }
+      
+      // Use the provided URL from data attribute
       if (addJobUrl) {
         addJobForm.action = addJobUrl;
       } else {
@@ -80,18 +602,17 @@ document.addEventListener("DOMContentLoaded", () => {
         addJobForm.action = `/clients/vendors/vendors/${managerId}/add-job-from-list`;
       }
       
-      addJobDialog.classList.add('active');
-      document.getElementById('add_job_title').focus();
+      toggleModal(addJobDialog, true);
       
-      // Update dialog title to show manager name
-      const dialogTitle = addJobDialog.querySelector('h3');
-      if (dialogTitle) {
-        dialogTitle.textContent = `Add Job - ${managerName}`;
-      }
+      // Focus on title field after a small delay to ensure dialog is visible
+      setTimeout(() => {
+        const titleInput = document.getElementById('add_job_title');
+        if (titleInput) titleInput.focus();
+      }, 100);
     }
 
     function closeAddJobDialog() {
-      addJobDialog.classList.remove('active');
+      toggleModal(addJobDialog, false);
       currentManagerId = null;
       currentManagerName = null;
     }
@@ -108,35 +629,56 @@ document.addEventListener("DOMContentLoaded", () => {
     addJobForm.addEventListener('submit', handleAddJob);
 
     // Add event listener for add job buttons
-    if (managers.table) {
-      managers.table.addEventListener('click', (e) => {
-        const addJobBtn = e.target.closest('.manager-add-job');
-        if (addJobBtn) {
-          e.preventDefault();
-          const managerId = addJobBtn.dataset.managerId;
-          const managerName = addJobBtn.dataset.managerName;
-          const addJobUrl = addJobBtn.dataset.addJobUrl;
-          
-          if (!managerId) {
-            showToast('Manager ID is missing!', true);
-            return;
-          }
-          
-          openAddJobDialog(managerId, managerName, addJobUrl);
+    document.addEventListener('click', (e) => {
+      const addJobBtn = e.target.closest('.manager-add-job');
+      if (addJobBtn) {
+        e.preventDefault();
+        const managerId = addJobBtn.dataset.managerId;
+        const managerName = addJobBtn.dataset.managerName;
+        const addJobUrl = addJobBtn.dataset.addJobUrl;
+        
+        if (!managerId) {
+          showToast('Manager ID is missing!', true);
+          return;
         }
-      });
-    }
+        
+        openAddJobDialog(managerId, managerName, addJobUrl);
+      }
+    });
   }
 
   async function handleAddJob(e) {
     e.preventDefault();
     
-    const formData = new FormData(addJobForm);
-    const jobTitle = formData.get('job_title')?.trim();
-    const jobDescription = formData.get('job_description')?.trim() || '';
+    const titleInput = document.getElementById('add_job_title');
+    const descInput = document.getElementById('add_job_description');
+    
+    const jobTitle = titleInput ? titleInput.value.trim() : '';
+    const jobDescription = descInput ? descInput.value.trim() : '';
+
+    // Validation for both fields
+    let hasErrors = false;
 
     if (!jobTitle) {
-      showToast('Job title is required!', true);
+      titleInput.classList.add('error');
+      const errorElement = document.getElementById('add_job_title_error');
+      if (errorElement) {
+        errorElement.classList.remove('hidden');
+      }
+      hasErrors = true;
+    }
+
+    if (!jobDescription) {
+      descInput.classList.add('error');
+      const errorElement = document.getElementById('add_job_description_error');
+      if (errorElement) {
+        errorElement.classList.remove('hidden');
+      }
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
+      showToast('Please fill in all required fields', true);
       return;
     }
 
@@ -145,7 +687,16 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const submitBtn = addJobForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
     try {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+        Adding...
+      `;
+
       const body = new URLSearchParams({
         job_title: jobTitle,
         job_description: jobDescription
@@ -161,117 +712,238 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      if (response.ok) {
-        showToast(`Job "${jobTitle}" added successfully to ${currentManagerName}!`);
-        addJobDialog.classList.remove('active');
-        
-        // ✅ FIXED: Don't reload the page, just update the UI
-        // This prevents toggle state issues
-        updateManagerRowAfterJobAdd(currentManagerId, jobTitle);
-        
+      // Handle both JSON and HTML responses properly
+      const contentType = response.headers.get('content-type');
+      let responseData;
+
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json();
       } else {
-        const errorText = await response.text();
-        let errorMessage = 'Failed to add job';
+        // If it's not JSON, it might be a redirect or HTML response
+        const textResponse = await response.text();
         
+        // Try to parse as JSON anyway (in case content-type is wrong)
         try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.detail || errorData.message || errorMessage;
+          responseData = JSON.parse(textResponse);
         } catch {
-          errorMessage = errorText || errorMessage;
+          // If it's not JSON, check if the request was successful
+          if (response.ok) {
+            // Assume success for non-JSON responses with OK status
+            responseData = { success: true };
+          } else {
+            // If not successful and not JSON, create error object
+            responseData = { 
+              success: false, 
+              message: textResponse || 'Failed to add job' 
+            };
+          }
         }
-        
-        showToast(errorMessage, true);
       }
+
+      if (response.ok) {
+        // Check both response.ok and responseData.success
+        if (responseData.success !== false) {
+          showToast(`Job "${jobTitle}" added successfully to ${currentManagerName}!`);
+          toggleModal(addJobDialog, false);
+        } else {
+          // Handle server-side validation errors
+          const errorMessage = responseData.message || responseData.detail || 'Failed to add job';
+          
+          // Check for duplicate job error messages
+          if (errorMessage.toLowerCase().includes('already exists') || 
+              errorMessage.toLowerCase().includes('duplicate')) {
+            showToast(`Job "${jobTitle}" already exists for this manager!`, true);
+          } else {
+            showToast(errorMessage, true);
+          }
+        }
+      } else {
+        // Handle HTTP error status
+        const errorMessage = responseData.message || responseData.detail || `Failed to add job (HTTP ${response.status})`;
+        
+        // Check for duplicate job error messages
+        if (errorMessage.toLowerCase().includes('already exists') || 
+            errorMessage.toLowerCase().includes('duplicate')) {
+          showToast(`Job "${jobTitle}" already exists for this manager!`, true);
+        } else {
+          showToast(errorMessage, true);
+        }
+      }
+
     } catch (err) {
       console.error('Error adding job:', err);
       showToast('Network error adding job: ' + err.message, true);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `Add Job`;
     }
   }
 
-  // ✅ UPDATED: Properly update manager row with new job as active
-  function updateManagerRowAfterJobAdd(managerId, jobTitle) {
-    const managerRow = document.querySelector(`.manager-row[data-manager-id="${managerId}"]`);
-    if (!managerRow) return;
-
-    // Find the jobs container for this manager
-    // Look for common job container selectors
-    let jobsContainer = managerRow.querySelector('.jobs-list, .manager-jobs, .jobs-container, tbody');
+  // Enhanced manager creation with better error handling
+  async function handleManagerCreation(e) {
+    e.preventDefault();
     
-    if (!jobsContainer) {
-      // If no specific jobs container found, try to find a table or list structure
-      jobsContainer = managerRow.querySelector('table, ul, ol, .job-entries');
-      
-      // If still not found, create a basic container
-      if (!jobsContainer) {
-        console.warn('No jobs container found for manager, creating one');
-        jobsContainer = document.createElement('div');
-        jobsContainer.className = 'jobs-list';
-        managerRow.appendChild(jobsContainer);
+    const formData = new FormData(managerCreationForm);
+    const managerName = formData.get('manager_name').trim();
+    
+    // Validate manager name
+    if (!managerName) {
+      const managerNameInput = document.getElementById('manager_name');
+      managerNameInput.classList.add('error');
+      const errorElement = document.getElementById('manager_name_error');
+      if (errorElement) {
+        errorElement.classList.remove('hidden');
       }
+      showToast('Manager name is required!', true);
+      return;
     }
 
-    // Create a new job row with active status by default
-    const jobRow = document.createElement('div');
-    jobRow.className = 'job-row';
-    jobRow.dataset.jobTitle = jobTitle;
-    jobRow.dataset.status = 'active';
-
-    // Create job row HTML - adjust based on your actual job row structure
-    jobRow.innerHTML = `
-      <div class="job-info">
-        <span class="job-title">${jobTitle}</span>
-        <span class="job-status-badge active">Active</span>
-      </div>
-      <div class="job-actions">
-        <label class="manager-toggle">
-          <input type="checkbox" class="job-toggle-input" data-status="active" checked>
-          <span class="manager-toggle-slider"></span>
-        </label>
-      </div>
-    `;
-
-    // Append the new job row
-    jobsContainer.appendChild(jobRow);
-
-    // ✅ Track toggle state for the new job
-    const jobToggle = jobRow.querySelector('.job-toggle-input');
-    if (jobToggle) {
-      const jobId = `job-${Date.now()}`; // Generate a temporary ID
-      jobRow.dataset.jobId = jobId;
-      toggleStates.set(jobId, true);
-      
-      // Add toggle event listener for the new job
-      jobToggle.addEventListener('change', handleJobToggleChange);
-    }
-
-    console.log(`Job "${jobTitle}" added to manager ${managerId} with active status`);
-  }
-
-  // ✅ NEW: Handle job toggle changes
-  function handleJobToggleChange(e) {
-    const jobToggle = e.target;
-    const jobRow = jobToggle.closest('.job-row');
-    const jobTitle = jobRow?.querySelector('.job-title')?.textContent;
-    const statusBadge = jobRow?.querySelector('.job-status-badge');
+    // Get all job entries and validate them
+    const jobEntries = document.querySelectorAll('.managers-job-entry');
+    let hasJobErrors = false;
+    const jobTitles = [];
     
-    if (jobRow && statusBadge) {
-      const newStatus = jobToggle.checked ? 'active' : 'inactive';
+    jobEntries.forEach((entry, index) => {
+      const titleInput = entry.querySelector(`#job_title_${index}`);
+      const descInput = entry.querySelector(`#job_description_${index}`);
+      const titleError = entry.querySelector(`#job_title_${index}_error`);
+      const descError = entry.querySelector(`#job_description_${index}_error`);
       
-      // Update UI
-      jobRow.dataset.status = newStatus;
-      statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
-      statusBadge.className = 'job-status-badge ' + newStatus;
+      const jobTitle = titleInput ? titleInput.value.trim() : '';
+      const jobDescription = descInput ? descInput.value.trim() : '';
       
-      // Update toggle state
-      const jobId = jobRow.dataset.jobId;
-      if (jobId) {
-        toggleStates.set(jobId, jobToggle.checked);
+      // Clear previous errors
+      if (titleInput) titleInput.classList.remove('error');
+      if (descInput) descInput.classList.remove('error');
+      if (titleError) titleError.classList.add('hidden');
+      if (descError) descError.classList.add('hidden');
+      
+      // Validate job title
+      if (!jobTitle) {
+        if (titleInput) titleInput.classList.add('error');
+        if (titleError) titleError.classList.remove('hidden');
+        hasJobErrors = true;
       }
       
-      console.log(`Job "${jobTitle}" status changed to ${newStatus}`);
+      // Validate job description
+      if (!jobDescription) {
+        if (descInput) descInput.classList.add('error');
+        if (descError) descError.classList.remove('hidden');
+        hasJobErrors = true;
+      }
       
-      // Here you can add API call to update job status on backend if needed
-      // await updateJobStatus(jobId, newStatus);
+      if (jobTitle) {
+        jobTitles.push(jobTitle);
+      }
+    });
+    
+    if (hasJobErrors) {
+      showToast('Please fill in all required job fields', true);
+      return;
+    }
+
+    if (jobTitles.length === 0) {
+      showToast('At least one job is required!', true);
+      return;
+    }
+
+    // Check for duplicate job titles in the form itself
+    const uniqueTitles = new Set(jobTitles.map(title => title.toLowerCase().trim()));
+    if (uniqueTitles.size !== jobTitles.length) {
+      showToast('Duplicate job titles are not allowed in the same manager!', true);
+      return;
+    }
+
+    const submitBtn = managerCreationForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+        Creating...
+      `;
+
+      const response = await fetch(managerCreationForm.action, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+      });
+
+      // Handle both JSON and HTML responses properly
+      const contentType = response.headers.get('content-type');
+      let responseData;
+
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else {
+        // If it's not JSON, it might be a redirect or HTML response
+        const textResponse = await response.text();
+        
+        // Try to parse as JSON anyway (in case content-type is wrong)
+        try {
+          responseData = JSON.parse(textResponse);
+        } catch {
+          // If it's not JSON, check if the request was successful
+          if (response.ok) {
+            // Assume success for non-JSON responses with OK status
+            responseData = { success: true };
+          } else {
+            // If not successful and not JSON, create error object
+            responseData = { 
+              success: false, 
+              message: textResponse || 'Failed to add manager' 
+            };
+          }
+        }
+      }
+      
+      if (response.ok) {
+        if (responseData.success !== false) {
+          showToast(`Manager "${managerName}" created successfully with ${jobTitles.length} job(s)`);
+          toggleModal(managerCreationDialog, false);
+          
+          // Reload the page to show the new manager
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          // Handle server-side validation errors
+          const errorMessage = responseData.message || responseData.detail || 'Failed to add manager';
+          
+          // Check for duplicate job error messages
+          if (errorMessage.toLowerCase().includes('already exists') || 
+              errorMessage.toLowerCase().includes('duplicate')) {
+            
+            // Extract job title from error message if possible
+            const jobMatch = errorMessage.match(/job[^"]*"([^"]+)"/i);
+            const duplicateJob = jobMatch ? jobMatch[1] : 'a job';
+            showToast(`Job "${duplicateJob}" already exists! Please use a different job title.`, true);
+          } else {
+            showToast(errorMessage, true);
+          }
+        }
+      } else {
+        // Handle HTTP error status
+        const errorMessage = responseData.message || responseData.detail || `Failed to add manager (HTTP ${response.status})`;
+        
+        // Check for duplicate job error messages
+        if (errorMessage.toLowerCase().includes('already exists') || 
+            errorMessage.toLowerCase().includes('duplicate')) {
+          
+          const jobMatch = errorMessage.match(/job[^"]*"([^"]+)"/i);
+          const duplicateJob = jobMatch ? jobMatch[1] : 'a job';
+          showToast(`Job "${duplicateJob}" already exists! Please use a different job title.`, true);
+        } else {
+          showToast(errorMessage, true);
+        }
+      }
+    } catch (err) {
+      console.error('Error creating manager:', err);
+      showToast('Network error adding manager: ' + err.message, true);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `Create Manager`;
     }
   }
   
@@ -287,19 +959,24 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!jobsContainer) return;
     
     const jobEntry = document.createElement('div');
-    jobEntry.className = 'managers-job-entry';
+    jobEntry.className = 'managers-job-entry bg-gray-50 border border-gray-200 rounded-md p-4 mb-4';
     jobEntry.setAttribute('data-job-index', jobIndex);
     
     jobEntry.innerHTML = `
-      <div class="managers-form-group">
-        <label for="job_title_${jobIndex}">Job Title *</label>
-        <input type="text" name="job_title" id="job_title_${jobIndex}" placeholder="Enter Job Title" required>
+      <label class="block text-gray-600 font-medium mb-1">Job Title *</label>
+      <input type="text" name="job_title" id="job_title_${jobIndex}" required 
+             class="w-full border border-gray-300 rounded-md p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+      <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="job_title_${jobIndex}_error">
+        <span class="text-red-600 text-sm font-medium">⚠️ Please enter a job title</span>
       </div>
-      <div class="managers-form-group">
-        <label for="job_description_${jobIndex}">Job Description</label>
-        <textarea name="job_description" id="job_description_${jobIndex}" placeholder="Enter Job Description (Optional)"></textarea>
+
+      <label class="block text-gray-600 font-medium mb-1">Job Description</label>
+      <textarea name="job_description" id="job_description_${jobIndex}" 
+                class="w-full border border-gray-300 rounded-md p-3 h-28 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"></textarea>
+      <div class="field-error bg-red-50 border border-red-200 rounded px-3 py-2 mb-4 hidden" id="job_description_${jobIndex}_error">
+        <span class="text-red-600 text-sm font-medium">⚠️ Please enter a job description</span>
       </div>
-      ${jobIndex > 0 ? '<button type="button" class="managers-remove-job">Remove</button>' : ''}
+      ${jobIndex > 0 ? '<button type="button" class="managers-remove-job text-red-600 hover:text-red-800 font-medium">Remove Job</button>' : ''}
     `;
     
     jobsContainer.appendChild(jobEntry);
@@ -325,60 +1002,251 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-  
-  async function handleManagerCreation(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(managerCreationForm);
-    const managerName = formData.get('manager_name');
-    
-    const jobTitles = formData.getAll('job_title').filter(title => title.trim() !== '');
-    if (jobTitles.length === 0) {
-      showToast('At least one job title is required!', true);
-      return;
-    }
-    
-    try {
-      const response = await fetch(managerCreationForm.action, {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin'
-      });
-      
-      if (response.ok) {
-        showToast(`Manager "${managerName}" created successfully with ${jobTitles.length} job(s)`);
-        managerCreationDialog.classList.remove('active');
-        
-        // ✅ FIXED: Only reload if necessary, otherwise update UI directly
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        const errorText = await response.text();
-        let errorMessage = 'Failed to add manager';
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.detail || errorData.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        
-        showToast(errorMessage, true);
+
+  // Close all dropdowns
+  function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+      // Return menu to its original container
+      const originalContainer = menu._originalContainer;
+      if (originalContainer && !originalContainer.contains(menu)) {
+        originalContainer.appendChild(menu);
       }
-    } catch (err) {
-      console.error('Error creating manager:', err);
-      showToast('Network error adding manager: ' + err.message, true);
-    }
+
+      menu.classList.remove('show');
+      menu.classList.add('hidden');
+      menu.style.top = '';
+      menu.style.left = '';
+    });
+
+    document.querySelectorAll('.dropdown-toggle').forEach(btn => {
+      btn.setAttribute('aria-expanded', 'false');
+    });
   }
 
-  
-  // Show toast notification
+  function initDropdowns() {
+    document.querySelectorAll('.dropdown-toggle').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const container = btn.closest('.dropdown-container');
+        const menu = container.querySelector('.dropdown-menu');
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+
+        // Close any other open dropdowns first
+        closeAllDropdowns();
+
+        if (!expanded) {
+          // Save where the menu originally came from
+          menu._originalContainer = container;
+
+          // Move menu to body
+          document.body.appendChild(menu);
+
+          // Calculate position (right side of button)
+          const rect = btn.getBoundingClientRect();
+          const scrollTop = window.scrollY || document.documentElement.scrollTop;
+          const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+
+          menu.style.position = 'absolute';
+          menu.style.top = `${rect.top + scrollTop}px`;
+          menu.style.left = `${rect.right + scrollLeft + 8}px`; // 8px gap
+
+          menu.classList.remove('hidden');
+          menu.classList.add('show');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', closeAllDropdowns);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllDropdowns();
+    });
+
+    // Reposition while scrolling if open
+    window.addEventListener('scroll', () => {
+      const openMenu = document.querySelector('.dropdown-menu.show');
+      if (openMenu) {
+        const btn = document.querySelector('.dropdown-toggle[aria-expanded="true"]');
+        if (btn) {
+          const rect = btn.getBoundingClientRect();
+          openMenu.style.top = `${rect.top + window.scrollY}px`;
+          openMenu.style.left = `${rect.right + window.scrollX + 8}px`;
+        }
+      }
+    }, { passive: true });
+  }
+
+  // Toggle status functionality - UPDATED FOR BLACK TEXT AND LARGER FONT
+  function initToggleStatus() {
+    document.addEventListener('change', async (e) => {
+      if (e.target.classList.contains('manager-toggle-input')) {
+        const toggle = e.target;
+        const managerId = toggle.dataset.managerId;
+        const managerName = toggle.dataset.name;
+        const toggleUrl = toggle.dataset.toggleUrl;
+        const isActive = toggle.checked;
+        
+        try {
+          const response = await fetch(toggleUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+              status: isActive ? 'active' : 'inactive'
+            })
+          });
+
+          if (response.ok) {
+            // Update the status badge and data attribute - BLACK TEXT AND LARGER FONT
+            const managerRow = document.querySelector(`.manager-row[data-manager-id="${managerId}"]`);
+            if (managerRow) {
+              managerRow.dataset.status = isActive ? 'active' : 'inactive';
+              
+              // Update status badge - BLACK TEXT AND LARGER FONT FOR BOTH STATUSES
+              const statusBadge = managerRow.querySelector('.manager-status-text');
+              if (statusBadge) {
+                statusBadge.textContent = isActive ? 'Active' : 'Inactive';
+                // UPDATED: Black text color and larger font size for both active and inactive
+                statusBadge.className = `manager-status-text text-sm font-medium text-gray-900`;
+              }
+            }
+            
+            showToast(`Manager "${managerName}" ${isActive ? 'activated' : 'deactivated'} successfully`);
+          } else {
+            // Revert the toggle if the request failed
+            toggle.checked = !isActive;
+            showToast('Failed to update manager status', true);
+          }
+        } catch (err) {
+          console.error('Error toggling manager status:', err);
+          // Revert the toggle on error
+          toggle.checked = !isActive;
+          showToast('Network error updating status', true);
+        }
+      }
+    });
+  }
+
+  // Delegated click for menu actions
+  function initTableEventHandlers() {
+    document.addEventListener('click', async (e) => {
+      // Handle edit with popup modal
+      const edt = e.target.closest('.edit-manager-btn');
+      if (edt) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const managerId = edt.dataset.managerId;
+        const managerName = edt.dataset.name;
+        const editUrl = edt.dataset.editUrl;
+        
+        if (!managerId || !editUrl) {
+          showToast('Manager ID or edit URL is missing!', true);
+          return;
+        }
+        
+        openEditModal(managerId, managerName, editUrl);
+        return;
+      }
+
+      // Handle delete with confirmation popup
+      const del = e.target.closest('.manager-delete');
+      if (del) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const managerId = del.dataset.managerId;
+        const managerName = del.dataset.name || 'Unnamed Manager';
+        
+        // Store current deletion context
+        currentDeleteManagerId = managerId;
+        currentDeleteManagerName = managerName;
+        currentDeleteButton = del;
+        
+        // Close any open dropdowns
+        closeAllDropdowns();
+        
+        // Show confirmation modal
+        showDeleteConfirmation(managerName);
+        return;
+      }
+
+      // Handle view details action
+      const viewDetails = e.target.closest('.view-details-btn');
+      if (viewDetails) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Fill modal fields with dataset values
+        modalManagerName.textContent = viewDetails.dataset.managerName || '-';
+        modalCreatedBy.textContent = viewDetails.dataset.createdBy || '-';
+        modalCreatedAt.textContent = viewDetails.dataset.createdAt || '-';
+        modalUpdatedBy.textContent = viewDetails.dataset.updatedBy || '-';
+        modalUpdatedAt.textContent = viewDetails.dataset.updatedAt || '-';
+
+        // Show modal
+        toggleModal(managerDetailsModal, true);
+        
+        // Close any open dropdowns
+        closeAllDropdowns();
+        return;
+      }
+
+      // Handle view jobs action
+      const viewJobs = e.target.closest('.view-jobs');
+      if (viewJobs) {
+        // Let the default link behavior happen
+        return;
+      }
+    });
+  }
+
+  // View Details Modal handlers
+  function initViewDetailsModal() {
+    const closeModalBtn = document.getElementById('closeModal');
+    const closeDetailsBtn = document.getElementById('closeDetailsButton');
+
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener('click', () => toggleModal(managerDetailsModal, false));
+    }
+    if (closeDetailsBtn) {
+      closeDetailsBtn.addEventListener('click', () => toggleModal(managerDetailsModal, false));
+    }
+
+    managerDetailsModal.addEventListener('click', (e) => {
+      if (e.target === managerDetailsModal) {
+        toggleModal(managerDetailsModal, false);
+      }
+    });
+  }
+
+  // Enhanced toast notification with icons
   function showToast(message, isError = false) {
-    if (!managers.toastMessage || !managers.toast) return;
+    if (!managers.toastMessage || !managers.toast || !managers.toastIcon) return;
     
     managers.toastMessage.textContent = message;
-    managers.toast.className = isError ? 'managers-toast error' : 'managers-toast';
+    
+    if (isError) {
+      managers.toast.className = 'managers-toast error';
+      managers.toastIcon.innerHTML = `
+        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+        </svg>
+      `;
+    } else {
+      managers.toast.className = 'managers-toast';
+      managers.toastIcon.innerHTML = `
+        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+      `;
+    }
+    
     managers.toast.style.display = 'flex';
     
     setTimeout(() => {
@@ -392,325 +1260,52 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Show confirmation dialog
-  function showConfirmationDialog(title, message, confirmCallback) {
-    if (!managers.dialogTitle || !managers.dialogMessage || !managers.confirmationDialog) return;
-    
-    managers.dialogTitle.textContent = title;
-    managers.dialogMessage.textContent = message;
-    managers.confirmationDialog.classList.add('active');
-    
-    const confirmHandler = () => {
-      managers.confirmationDialog.classList.remove('active');
-      confirmCallback();
-      managers.dialogConfirm.removeEventListener('click', confirmHandler);
-      managers.dialogCancel.removeEventListener('click', cancelHandler);
-    };
-    
-    const cancelHandler = () => {
-      managers.confirmationDialog.classList.remove('active');
-      managers.dialogConfirm.removeEventListener('click', confirmHandler);
-      managers.dialogCancel.removeEventListener('click', cancelHandler);
-    };
-    
-    managers.dialogConfirm.addEventListener('click', confirmHandler);
-    managers.dialogCancel.addEventListener('click', cancelHandler);
-  }
-
   if (managers.toastClose) {
     managers.toastClose.addEventListener('click', hideToast);
   }
 
-  // ✅ FIXED: Initialize toggle states from current DOM
-  function initializeToggleStates() {
-    const toggleInputs = document.querySelectorAll('.manager-toggle-input, .job-toggle-input');
-    toggleInputs.forEach(toggle => {
-      const managerId = toggle.dataset.managerId || toggle.closest('.manager-row')?.dataset.managerId;
-      const jobId = toggle.dataset.jobId || toggle.closest('.job-row')?.dataset.jobId;
-      
-      if (managerId) {
-        toggleStates.set(managerId, toggle.checked);
-      }
-      if (jobId) {
-        toggleStates.set(jobId, toggle.checked);
-      }
-    });
-  }
+  // Initialize all functionality
+  function init() {
+    // Initialize filter toggle
+    initFilterToggle();
+    
+    // Initialize filter sidebar
+    initFilterSidebar();
+    
+    // Initialize the manager creation dialog
+    initManagerCreationDialog();
+    
+    // Initialize the add job dialog
+    initAddJobDialog();
 
-  // Filter functionality
-  if (managers.filterButtons) {
-    managers.filterButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const status = button.dataset.status;
-        
-        managers.filterButtons.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-        
-        const rows = document.querySelectorAll('.manager-row');
-        rows.forEach(row => {
-          if (status === 'all') {
-            row.style.display = '';
-          } else {
-            row.style.display = row.dataset.status === status ? '' : 'none';
-          }
-        });
-      });
-    });
-  }
+    // Initialize delete confirmation
+    initDeleteConfirmation();
 
-  // Dropdown functionality
-  function closeAllDropdowns() {
-    document.querySelectorAll('.manager-dropdown-content').forEach(m => m.classList.remove('show'));
-  }
+    // Initialize edit manager modal
+    initEditManagerModal();
 
-  document.querySelectorAll('.manager-dropdown-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeAllDropdowns();
-      const dropdown = btn.nextElementSibling;
-      if (dropdown) {
-        dropdown.classList.toggle('show');
+    // Initialize view details modal
+    initViewDetailsModal();
+
+    // Initialize dropdowns
+    initDropdowns();
+
+    // Initialize table event handlers
+    initTableEventHandlers();
+
+    // Initialize toggle status
+    initToggleStatus();
+
+    // Auto-hide toast on click outside
+    document.addEventListener('click', (e) => {
+      if (managers.toast && managers.toast.style.display === 'flex' && !e.target.closest('.managers-toast')) {
+        hideToast();
       }
     });
-  });
 
-  document.addEventListener('click', closeAllDropdowns);
-  document.addEventListener('keydown', (e) => { 
-    if (e.key === 'Escape') closeAllDropdowns(); 
-  });
-
-  async function parseResponseSafely(res) {
-    const text = await res.text();
-    try {
-      return { ok: res.ok, status: res.status, json: JSON.parse(text), text };
-    } catch {
-      return { ok: res.ok, status: res.status, json: null, text };
-    }
+    console.log('Managers JS loaded successfully with black text and larger font!');
   }
 
-  // ✅ FIXED: Enhanced toggle functionality with state tracking
-  if (managers.table) {
-    managers.table.addEventListener('change', async (e) => {
-      const el = e.target;
-      if (!el.classList.contains('manager-toggle-input')) return;
-
-      const toggleUrl = el.dataset.toggleUrl;
-      const managerName = el.dataset.name;
-      const managerId = el.dataset.managerId || el.closest('.manager-row')?.dataset.managerId;
-      const managerRow = el.closest('.manager-row');
-      const statusBadge = managerRow ? managerRow.querySelector('.manager-status-badge') : null;
-
-      if (!toggleUrl) {
-        console.error('Toggle URL missing', el);
-        el.checked = !el.checked;
-        return;
-      }
-
-      // Store the current state before making the request
-      const previousState = el.checked;
-      const desired = el.checked ? 'active' : 'inactive';
-
-      try {
-        const res = await fetch(toggleUrl, {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ status: desired })
-        });
-
-        const parsed = await parseResponseSafely(res);
-
-        if (!parsed.ok) {
-          const msg = parsed.json?.detail || parsed.json?.message || parsed.text || `Status ${parsed.status}`;
-          showToast('Failed to toggle manager status: ' + msg, true);
-          // Revert to previous state on error
-          el.checked = previousState;
-          return;
-        }
-
-        const data = parsed.json || {};
-        const newStatus = data.new_status || desired;
-        
-        if (managerRow) {
-          managerRow.dataset.status = newStatus;
-        }
-        
-        if (statusBadge) {
-          statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
-          statusBadge.className = 'manager-status-badge ' + (newStatus === 'active' ? 'active' : 'inactive');
-        }
-        
-        // Update the stored state
-        if (managerId) {
-          toggleStates.set(managerId, newStatus === 'active');
-        }
-        
-        showToast(`${managerName} is now ${newStatus}`);
-      } catch (err) {
-        console.error('Network/error toggling status', err);
-        showToast('Network error toggling status: ' + err.message, true);
-        // Revert to previous state on error
-        el.checked = previousState;
-      }
-    });
-  }
-
-  // Delegated click for menu actions
-  if (managers.table) {
-    managers.table.addEventListener('click', async (e) => {
-      const del = e.target.closest('.manager-delete');
-      if (del) {
-        e.preventDefault();
-        const url = del.dataset.deleteUrl;
-        const managerName = del.dataset.name;
-        const managerId = del.dataset.managerId || del.closest('.manager-row')?.dataset.managerId;
-        
-        if (!url) { 
-          showToast('Delete URL missing', true);
-          return; 
-        }
-        
-        showConfirmationDialog(
-          'Confirm Deletion', 
-          `Are you sure you want to delete "${managerName}" and all its jobs? This action cannot be undone.`,
-          async () => {
-            try {
-              const res = await fetch(url, { 
-                method: 'POST', 
-                credentials: 'same-origin', 
-                headers: { 
-                  'X-Requested-With': 'XMLHttpRequest', 
-                  'Accept': 'application/json' 
-                }
-              });
-              
-              const parsed = await parseResponseSafely(res);
-              if (!parsed.ok) { 
-                showToast(parsed.json?.detail || parsed.text || 'Failed to delete manager', true); 
-                return; 
-              }
-              
-              const row = del.closest('.manager-row'); 
-              if (row) {
-                // Remove from toggle states
-                if (managerId) {
-                  toggleStates.delete(managerId);
-                }
-                
-                row.style.opacity = '0';
-                row.style.transition = 'opacity 0.3s';
-                setTimeout(() => row.remove(), 300);
-              }
-              
-              showToast(`${managerName} has been deleted successfully`);
-            } catch (err) { 
-              showToast('Error deleting manager: ' + err.message, true); 
-            }
-          }
-        );
-        
-        return;
-      }
-
-      const edt = e.target.closest('.manager-edit');
-      if (edt) {
-        e.preventDefault();
-        const editUrl = edt.dataset.editUrl;
-        const currentName = edt.dataset.name || (edt.closest('.manager-row')?.querySelector('.manager-name-text')?.textContent || '');
-        const newName = prompt('Edit manager name:', currentName);
-        if (!newName || newName.trim() === '' || newName.trim() === currentName.trim()) return;
-        
-        try {
-          const body = new URLSearchParams({ manager_name: newName.trim() });
-          const res = await fetch(editUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-Requested-With': 'XMLHttpRequest',
-              'Accept': 'application/json'
-            },
-            body: body.toString()
-          });
-          
-          const parsed = await parseResponseSafely(res);
-          if (!parsed.ok) { 
-            showToast(parsed.json?.detail || parsed.text || 'Failed to update manager', true); 
-            return; 
-          }
-          
-          const data = parsed.json || {};
-          const row = edt.closest('.manager-row');
-          if (row) {
-            const nameCell = row.querySelector('.manager-name-text');
-            if (nameCell) {
-              nameCell.textContent = newName.trim();
-            }
-            
-            // Update the data-name attribute on the edit button
-            edt.dataset.name = newName.trim();
-            
-            // Update the data-name attribute on the delete button if it exists
-            const deleteBtn = row.querySelector('.manager-delete');
-            if (deleteBtn) {
-              deleteBtn.dataset.name = newName.trim();
-            }
-          }
-          
-          showToast(`Manager name updated to "${newName.trim()}"`);
-        } catch (err) {
-          showToast('Error updating manager: ' + err.message, true);
-        }
-        
-        return;
-      }
-
-      // Handle view jobs action
-      const viewJobs = e.target.closest('.view-jobs');
-      if (viewJobs) {
-        e.preventDefault();
-        const jobsUrl = viewJobs.href;
-        if (jobsUrl) {
-          window.location.href = jobsUrl;
-        }
-        return;
-      }
-    });
-  }
-
-  // Initialize the manager creation dialog
-  initManagerCreationDialog();
-  
-  // Initialize the add job dialog
-  initAddJobDialog();
-
-  // Initialize toggle states
-  initializeToggleStates();
-
-  // Auto-hide toast on click outside
-  document.addEventListener('click', (e) => {
-    if (managers.toast && managers.toast.style.display === 'flex' && !e.target.closest('.managers-toast')) {
-      hideToast();
-    }
-  });
-
-  // Keyboard navigation for dropdowns
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      const dropdowns = document.querySelectorAll('.manager-dropdown-content.show');
-      if (dropdowns.length > 0) {
-        const firstItem = dropdowns[0].querySelector('a, button');
-        if (firstItem) {
-          firstItem.focus();
-          e.preventDefault();
-        }
-      }
-    }
-  });
-
-  console.log('Managers JS loaded successfully');
+  // Start the initialization
+  init();
 });
