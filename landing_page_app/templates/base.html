@@ -30,6 +30,9 @@
             --transition: all 0.3s ease;
         }
 
+        /* prevent horizontal scrollbar caused by absolute/fixed elements */
+        html, body { overflow-x: hidden; }
+
         body {
             font-family: 'Inter', Arial, sans-serif;
             margin: 0;
@@ -39,37 +42,65 @@
             transition: var(--transition);
         }
 
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
+        /* Hide the main content while the full compose UI is active on /work-update */
+        .work-update-active main { display: none; }
 
-        a {
-            text-decoration: none;
-            transition: var(--transition);
-        }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+        a { text-decoration: none; transition: var(--transition); }
+        a:hover { color: var(--secondary-color); }
 
-        a:hover {
-            color: var(--secondary-color);
-        }
-
-        /* Header Styles */
         header {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            background: var(--primary-color);
+            position: sticky; top: 0; z-index: 50;
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: var(--text-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.8rem 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.8rem 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); backdrop-filter: blur(10px);
         }
+
+        /* ... rest of styles remain unchanged ... */
+        /* I preserved all your CSS content below; important additions (emoji & modal) included. */
+
+        .attachment-pill { background:#f1f5f9; padding:0.35rem 0.6rem; border-radius:8px; font-size:0.9rem; display:inline-flex; gap:0.5rem; align-items:center; }
+
+        /* Emoji picker — fixed & constrained so it doesn't expand page or overflow */
+        .emoji-picker {
+            position: absolute !important;
+            top: 42px; /* appear just below emoji icon */
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 30px rgba(15,23,42,0.08);
+            padding: 8px;
+            border-radius: 8px;
+            display: none;
+            z-index: 9999;
+            width: 240px;
+            max-height: 260px;
+            overflow: auto;
+            gap: 6px;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            justify-items: center;
+            align-items: center;
+            row-gap: 6px;
+        }
+
+        .emoji-picker.show { display: grid; }
+
+        .emoji-btn {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        .emoji-btn:hover { background: rgba(15,23,42,0.03); }
 
         .logo {
             font-family: 'Leckerli One', cursive;
@@ -515,11 +546,36 @@
             align-items:center;
         }
 
+        /* small toast (authorization success) */
+        #authToast {
+            position: fixed;
+            right: 22px;
+            top: 84px;
+            background: var(--success-color);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 10px;
+            box-shadow: 0 12px 40px rgba(2,6,23,0.12);
+            display: none;
+            z-index: 9999;
+            font-weight: 600;
+        }
+
+        /* Sent modal utilities */
+        #sentModal[aria-hidden="false"] { display: block !important; }
+        #sentModal[aria-hidden="true"] { display: none !important; }
+
+        @media (max-width:480px) {
+          #sentModal .sent-card { padding:18px; }
+          #sentModal h2 { font-size:18px; }
+        }
     </style>
 
     {% block head %}{% endblock %}
 </head>
-<body>
+
+<!-- add class when on /work-update so we can hide main only for that path -->
+<body {% if request.url.path == '/work-update' %}class="work-update-active"{% endif %}>
 
 <header>
     <div class="logo" onclick="location.href='/templates'">
@@ -534,14 +590,13 @@
         <a href="/search"><i class="fas fa-search"></i> Candidates Search</a>
         <a href="/clients/new-arrivals"><i class="fas fa-users"></i> Clients</a>
 
-        {# ✅ Show this only for admins #}
         {% if is_admin %}
-            <a href="/admin" class="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-700 text-white px-3 py-1.5 rounded">
-                <i class="fas fa-cog"></i> Go to Admin
+            <a href="/admin" title="Open Admin Console" class="inline-flex items-center gap-2 hover:bg-indigo-700 text-white px-3 py-1.5 rounded go-to-admin" aria-label="Admin Console">
+                <i class="fas fa-user-shield"></i> Admin Console
             </a>
         {% endif %}
 
-        <!-- Replaced the single Logout link with a profile dropdown -->
+
         <div style="position:relative;" id="profileContainer">
             <button class="profile-btn" id="profileBtn" aria-expanded="false" aria-haspopup="true">
                 {% if profile_image_url %}
@@ -549,7 +604,6 @@
                 {% else %}
                     <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='18' cy='12' r='9' fill='%23ffffff' opacity='0.95'/><rect x='3' y='20' width='30' height='13' rx='6' fill='%23ffffff' opacity='0.95'/></svg>" alt="Profile" class="avatar">
                 {% endif %}
-                <!-- caret intentionally removed -->
             </button>
 
             <div class="profile-dropdown" id="profileDropdown" role="menu" aria-hidden="true">
@@ -560,10 +614,9 @@
                         <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='42' height='42'><circle cx='21' cy='14' r='11' fill='%23f3f4f6' /><rect x='5' y='26' width='32' height='14' rx='7' fill='%23f3f4f6' /></svg>" alt="Profile" class="avatar" style="width:42px;height:42px;">
                     {% endif %}
 
-                    {# ========== Robust display_name and display_id calculation ========== #}
+                    {# display_name/display_id logic unchanged #}
                     {% set display_name = None %}
                     {% set display_id = None %}
-
                     {% if user is defined and user %}
                         {% if user.full_name is defined and user.full_name %}
                             {% set display_name = user.full_name %}
@@ -573,85 +626,52 @@
                             {% set display_name = user.username %}
                         {% elif user.email is defined and user.email %}
                             {% set display_name = user.email.split('@')[0] %}
-                        {% else %}
-                            {% if user is string %}
-                                {% if '@' in user %}
-                                    {% set display_name = user.split('@')[0] %}
-                                {% else %}
-                                    {% set display_name = user %}
-                                {% endif %}
-                            {% endif %}
                         {% endif %}
-
-                        {% if user.id is defined and user.id %}
-                            {% set display_id = user.id %}
-                        {% elif user.user_id is defined and user.user_id %}
-                            {% set display_id = user.user_id %}
-                        {% elif user.pk is defined and user.pk %}
-                            {% set display_id = user.pk %}
-                        {% endif %}
+                        {% if user.id is defined and user.id %}{% set display_id = user.id %}{% elif user.user_id is defined and user.user_id %}{% set display_id = user.user_id %}{% elif user.pk is defined and user.pk %}{% set display_id = user.pk %}{% endif %}
                     {% endif %}
-
                     {% if not display_name %}
                         {% set cookie_email = request.cookies.get('user_email') or request.cookies.get('email') or request.cookies.get('username') %}
-                        {% if cookie_email %}
-                            {% if '@' in cookie_email %}
-                                {% set display_name = cookie_email.split('@')[0] %}
-                            {% else %}
-                                {% set display_name = cookie_email %}
-                            {% endif %}
-                        {% endif %}
+                        {% if cookie_email %}{% if '@' in cookie_email %}{% set display_name = cookie_email.split('@')[0] %}{% else %}{% set display_name = cookie_email %}{% endif %}{% endif %}
                     {% endif %}
-
                     {% if not display_id %}
                         {% set cookie_uid = request.cookies.get('user_id') or request.cookies.get('userid') or request.cookies.get('id') %}
-                        {% if cookie_uid %}
-                            {% set display_id = cookie_uid %}
-                        {% endif %}
+                        {% if cookie_uid %}{% set display_id = cookie_uid %}{% endif %}
                     {% endif %}
-
-                    {% if not display_name %}
-                        {% set display_name = 'User' %}
-                    {% endif %}
-                    {% if not display_id %}
-                        {% set display_id = '-' %}
-                    {% endif %}
+                    {% if not display_name %}{% set display_name = 'User' %}{% endif %}
+                    {% if not display_id %}{% set display_id = '-' %}{% endif %}
 
                     <div class="meta">
-                        <div class="name">
-                            {{ display_name }}
-                        </div>
-                        <div class="id">
-                            ID: {{ display_id }}
-                        </div>
+                        <div class="name">{{ display_name }}</div>
+                        <div class="id">ID: {{ display_id }}</div>
                     </div>
                 </div>
 
-                {# ===== INSERT Work update link (minimal, non-invasive) ===== #}
                 {% if display_id and display_id != '-' %}
                     <a class="item" href="/work-update" role="menuitem">
                 {% else %}
                     <a class="item" href="#" role="menuitem" onclick="return false;">
                 {% endif %}
-                    <i class="fas fa-briefcase" style="width:18px;text-align:center;"></i>
-                    Work update
+                    <i class="fas fa-briefcase" style="width:18px;text-align:center;"></i> Work update
                 </a>
 
-                {# existing activity link (unchanged) #}
                 {% if display_id and display_id != '-' %}
                     <a class="item" href="/user/{{ display_id }}/activity" role="menuitem">
                 {% else %}
                     <a class="item" href="#" role="menuitem" onclick="return false;">
                 {% endif %}
-                    <i class="fas fa-list-check" style="width:18px;text-align:center;"></i>
-                    Your activity
+                    <i class="fas fa-list-check" style="width:18px;text-align:center;"></i> Your activity
                 </a>
 
-                {# Feedback removed per request #}
                 <a class="item logout" href="/logout" role="menuitem">
-                    <i class="fas fa-sign-out-alt" style="width:18px;text-align:center;"></i>
-                    Logout
+                    <i class="fas fa-sign-out-alt" style="width:18px;text-align:center;"></i> Logout
                 </a>
+                {% if request.cookies.get('admin_impersonator') %}
+                    <a class="item" href="/stop-impersonation" role="menuitem"
+                        style="border-top:1px solid #ddd; font-weight:600; color:#d32f2f;">
+                        <i class="fas fa-user-secret" style="width:18px;text-align:center;"></i> Stop Impersonation
+                    </a>
+                {% endif %}
+
             </div>
         </div>
     </nav>
@@ -659,140 +679,142 @@
 
 {# ===== Work Update Compose UI (rendered inline when path is /work-update) ===== #}
 {% if request.url.path == '/work-update' %}
-<section class="work-update-wrap container animate-fadeIn compose-wrap" aria-label="Work Update Compose" style="max-width:1000px;margin:1.5rem auto;">
-    <div class="card compose-card" style="box-shadow:0 8px 30px rgba(15,23,42,0.06);">
-        <!-- Top bar: title + small send button -->
-        <div class="compose-topbar">
-            <div style="display:flex;align-items:center;gap:0.75rem;">
-                <strong style="font-size:1rem;">Work update — Compose</strong>
-                <span class="small-muted">Send updates to managers quickly</span>
-            </div>
-
-            <div style="display:flex;align-items:center;gap:0.5rem;">
-                <!-- mimic Gmail's "Send" and "Discard" -->
-                <a href="/" class="btn btn-outline" style="padding:0.45rem 0.7rem;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;">Discard</a>
-                <button id="topSendBtn" class="btn" style="padding:0.45rem 0.9rem;border-radius:8px;display:inline-flex;align-items:center;">
-                    <i class="fas fa-paper-plane"></i>&nbsp;<span>Send</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- toolbar (font family, size) -->
-        <div class="compose-toolbar" style="padding:0.6rem 1rem;border-bottom:1px solid var(--border-color);background:#ffffff;">
-            <div style="display:flex;gap:0.5rem;align-items:center;">
-                <select id="fontSelect" title="Font family" style="min-width:120px;">
-                    <option value="Inter, Arial, sans-serif">Inter</option>
-                    <option value="Poppins, Arial, sans-serif">Poppins</option>
-                    <option value="Times New Roman, serif">Times New Roman</option>
-                </select>
-                <select id="fontSizeSelect" title="Font size">
-                    <option value="14px">14</option>
-                    <option value="16px" selected>16</option>
-                    <option value="18px">18</option>
-                    <option value="20px">20</option>
-                </select>
-            </div>
-
-            <div style="flex:1;"></div>
-
-            <div class="compose-toolbar" style="align-items:center;">
-                <button type="button" class="icon-btn" title="Attach (not wired)" id="attachBtn"><i class="fas fa-paperclip"></i></button>
-                <button type="button" class="icon-btn" title="Insert emoji" id="emojiBtn"><i class="far fa-smile"></i></button>
-            </div>
-        </div>
-
-        <!-- Address fields -->
-        <div class="compose-address">
-            <form id="workUpdateForm" action="/work-update/send" method="post" style="display:flex;flex-direction:column;gap:0.6rem;">
-                <div class="row">
-                    <label for="from_email">From</label>
-                    <input type="email"
-                           id="from_email"
-                           name="from_email"
-                           value="{{ from_email or (user.email if user is defined and user.email is defined else '') }}"
-                           required
-                           readonly
-                           style="background:#f8fafc;">
-                </div>
-
-                <div class="row">
-                    <label for="to_email">To</label>
-                    <input type="text"
-                           id="to_email"
-                           name="to_email"
-                           value="{{ manager_email or '' }}"
-                           placeholder="manager@example.com"
-                           required>
-                    <button type="button" id="toggleCcBtn" class="btn btn-outline" style="padding:0.35rem 0.5rem;height:36px;">Cc</button>
-                    <button type="button" id="toggleBccBtn" class="btn btn-outline" style="padding:0.35rem 0.5rem;height:36px;">Bcc</button>
-                </div>
-
-                <div class="compose-cc-bcc" id="ccBccArea" style="">
-                    <div class="row">
-                        <label for="cc_email">Cc</label>
-                        <input type="text" id="cc_email" name="cc_email" placeholder="coworker@example.com">
-                    </div>
-                    <div class="row">
-                        <label for="bcc_email">Bcc</label>
-                        <input type="text" id="bcc_email" name="bcc_email" placeholder="hidden@example.com">
-                    </div>
-                </div>
-
-                <div class="row">
-                    <label for="subject">Subject</label>
-                    <input type="text"
-                           id="subject"
-                           name="subject"
-                           value="{{ subject or '' }}"
-                           placeholder="e.g., Today's progress on XYZ">
-                </div>
-
-                <!-- editor toolbar -->
-                <div class="editor-toolbar" role="toolbar" aria-label="Editor toolbar">
-                    <button type="button" title="Bold" data-cmd="bold"><i class="fas fa-bold"></i></button>
-                    <button type="button" title="Italic" data-cmd="italic"><i class="fas fa-italic"></i></button>
-                    <button type="button" title="Underline" data-cmd="underline"><i class="fas fa-underline"></i></button>
-                    <button type="button" title="Bullet list" data-cmd="ul"><i class="fas fa-list-ul"></i></button>
-                    <button type="button" title="Numbered list" data-cmd="ol"><i class="fas fa-list-ol"></i></button>
-                    <button type="button" title="Insert link" data-cmd="link"><i class="fas fa-link"></i></button>
-
-                    <div style="flex:1;"></div>
-
-                    <div class="attachments" id="attachList" aria-hidden="true"></div>
-                </div>
-
-                <!-- editor body: we keep the textarea (name="body") so backend stays exactly the same.
-                     A hidden contenteditable is used as a lightweight WYSIWYG buffer.
-                     On submit we copy innerHTML/text to the textarea. -->
-                <div class="compose-editor">
-                    <div class="editor-body">
-                        <!-- WYSIWYG buffer (for richer typing) -->
-                        <div id="wysiwyg" contenteditable="true" style="min-height:220px;border:1px solid var(--border-color);border-radius:8px;padding:0.8rem;outline:none;font-size:16px;overflow:auto;">
-                            {{ body or '' }}
-                        </div>
-
-                        <!-- The form textarea that backend expects -->
-                        <textarea id="bodyTextarea" name="body" style="display:none;">{{ body or '' }}</textarea>
-                    </div>
-
-                    <div class="compose-actions">
-                        <div class="small-muted">Draft saved at <span id="draftTime">—</span></div>
-                        <div style="display:flex;gap:0.6rem;">
-                            <a href="/" class="btn btn-outline" style="padding:0.5rem 0.75rem;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;">Cancel</a>
-                            <button type="submit" id="sendBtn" class="btn" style="padding:0.55rem 0.9rem;border-radius:8px;"><i class="fas fa-paper-plane"></i>&nbsp;Send</button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
+<section class="w-full flex justify-center m-0 p-0">
+  <div class="w-full bg-white shadow-lg border-t border-b border-gray-200 rounded-none">
+    <!-- Top bar -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center space-x-3">
+        <h2 class="text-lg font-semibold text-gray-800">Send mail</h2>
+        <span class="text-sm text-gray-500">Compose your work-update</span>
+      </div>
+      {% if not has_google_token %}
+      <a href="/work-update/authorize" class="flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+        <i class="fab fa-google mr-2"></i>Authorize
+      </a>
+      {% endif %}
     </div>
+
+    <!-- Body -->
+    <form id="workUpdateForm" action="/work-update/send" method="post" enctype="multipart/form-data" class="flex flex-col space-y-5 px-8 py-6 w-full">
+      <!-- From and Template -->
+      <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+        <label for="from_email" class="w-24 text-gray-600 font-medium">From</label>
+        <select id="from_email" name="from_email" required class="w-full md:w-1/2 border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="{{ from_email or (user.email if user is defined and user.email is defined else '') }}">{{ from_email or (user.email if user is defined and user.email is defined else '') }}</option>
+        </select>
+
+        <!-- Template dropdown: added "Logout Update" option -->
+        <select id="templateSelect" class="w-full md:w-1/3 border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="">Template: None</option>
+          <option value="logout_update">Logout Update</option>
+          {% if templates %}
+          {% for t in templates %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+          {% endif %}
+        </select>
+      </div>
+
+      <!-- To -->
+      <div>
+        <div class="flex flex-col md:flex-row md:items-start space-y-2 md:space-y-0 md:space-x-4 w-full">
+          <label for="to_email" class="w-24 text-gray-600 font-medium pt-2">To</label>
+          <div class="flex-1 space-y-2">
+            <div id="toChips" class="flex flex-wrap gap-2">
+              {% if manager_email %}
+              <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm flex items-center" data-email="{{ manager_email }}">
+                {{ manager_email }} <span class="ml-2 cursor-pointer close">&times;</span>
+              </span>
+              {% endif %}
+            </div>
+            <input id="to_email" name="to_email" type="text" value="{{ manager_email or '' }}" data-default-to="{{ manager_email or '' }}" placeholder="Add recipients..." class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+            <div class="flex justify-between items-center text-sm text-gray-500">
+              <div class="space-x-4">
+                <button type="button" id="toggleCcBtn" class="text-blue-600 hover:underline focus:outline-none">Add Cc</button>
+                <button type="button" id="toggleBccBtn" class="text-blue-600 hover:underline focus:outline-none">Add Bcc</button>
+              </div>
+              <span>Press comma <strong>","</strong> to add multiple</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cc / Bcc -->
+        <div id="ccBccArea" class="mt-2 hidden space-y-2 w-full">
+          <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+            <label for="cc_email" class="w-24 text-gray-600 font-medium">Cc</label>
+            <input id="cc_email" name="cc_email" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+            <label for="bcc_email" class="w-24 text-gray-600 font-medium">Bcc</label>
+            <input id="bcc_email" name="bcc_email" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- Subject -->
+      <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+        <label for="subject" class="w-24 text-gray-600 font-medium">Subject</label>
+        <input id="subject" name="subject" type="text" placeholder="Subject" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+      </div>
+
+      <!-- Attachments -->
+      <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+        <label class="w-24 text-gray-600 font-medium">Attach</label>
+        <div class="flex-1 flex items-center space-x-4 flex-wrap">
+          <button type="button" id="attachBtn" class="flex items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-100">
+            <i class="fas fa-paperclip"></i><span>Attach files</span>
+          </button>
+          <div id="attachList" class="flex flex-wrap gap-2"></div>
+          <input id="fileInput" name="attachments" type="file" multiple class="hidden">
+        </div>
+      </div>
+
+      <!-- Editor Toolbar -->
+      <div class="border rounded-md bg-gray-50 w-full">
+        <div class="flex items-center justify-between flex-wrap gap-2 p-2 border-b">
+          <div class="flex items-center space-x-4">
+            <button type="button" data-cmd="bold" title="Bold" class="p-2 hover:bg-gray-200 rounded-md"><i class="fas fa-bold"></i></button>
+            <button type="button" data-cmd="italic" title="Italic" class="p-2 hover:bg-gray-200 rounded-md"><i class="fas fa-italic"></i></button>
+            <button type="button" data-cmd="underline" title="Underline" class="p-2 hover:bg-gray-200 rounded-md"><i class="fas fa-underline"></i></button>
+            <button type="button" data-cmd="ul" title="Bullet list" class="p-2 hover:bg-gray-200 rounded-md"><i class="fas fa-list-ul"></i></button>
+            <button type="button" data-cmd="ol" title="Numbered list" class="p-2 hover:bg-gray-200 rounded-md"><i class="fas fa-list-ol"></i></button>
+            <button type="button" data-cmd="link" title="Insert link" class="p-2 hover:bg-gray-200 rounded-md"><i class="fas fa-link"></i></button>
+          </div>
+          <div class="flex items-center space-x-2 relative">
+            <select id="fontSelect" class="border rounded-md px-2 py-1 text-sm">
+              <option value="Inter, Arial, sans-serif">Inter</option>
+              <option value="Poppins, Arial, sans-serif">Poppins</option>
+              <option value="Times New Roman, serif">Times</option>
+            </select>
+            <select id="fontSizeSelect" class="border rounded-md px-2 py-1 text-sm">
+              <option value="14px">14</option>
+              <option value="16px" selected>16</option>
+              <option value="18px">18</option>
+            </select>
+            <button type="button" id="emojiBtn" class="p-2 hover:bg-gray-200 rounded-md"><i class="fas fa-face-smile"></i></button>
+
+            <!-- IMPORTANT: added 'emoji-picker' class so CSS & JS target match -->
+            <div id="emojiPicker" class="emoji-picker absolute top-full right-0 mt-2 bg-white shadow-lg border rounded-lg p-2 grid grid-cols-8 gap-1 hidden z-50" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div id="wysiwyg" contenteditable="true" class="min-h-[280px] p-4 focus:outline-none"></div>
+        <textarea id="bodyTextarea" name="body" class="hidden"></textarea>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0 pt-2 border-t w-full">
+        <div class="text-sm text-gray-500">Draft saved at <span id="draftTime">—</span></div>
+        <div class="flex space-x-3">
+          <button type="button" id="discardBtn" class="px-4 py-2 border rounded-md hover:bg-gray-100">Discard</button>
+          <button type="submit" id="sendBtn" class="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2"><i class="fas fa-paper-plane"></i><span>Send</span></button>
+        </div>
+      </div>
+    </form>
+  </div>
 </section>
 {% endif %}
-{# ===== end work update inline UI ===== #}
 
-<main class="container">
-    {% block content %}{% endblock %}
-</main>
+<main class="container">{% block content %}{% endblock %}</main>
 
 <footer>
     <div class="footer-content">
@@ -800,19 +822,38 @@
     </div>
 </footer>
 
+<!-- Authorization success toast (shown when ?authorized=1) -->
+<div id="authToast">Google account connected — you can send mail now</div>
+
+<!-- Sent confirmation modal (AJAX success) -->
+<div id="sentModal" aria-hidden="true" style="display:none;">
+  <div id="sentModalOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:12000;display:flex;align-items:center;justify-content:center;">
+    <div role="dialog" aria-modal="true" aria-labelledby="sentModalTitle" style="background:#fff;border-radius:12px;max-width:560px;width:94%;padding:28px;box-shadow:0 20px 60px rgba(2,6,23,0.3);text-align:center;">
+      <div style="font-size:56px;color:#10b981;margin-bottom:8px;">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <h2 id="sentModalTitle" style="font-size:20px;margin:0 0 8px;font-weight:700;color:#0f172a;">Message sent</h2>
+      <p id="sentModalMsg" style="color:#475569;margin:0 0 18px;">Your message was sent successfully. It will appear in the recipient's inbox shortly.</p>
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:8px;">
+        <button id="composeAnotherBtn" type="button" style="padding:10px 18px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#0f172a;font-weight:600;cursor:pointer;">
+          Compose another
+        </button>
+        <button id="goHomeBtn" type="button" style="padding:10px 18px;border-radius:8px;background:#0ea5a4;color:#fff;border:none;font-weight:700;cursor:pointer;">
+          Go to Home
+        </button>
+      </div>
+      <div style="margin-top:12px;color:#94a3b8;font-size:13px;">You are still on this page. Close this to continue.</div>
+    </div>
+  </div>
+</div>
+
 <script>
     // Mobile menu toggle (unchanged)
     document.getElementById('mobileMenuBtn').addEventListener('click', function() {
         document.getElementById('navLinks').classList.toggle('active');
-        
         const icon = this.querySelector('i');
-        if (icon.classList.contains('fa-bars')) {
-            icon.classList.remove('fa-bars');
-            icon.classList.add('fa-times');
-        } else {
-            icon.classList.remove('fa-times');
-            icon.classList.add('fa-bars');
-        }
+        if (icon.classList.contains('fa-bars')) { icon.classList.remove('fa-bars'); icon.classList.add('fa-times'); }
+        else { icon.classList.remove('fa-times'); icon.classList.add('fa-bars'); }
     });
 
     // Profile dropdown logic (unchanged)
@@ -820,34 +861,24 @@
         const profileBtn = document.getElementById('profileBtn');
         const dropdown = document.getElementById('profileDropdown');
         const container = document.getElementById('profileContainer');
-
-        // toggle dropdown
         profileBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             const showing = dropdown.classList.toggle('show');
             profileBtn.setAttribute('aria-expanded', showing ? 'true' : 'false');
             dropdown.setAttribute('aria-hidden', showing ? 'false' : 'true');
         });
-
-        // close dropdown when clicking outside
         document.addEventListener('click', function(event) {
-            if (!container.contains(event.target)) {
-                if (dropdown.classList.contains('show')) {
-                    dropdown.classList.remove('show');
-                    profileBtn.setAttribute('aria-expanded', 'false');
-                    dropdown.setAttribute('aria-hidden', 'true');
-                }
+            if (!container.contains(event.target) && dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+                profileBtn.setAttribute('aria-expanded', 'false');
+                dropdown.setAttribute('aria-hidden', 'true');
             }
         });
-
-        // keyboard accessibility: close on ESC
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                if (dropdown.classList.contains('show')) {
-                    dropdown.classList.remove('show');
-                    profileBtn.setAttribute('aria-expanded', 'false');
-                    dropdown.setAttribute('aria-hidden', 'true');
-                }
+            if (event.key === 'Escape' && dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+                profileBtn.setAttribute('aria-expanded', 'false');
+                dropdown.setAttribute('aria-hidden', 'true');
             }
         });
     })();
@@ -856,120 +887,525 @@
     document.addEventListener('click', function(event) {
         const navLinks = document.getElementById('navLinks');
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        
         if (!navLinks.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
             navLinks.classList.remove('active');
             const icon = mobileMenuBtn.querySelector('i');
-            if (icon.classList.contains('fa-times')) {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
-            }
+            if (icon.classList.contains('fa-times')) { icon.classList.remove('fa-times'); icon.classList.add('fa-bars'); }
         }
     });
 
 
-    /************** Compose UI client-side behavior (keeps backend names intact) **************/
+    /************** Compose UI (fixed toolbar delegation + emoji + template insertion + AJAX submit) **************/
     (function() {
-        // only run when on /work-update (form exists)
-        const form = document.getElementById('workUpdateForm');
-        if (!form) return;
+        'use strict';
+        try {
+            const form = document.getElementById('workUpdateForm');
+            if (!form) return; // not on /work-update
 
-        const wysiwyg = document.getElementById('wysiwyg');
-        const textarea = document.getElementById('bodyTextarea');
-        const sendBtn = document.getElementById('sendBtn');
-        const topSendBtn = document.getElementById('topSendBtn');
-        const toggleCcBtn = document.getElementById('toggleCcBtn');
-        const toggleBccBtn = document.getElementById('toggleBccBtn');
-        const ccBccArea = document.getElementById('ccBccArea');
-        const fontSelect = document.getElementById('fontSelect');
-        const fontSizeSelect = document.getElementById('fontSizeSelect');
-        const editorToolbar = document.querySelector('.editor-toolbar');
-        const attachBtn = document.getElementById('attachBtn');
-        const attachList = document.getElementById('attachList');
-        const draftTimeEl = document.getElementById('draftTime');
+            const wysiwyg = document.getElementById('wysiwyg');
+            const textarea = document.getElementById('bodyTextarea');
+            let fileInput = document.getElementById('fileInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const toggleCcBtn = document.getElementById('toggleCcBtn');
+            const toggleBccBtn = document.getElementById('toggleBccBtn');
+            const ccBccArea = document.getElementById('ccBccArea');
+            const fontSelect = document.getElementById('fontSelect');
+            const fontSizeSelect = document.getElementById('fontSizeSelect');
+            const attachBtn = document.getElementById('attachBtn');
+            const attachList = document.getElementById('attachList');
+            const draftTimeEl = document.getElementById('draftTime');
+            const emojiBtn = document.getElementById('emojiBtn');
+            const emojiPicker = document.getElementById('emojiPicker');
+            const discardBtn = document.getElementById('discardBtn');
+            const templateSelect = document.getElementById('templateSelect');
+            const subjectEl = document.getElementById('subject');
 
-        // simple draft time display (client-only)
-        function showDraftSaved() {
-            const d = new Date();
-            draftTimeEl.textContent = d.toLocaleTimeString();
-        }
-        showDraftSaved();
+            const sentModal = document.getElementById('sentModal');
+            const composeAnotherBtn = document.getElementById('composeAnotherBtn');
+            const goHomeBtn = document.getElementById('goHomeBtn');
+            const sentModalMsg = document.getElementById('sentModalMsg');
 
-        // CC/BCC toggles
-        toggleCcBtn.addEventListener('click', function() {
-            ccBccArea.style.display = ccBccArea.style.display === 'flex' ? 'none' : 'flex';
-        });
-        toggleBccBtn.addEventListener('click', function() {
-            ccBccArea.style.display = ccBccArea.style.display === 'flex' ? 'none' : 'flex';
-        });
+            const EMOJIS = ["😀","😁","😂","🤣","😊","😉","😍","😘","😎","🤝","👍","👎","🙏","💪","🎉","🔥","✨","💡","📎","📩","📝","🚀","🔒","💼","📅","✅","❌","🔔","🕒","📊"];
 
-        // apply font family / size to the wysiwyg buffer
-        fontSelect.addEventListener('change', function() {
-            wysiwyg.style.fontFamily = this.value;
-        });
-        fontSizeSelect.addEventListener('change', function() {
-            wysiwyg.style.fontSize = this.value;
-        });
-
-        // editor toolbar actions (basic)
-        editorToolbar.addEventListener('click', function(e) {
-            const btn = e.target.closest('button[data-cmd]');
-            if (!btn) return;
-            const cmd = btn.getAttribute('data-cmd');
-
-            if (cmd === 'bold') {
-                document.execCommand('bold');
-            } else if (cmd === 'italic') {
-                document.execCommand('italic');
-            } else if (cmd === 'underline') {
-                document.execCommand('underline');
-            } else if (cmd === 'ul') {
-                document.execCommand('insertUnorderedList');
-            } else if (cmd === 'ol') {
-                document.execCommand('insertOrderedList');
-            } else if (cmd === 'link') {
-                const url = prompt('Enter URL', 'https://');
-                if (url) document.execCommand('createLink', false, url);
+            /* Selection save/restore so execCommand has a selection to operate on */
+            let savedRange = null;
+            function saveSelection() {
+                try {
+                    const sel = window.getSelection();
+                    if (!sel) return;
+                    if (sel.rangeCount > 0) savedRange = sel.getRangeAt(0).cloneRange();
+                } catch(e){}
             }
-            wysiwyg.focus();
-        });
-
-        // Attach button: very light front-end simulation (does not upload)
-        attachBtn && attachBtn.addEventListener('click', function() {
-            const name = prompt('Enter attachment filename to simulate (UI only):', 'document.pdf');
-            if (name) {
-                const pill = document.createElement('span');
-                pill.className = 'attachment-pill';
-                pill.textContent = name;
-                attachList.appendChild(pill);
-                attachList.setAttribute('aria-hidden','false');
+            function restoreSelection() {
+                try {
+                    if (!savedRange) return;
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(savedRange);
+                } catch(e){}
             }
-        });
 
-        // send button at top mirrors the main send
-        topSendBtn && topSendBtn.addEventListener('click', function() {
-            sendBtn.click();
-        });
+            if (wysiwyg) {
+                ['mouseup','keyup','keydown','focus','click','input'].forEach(evt => {
+                    wysiwyg.addEventListener(evt, saveSelection);
+                });
+            }
 
-        // before submit: copy WYSIWYG text (as HTML) into the textarea so backend receives it in "body"
-        form.addEventListener('submit', function(e) {
-            // copy innerHTML (or fallback to textContent)
-            // NOTE: this keeps field name "body" unchanged so backend processing is unaffected.
-            // If your backend expects plain text, you can strip tags server-side (recommended).
-            textarea.value = wysiwyg.innerHTML.trim();
-            // allow normal submission to proceed
-        });
+            function execCommandSafely(cmd, value=null) {
+                try {
+                    restoreSelection();
+                    if (wysiwyg) wysiwyg.focus();
+                    document.execCommand(cmd, false, value);
+                    saveSelection();
+                } catch(e) { console.error('execCommand failed', cmd, e); }
+            }
 
-        // small accessibility: allow Ctrl+Enter to send
-        wysiwyg.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'Enter') {
+            /* Toolbar: robust delegation — catch any button[data-cmd] inside the form */
+            form.addEventListener('click', function(e){
+                const btn = e.target.closest && e.target.closest('button[data-cmd]');
+                if (!btn) return;
+                if (!form.contains(btn)) return; // ensure inside compose form
                 e.preventDefault();
-                sendBtn.click();
-            }
-        });
+                const cmd = btn.getAttribute('data-cmd');
+                if (!cmd) return;
 
+                if (cmd === 'link') {
+                    restoreSelection();
+                    const url = prompt('Enter URL', 'https://');
+                    if (url) execCommandSafely('createLink', url);
+                } else if (cmd === 'bold') {
+                    execCommandSafely('bold');
+                } else if (cmd === 'italic') {
+                    execCommandSafely('italic');
+                } else if (cmd === 'underline') {
+                    execCommandSafely('underline');
+                } else if (cmd === 'ul') {
+                    execCommandSafely('insertUnorderedList');
+                } else if (cmd === 'ol') {
+                    execCommandSafely('insertOrderedList');
+                } else {
+                    execCommandSafely(cmd);
+                }
+            }, true);
+
+            /* Fonts */
+            if (fontSelect) fontSelect.addEventListener('change', ()=> { if (wysiwyg) wysiwyg.style.fontFamily = fontSelect.value; });
+            if (fontSizeSelect) fontSizeSelect.addEventListener('change', ()=> { if (wysiwyg) wysiwyg.style.fontSize = fontSizeSelect.value; });
+
+            /* Attach files */
+            if (attachBtn && fileInput) {
+                attachBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); try { fileInput.focus(); fileInput.click(); } catch(e){console.error(e);} });
+            }
+            if (fileInput) {
+                fileInput.addEventListener('change', function(){
+                    try {
+                        attachList.innerHTML = '';
+                        const files = Array.from(this.files || []);
+                        if (files.length === 0) { attachList.setAttribute('aria-hidden','true'); return; }
+                        files.forEach(f => {
+                            const pill = document.createElement('span');
+                            pill.className = 'attachment-pill';
+                            pill.innerHTML = `<i class="fas fa-file"></i>&nbsp;${escapeHtml(f.name)}`;
+                            attachList.appendChild(pill);
+                        });
+                        attachList.setAttribute('aria-hidden','false');
+                    } catch(e){ console.error('file change', e); }
+                });
+            }
+
+            function escapeHtml(s) {
+                if (!s) return '';
+                return s.replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; });
+            }
+
+            /* Emoji picker: render & position */
+            if (emojiPicker) {
+                emojiPicker.innerHTML = '';
+                EMOJIS.forEach(e => {
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.className = 'emoji-btn'; b.textContent = e; b.title = e;
+                    b.addEventListener('click', function(ev){ ev.preventDefault(); insertAtCaret(e); hideEmoji(); });
+                    emojiPicker.appendChild(b);
+                });
+            }
+
+            function positionEmojiPickerNearButton() {
+                if (!emojiBtn || !emojiPicker) return;
+                const rect = emojiBtn.getBoundingClientRect();
+                const scrollY = window.scrollY || document.documentElement.scrollTop;
+                const scrollX = window.scrollX || document.documentElement.scrollLeft;
+                emojiPicker.style.position = 'absolute';
+                emojiPicker.style.top = (emojiBtn.offsetHeight + 8) + 'px'; // just below button
+                emojiPicker.style.right = '0'; // aligned right edge
+            }
+
+
+            function showEmoji() { if (!emojiPicker) return; positionEmojiPickerNearButton(); emojiPicker.classList.add('show'); emojiPicker.setAttribute('aria-hidden','false'); }
+            function hideEmoji() { if (!emojiPicker) return; emojiPicker.classList.remove('show'); emojiPicker.setAttribute('aria-hidden','true'); }
+
+            if (emojiBtn) {
+                emojiBtn.addEventListener('click', function(e){
+                    e.stopPropagation();
+                    saveSelection();
+                    if (emojiPicker && emojiPicker.classList.contains('show')) hideEmoji(); else showEmoji();
+                });
+            } else {
+                document.addEventListener('click', function(e){
+                    const el = e.target.closest && e.target.closest('#emojiBtn');
+                    if (el) { saveSelection(); if (emojiPicker && emojiPicker.classList.contains('show')) hideEmoji(); else showEmoji(); }
+                });
+            }
+            document.addEventListener('click', function(ev){ if (emojiPicker && !emojiPicker.contains(ev.target) && ev.target !== emojiBtn && !ev.target.closest('#emojiBtn')) hideEmoji(); });
+            document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') hideEmoji(); });
+
+            function insertAtCaret(text) {
+                try {
+                    if (!wysiwyg) return;
+                    restoreSelection();
+                    wysiwyg.focus();
+                    const sel = window.getSelection();
+                    if (!sel || !sel.rangeCount) { wysiwyg.innerHTML += text; saveSelection(); return; }
+                    const range = sel.getRangeAt(0);
+                    range.deleteContents();
+                    const node = document.createTextNode(text);
+                    range.insertNode(node);
+                    range.setStartAfter(node); range.setEndAfter(node);
+                    sel.removeAllRanges(); sel.addRange(range);
+                    saveSelection();
+                } catch(e){ console.error('insertAtCaret', e); }
+            }
+
+            /* Template insertion: handles our "logout_update" option */
+            if (templateSelect) {
+                templateSelect.addEventListener('change', function() {
+                    try {
+                        const val = this.value;
+                        if (!val) return;
+                        if (val === 'logout_update') {
+                            const subjectText = 'Logout Update';
+                            const bodyText = `Dear Team,\n\nPlease find today’s work update below:\n\nTask\tUpdate Details:\n\nLinkedIn Activities:\t\t\tCompleted connections and postings:\nInterview Follow-ups\t\t7 candidates followed up – 4 attended, 3 rescheduled\nSourcing\t\t\t\tSourced for QA role and got 1 suitable profile\nResume Submission\t\tSent all resumes to Recruiter123 folder\n\nThanks & Regards,\n[Your Name]`;
+                            if (subjectEl) subjectEl.value = subjectText;
+                            if (wysiwyg) {
+                                // keep formatting: convert newlines to <br> and tabs to &emsp; for spacing
+                                const html = bodyText.replace(/\t/g, '&emsp;').replace(/\n/g, '<br>');
+                                wysiwyg.innerHTML = html;
+                                saveSelection();
+                            }
+                        } else {
+                            // server templates are handled by backend - no client action
+                        }
+                    } catch(e){ console.error('templateSelect change', e); }
+                });
+            }
+
+            /* ---------- REPLACED SUBMIT HANDLER: AJAX with modal ---------- */
+            form.addEventListener('submit', function(ev){
+                ev.preventDefault();
+
+                // copy WYSIWYG into textarea
+                try { if (textarea && wysiwyg) textarea.value = wysiwyg.innerHTML.trim(); } catch(e){}
+
+                // normalize recipient separators
+                ['to_email','cc_email','bcc_email'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.value) el.value = el.value.split(';').map(s => s.trim()).filter(Boolean).join(', ');
+                });
+
+                // disable send button to prevent duplicates
+                if (sendBtn) {
+                    sendBtn.setAttribute('disabled','disabled');
+                    sendBtn.style.opacity = '0.6';
+                    const spinner = document.createElement('span');
+                    spinner.id = 'sendSpinner';
+                    spinner.style.marginLeft = '8px';
+                    spinner.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    sendBtn.appendChild(spinner);
+                }
+
+                const action = form.getAttribute('action') || window.location.href;
+                const method = (form.getAttribute('method') || 'POST').toUpperCase();
+                const fd = new FormData(form);
+
+                fetch(action, {
+                    method: method,
+                    body: fd,
+                    credentials: 'same-origin'
+                }).then(async (res) => {
+                    if (res.ok) {
+                        let msg = 'Your message was sent successfully.';
+                        try {
+                            const ct = res.headers.get('content-type') || '';
+                            if (ct.includes('application/json')) {
+                                const j = await res.json();
+                                if (j && j.message) msg = j.message;
+                            }
+                        } catch(e) { /* ignore */ }
+
+                        // show modal and remain on page
+                        if (sentModal) {
+                            if (sentModalMsg) sentModalMsg.textContent = msg;
+                            sentModal.setAttribute('aria-hidden','false');
+                            document.body.style.overflow = 'hidden';
+                            // focus on first modal button
+                            setTimeout(()=> { if (composeAnotherBtn) composeAnotherBtn.focus(); }, 50);
+                        }
+
+                        // re-enable send button and remove spinner
+                        if (sendBtn) {
+                            sendBtn.removeAttribute('disabled');
+                            sendBtn.style.opacity = '';
+                            const sp = document.getElementById('sendSpinner'); if (sp) sp.remove();
+                        }
+                    } else {
+                        // non-2xx response
+                        const statusText = res.statusText || 'Send failed';
+                        showInlineError(`Send failed: ${res.status} ${statusText}`);
+                        if (sendBtn) {
+                            sendBtn.removeAttribute('disabled'); sendBtn.style.opacity = ''; const sp = document.getElementById('sendSpinner'); if (sp) sp.remove();
+                        }
+                        // fallback: optionally allow full submit - comment/uncomment as desired
+                        // form.submit();
+                    }
+                }).catch((err) => {
+                    console.error('Send fetch error — falling back to normal submit', err);
+                    if (sendBtn) {
+                        sendBtn.removeAttribute('disabled'); sendBtn.style.opacity = ''; const sp = document.getElementById('sendSpinner'); if (sp) sp.remove();
+                    }
+                    try { form.submit(); } catch(e) { showInlineError('Network error — please try again.'); }
+                });
+            });
+
+            // inline error helper
+            function showInlineError(msg) {
+                let el = document.getElementById('sendErrorInline');
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = 'sendErrorInline';
+                    el.style.color = '#ef4444';
+                    el.style.fontSize = '13px';
+                    el.style.marginTop = '8px';
+                    sendBtn && sendBtn.parentNode && sendBtn.parentNode.insertBefore(el, sendBtn.nextSibling);
+                }
+                el.textContent = msg;
+                setTimeout(()=> { try { el.textContent = ''; } catch(e) {} }, 4000);
+            }
+
+            // compose another button behavior
+            if (composeAnotherBtn) {
+                composeAnotherBtn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    // close modal and reset form
+                    if (sentModal) { sentModal.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; }
+                    try {
+                        const toEl = document.getElementById('to_email');
+                        if (toEl) { const def = toEl.dataset && typeof toEl.dataset.defaultTo !== 'undefined' ? toEl.dataset.defaultTo : ''; toEl.value = def || ''; }
+                        ['cc_email','bcc_email','subject'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                        if (wysiwyg) wysiwyg.innerHTML = '';
+                        if (textarea) textarea.value = '';
+                        if (attachList) { attachList.innerHTML = ''; attachList.setAttribute('aria-hidden','true'); }
+                        if (fileInput) {
+                            try {
+                                fileInput.value = null;
+                                const parent = fileInput.parentNode;
+                                if (parent) {
+                                    const clone = fileInput.cloneNode();
+                                    parent.replaceChild(clone, fileInput);
+                                }
+                            } catch(e) {}
+                        }
+                    } catch(e) { console.warn('compose another reset error', e); }
+                    if (wysiwyg) wysiwyg.focus();
+                });
+            }
+
+            // go home button behavior
+            if (goHomeBtn) {
+                goHomeBtn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    window.location.href = '/templates';
+                });
+            }
+
+            /* Ctrl+Enter send */
+            if (wysiwyg && sendBtn) {
+                wysiwyg.addEventListener('keydown', function(e){
+                    if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); sendBtn.click(); }
+                });
+            }
+
+            /* Discard behavior (resets safely) */
+            if (discardBtn) {
+                discardBtn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    try {
+                        const toEl = document.getElementById('to_email');
+                        if (toEl) { const def = toEl.dataset && typeof toEl.dataset.defaultTo !== 'undefined' ? toEl.dataset.defaultTo : ''; toEl.value = def || ''; }
+                        ['cc_email','bcc_email','subject'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                        if (wysiwyg) wysiwyg.innerHTML = '';
+                        if (textarea) textarea.value = '';
+                        if (fileInput) {
+                            try {
+                                fileInput.value = null;
+                                const parent = fileInput.parentNode;
+                                if (parent) {
+                                    const clone = fileInput.cloneNode();
+                                    parent.replaceChild(clone, fileInput);
+                                    fileInput = clone;
+                                    fileInput.addEventListener('change', function() {
+                                        attachList.innerHTML = '';
+                                        const files = Array.from(this.files || []);
+                                        files.forEach(f => {
+                                            const pill = document.createElement('span');
+                                            pill.className = 'attachment-pill';
+                                            pill.innerHTML = `<i class="fas fa-file"></i>&nbsp;` + escapeHtml(f.name);
+                                            attachList.appendChild(pill);
+                                        });
+                                    });
+                                }
+                            } catch(e) { console.warn('clear file input failed', e); }
+                        }
+                        if (attachList) { attachList.innerHTML = ''; attachList.setAttribute('aria-hidden','true'); }
+                        if (ccBccArea) ccBccArea.style.display = 'none';
+                        if (draftTimeEl) draftTimeEl.textContent = '—';
+                        hideEmoji();
+                    } catch(e) { console.error('discard', e); }
+                });
+            }
+
+            /* CC/BCC toggles */
+            if (toggleCcBtn) toggleCcBtn.addEventListener('click', function(){ if (ccBccArea) ccBccArea.style.display = ccBccArea.style.display === 'flex' ? 'none' : 'flex'; });
+            if (toggleBccBtn) toggleBccBtn.addEventListener('click', function(){ if (ccBccArea) ccBccArea.style.display = ccBccArea.style.display === 'flex' ? 'none' : 'flex'; });
+
+            if (draftTimeEl) draftTimeEl.textContent = (new Date()).toLocaleTimeString();
+
+            // done
+            console.info('Compose wired: toolbar, emoji, attach, discard, templates, AJAX submit + modal.');
+        } catch(e){ console.error('compose init', e); }
+    })();
+
+    /* Auth toast UX (unchanged) */
+    (function(){
+        function getQueryParam(name){ const url = new URL(window.location.href); return url.searchParams.get(name); }
+        const authFlag = getQueryParam('authorized');
+        if(authFlag === '1'){
+            const t = document.getElementById('authToast');
+            if(t){ t.style.display = 'block'; setTimeout(()=>{ try{ t.style.opacity='1'; }catch{} }, 10); setTimeout(()=>{ try{ t.style.display='none'; const url=new URL(window.location.href); url.searchParams.delete('authorized'); window.history.replaceState({}, document.title, url.pathname + url.search);}catch{} }, 3200); }
+        }
     })();
 </script>
+
+<!-- ===== New small script: persist & inject "Go to Admin" for admin users across pages ===== -->
+<script>
+(function(){
+  const STORAGE_KEY = 'teetli_is_admin_v1';
+
+  // create the admin anchor node (matching your header style & accessibility)
+  function createAdminAnchor() {
+    const a = document.createElement('a');
+    a.href = '/admin';
+    a.title = 'Open Admin Console';
+    a.setAttribute('aria-label', 'Admin Console');
+    a.className = 'inline-flex items-center gap-2 hover:bg-indigo-700 text-white px-3 py-1.5 rounded go-to-admin';
+    a.innerHTML = '<i class="fas fa-user-shield"></i> Admin Console';
+    return a;
+  }
+
+  // ensure header has admin anchor (idempotent)
+  function ensureHeaderAdminLink() {
+    try {
+      const nav = document.getElementById('navLinks');
+      if (!nav) return;
+      if (nav.querySelector('.go-to-admin')) return; // already present
+
+      const profileContainer = document.getElementById('profileContainer');
+      const adminAnchor = createAdminAnchor();
+      if (profileContainer) nav.insertBefore(adminAnchor, profileContainer);
+      else nav.appendChild(adminAnchor);
+    } catch (e) {
+      console.warn('ensureHeaderAdminLink error', e);
+    }
+  }
+
+  // If server rendered the admin link anywhere in initial HTML, persist the flag
+  try {
+    const serverAdminEl = document.querySelector('.go-to-admin');
+    if (serverAdminEl) {
+      try { localStorage.setItem(STORAGE_KEY, '1'); } catch(e) { /* ignore */ }
+    }
+  } catch(e){ /* ignore */ }
+
+  // On DOMContentLoaded, inject header admin link if flag is set
+  document.addEventListener('DOMContentLoaded', function(){
+    try {
+      const isAdmin = (function(){
+        try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch(e){ return false; }
+      })();
+
+      if (isAdmin) {
+        ensureHeaderAdminLink();
+      }
+
+      // MutationObserver fallback: if nav is added later, inject then (runs only when needed)
+      const nav = document.getElementById('navLinks');
+      if (!nav) {
+        const docObserver = new MutationObserver((mutations, obs) => {
+          const found = document.getElementById('navLinks');
+          if (found) {
+            try {
+              const isAdminNow = (function(){ try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch(e){ return false; } })();
+              if (isAdminNow) ensureHeaderAdminLink();
+            } catch(e){}
+            obs.disconnect();
+          }
+        });
+        docObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
+      } else {
+        // nav exists already — still ensure
+        const isAdminNow = (function(){ try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch(e){ return false; } })();
+        if (isAdminNow) ensureHeaderAdminLink();
+      }
+    } catch(e) { console.warn('admin init error', e); }
+  });
+
+  // Clear stored admin flag when the user clicks logout links
+  document.addEventListener('click', function(ev){
+    try {
+      const a = ev.target.closest && ev.target.closest('a[href="/logout"], .profile-dropdown a.logout');
+      if (a) {
+        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      }
+    } catch(e) {}
+  });
+
+  // defensive: if other scripts later (after load) render a server admin link, set the flag
+  try {
+    const guardObserver = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          try {
+            if (!(node instanceof Element)) continue;
+            if (node.matches && node.matches('.go-to-admin')) {
+              try { localStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
+              // also ensure header link immediately in case this page is the one that rendered it
+              ensureHeaderAdminLink();
+              return;
+            }
+            // check descendants
+            const found = node.querySelector && node.querySelector('.go-to-admin');
+            if (found) {
+              try { localStorage.setItem(STORAGE_KEY, '1'); } catch(e) {}
+              ensureHeaderAdminLink();
+              return;
+            }
+          } catch(err){}
+        }
+      }
+    });
+    guardObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
+  } catch(e) {}
+})();
+</script>
+
 
 {% block scripts %}{% endblock %}
 

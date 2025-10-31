@@ -17,6 +17,9 @@ from landing_page_app.routers.utils.clients_utils import toggle_client_status
 from landing_page_app.models.user import User
 from landing_page_app.routers.auth import get_current_user
 
+# NEW: logging helper
+from landing_page_app.models.log import add_user_log
+
 # Define IST timezone
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -63,12 +66,16 @@ def add_new_client(
     job_title: str = Form(None),
     job_description: str = Form(""),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),   # <-- added to record actor
 ):
     client_name = (client_name or "").strip()
     manager_name = (manager_name or "").strip()
     job_title = (job_title or "").strip()
     job_description = (job_description or "").strip()
     
+    # actor name fallback
+    actor = getattr(user, "full_name", None) or getattr(user, "email", None) or getattr(user, "id", None)
+
     message_parts = []
 
     if not client_name:
@@ -88,6 +95,15 @@ def add_new_client(
         db.commit()
         db.refresh(client)
         message_parts.append(f"Client '{client_name}' added successfully!")
+        # log creation (commit immediately because we've already committed client)
+        try:
+            add_user_log(db, user.id, f"{actor} CREATED CLIENT {client.client_name}", commit=True)
+        except Exception:
+            # fail-safe: do not break main flow on logging failure
+            try:
+                db.rollback()
+            except Exception:
+                pass
 
     # Optional: Add manager/vendor
     if manager_name:
@@ -104,6 +120,14 @@ def add_new_client(
             db.commit()
             db.refresh(manager)
             message_parts.append(f"Vendor '{manager_name}' added!")
+            # log manager creation (commit immediately)
+            try:
+                add_user_log(db, user.id, f"{actor} CREATED MANAGER {manager.manager_name} for CLIENT {client.client_name}", commit=True)
+            except Exception:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
 
         # Optional: Add job under this manager
         if job_title:
@@ -121,6 +145,20 @@ def add_new_client(
                 db.add(job)
                 db.commit()
                 message_parts.append(f"Job '{job_title}' added successfully!")
+                # log job creation (commit immediately)
+                db.refresh(job)
+                try:
+                    add_user_log(
+                        db,
+                        user.id,
+                        f"{actor} CREATED JOB {job.job_title} under MANAGER {manager.manager_name} for CLIENT {client.client_name}",
+                        commit=True
+                    )
+                except Exception:
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
 
     redirect_url = str(request.url_for("new_arrivals_page")) + f"?message={' | '.join(message_parts)}"
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
@@ -129,10 +167,13 @@ def add_new_client(
 # 3. Delete a Client
 # ------------------------------
 @router.post("/delete/{client_id}")
-def delete_client(client_id: int, db: Session = Depends(get_db)):
+def delete_client(client_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     client = db.query(Client).filter(Client.client_id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+
+    # Capture name for logging before delete
+    client_name_for_log = client.client_name
 
     # Delete related jobs via managers
     jobs = db.query(Job).filter(Job.manager_id.in_([m.manager_id for m in client.managers])).all()
@@ -149,16 +190,42 @@ def delete_client(client_id: int, db: Session = Depends(get_db)):
     db.delete(client)
     db.commit()
 
-    return JSONResponse(content={"message": f"Client '{client.client_name}' and related records deleted successfully!"})
+    # actor name fallback
+    actor = getattr(user, "full_name", None) or getattr(user, "email", None) or getattr(user, "id", None)
+
+    # Log deletion (commit immediately)
+    try:
+        add_user_log(db, user.id, f"{actor} DELETED CLIENT {client_name_for_log}", commit=True)
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+    return JSONResponse(content={"message": f"Client '{client_name_for_log}' and related records deleted successfully!"})
 
 # ------------------------------
 # 4. Toggle Client Status
 # ------------------------------
 @router.post("/toggle/{client_id}")
-def toggle_client_status_api(client_id: int, db: Session = Depends(get_db)):
+def toggle_client_status_api(client_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     client = toggle_client_status(db, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+
+    # actor name fallback
+    actor = getattr(user, "full_name", None) or getattr(user, "email", None) or getattr(user, "id", None)
+
+    # Log activation/deactivation (commit immediately)
+    state = "ACTIVATED" if client.status == "active" else "DEACTIVATED"
+    try:
+        add_user_log(db, user.id, f"{actor} {state} CLIENT {client.client_name}", commit=True)
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
     return {"client_id": client.client_id, "new_status": client.status}
 
 # ------------------------------
@@ -208,7 +275,8 @@ def client_detail(
 def edit_client(
     client_id: int,
     new_name: str = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     client = db.query(Client).filter(Client.client_id == client_id).first()
     if not client:
@@ -221,9 +289,22 @@ def edit_client(
     if existing_client:
         raise HTTPException(status_code=400, detail=f"Client '{new_name}' already exists")
 
+    old_name = client.client_name
     client.client_name = new_name
     client.updated_at = datetime.now(IST)
     db.commit()
     db.refresh(client)
+
+    # actor name fallback
+    actor = getattr(user, "full_name", None) or getattr(user, "email", None) or getattr(user, "id", None)
+
+    # Log edit (commit immediately)
+    try:
+        add_user_log(db, user.id, f"{actor} EDITED CLIENT {old_name} → {client.client_name}", commit=True)
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
 
     return {"message": f"Client '{new_name}' updated successfully!"}

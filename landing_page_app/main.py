@@ -9,7 +9,9 @@ from fastapi.templating import Jinja2Templates
 import os
 from typing import Generator
 from landing_page_app.routers import work_update
-
+from landing_page_app.routers import resume_extract
+from landing_page_app.routers.candidates import gmail
+from landing_page_app.routers.auth import get_current_user
 # ==============================
 # Load .env (if python-dotenv available)
 # ==============================
@@ -18,7 +20,9 @@ from landing_page_app.routers import work_update
 # are available to your application at runtime.
 try:
     from dotenv import load_dotenv
-    load_dotenv()  # loads variables from .env into environment
+    from dotenv import load_dotenv
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(dotenv_path=env_path) # loads variables from .env into environment
 except Exception:
     # python-dotenv not installed or failed to load — continue without crashing.
     # In that case, ensure env vars are provided by your deployment environment.
@@ -94,3 +98,5 @@ async def attach_user_to_request(request: Request, call_next):
 # ---------------------------------------------------
 include_routers(app)
 app.include_router(work_update.router)
+app.include_router(resume_extract.router)
+app.include_router(gmail.router)
