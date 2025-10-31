@@ -1,299 +1,434 @@
+<!-- admindashboard.html (updated) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin Dashboard</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="{{ url_for('static', path='css/admin.css') }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/admin.css') }}" />
 
   <style>
-    /* Keep the simple, original look */
-    .user-logs table { width: 100%; border-collapse: separate; border-spacing: 28px 0; }
-    .user-logs th, .user-logs td { padding: 6px 0; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; }
-    .user-logs th { background: #f7f7f7; }
-    .col-id { text-align: center; width: 80px; }
-    .nowrap { white-space: nowrap; }
-
-    .list { width:100%; border-collapse:separate; border-spacing:0 8px; }
-    .list thead th {
-      font-size:.8rem; text-transform:uppercase; letter-spacing:.02em;
-      color:#6b7280; text-align:left; padding:8px 12px;
+    :root{
+      --bg: #f9fafb;
+      --card-bg: #ffffffff;
+      --text-dark: #0f172a;
+      --text-muted: #6b7280;
+      --accent: #4f46e5;
     }
-    .row { background:#fff; border-radius:12px; }
-    .row td { padding:12px 14px; vertical-align:middle; }
 
-    .btn { display:inline-block; padding:6px 10px; border-radius:8px; font-weight:500; text-decoration:none; }
-    .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:32px; border-radius:8px; font-weight:800; font-size:16px; line-height:1; }
-    .sr-only { position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden; }
-    .btn-approve { background:#10b981; color:#fff; } .btn-approve:hover { background:#0ea371; }
-    .btn-reject  { background:#ef4444; color:#fff; } .btn-reject:hover  { background:#d63b3b; }
-    .empty { color:#6b7280; background:#f9fafb; border:1px dashed #e5e7eb; padding:16px; border-radius:12px; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-dark); margin:0; padding:0; }
 
-    .pill { padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; color:#111827; }
-    .pill.active { background:#111827; color:#fff; border-color:#111827; }
+    header { background: linear-gradient(90deg, #4f46e5, var(--accent)); color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    header .container { max-width: 1280px; margin: 0 auto; padding: 1rem 1.5rem; display:flex; align-items:center; justify-content:space-between; }
 
-    .tab-content.hidden { display:none; }
+    .main { max-width:1280px; margin:0 auto; padding:1.5rem; }
 
-    /* Logs toggle buttons */
-    .toggle .active { background:#111827; color:#fff; }
+    .tab-nav { display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .pill { padding:8px 16px; border-radius:9999px; border:1px solid #e2e8f0; background:#fff; font-weight:600; font-size:0.9rem; }
+    .pill.active { background:var(--accent); color:#fff; border:none; }
+
+    .panel { background:var(--card-bg); border-radius:12px; padding:1.5rem; box-shadow:0 4px 20px rgba(0,0,0,0.05); margin-bottom:1.5rem; }
+    .panel h2 { font-size:1.25rem; font-weight:700; margin-bottom:0.75rem; }
+
+    table { width:100%; border-collapse:separate; border-spacing:0 10px; }
+    thead th { text-align:left; color:var(--text-muted); font-size:0.85rem; font-weight:700; padding:10px 14px; }
+    tbody tr { background: #fff; border-radius:10px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+    tbody td { padding:12px 14px; font-size:0.9rem; }
+
+    .icon-btn { border:none; padding:8px 14px; border-radius:8px; color:white; font-weight:600; cursor:pointer; }
+    .btn-approve { background:#10b981; }
+    .btn-reject { background:#ef4444; }
+
+    .empty { text-align:center; color:var(--text-muted); padding:1.5rem; background:#fff; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.03); }
+
+    .search-bar { display:flex; align-items:center; gap:0.5rem; }
+    .search-bar input { border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; width:260px; }
+    .search-bar button { background:#e5e7eb; border-radius:8px; padding:8px 14px; font-weight:600; }
+
+    @media(max-width:768px){
+      .search-bar input { width:100%; }
+      table { font-size:0.85rem; }
+      .panel { padding:1rem; }
+    }
   </style>
 </head>
-<body class="bg-gray-50">
-  <!-- Classic blue header + keep eye icon for User View -->
-  <header class="bg-blue-600 text-white">
-    <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
-      <h1 class="text-xl font-bold">Admin Dashboard</h1>
-      <div class="flex gap-2">
-        <a href="/templates"
-           class="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white px-3 py-1.5 rounded"
-           title="User View">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/>
-            <circle cx="12" cy="12" r="3" stroke-width="2" stroke="currentColor"/>
-          </svg>
-          <span>User View</span>
-        </a>
-        <a href="/logout"
-           class="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded"
-           title="Logout">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 3v9m5.657-5.657A8 8 0 1 1 6.343 6.343"/>
-          </svg>
-          <span>Logout</span>
-        </a>
+<body>
+  <header>
+    <div class="container">
+      <div class="flex items-center gap-3">
+        <div>
+          <h1 class="text-xl font-semibold">Admin Dashboard</h1>
+          <p class="text-sm text-white/80">Manage users and activity</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/templates" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm">User View</a>
+        <a href="/logout" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm">Logout</a>
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-5 py-5">
-    <!-- TABS -->
-    <div class="flex gap-2 mb-4">
-      <a href="/admin?tab=pending"   class="pill {{ 'active' if active_tab=='pending'   else '' }}">Pending Users</a>
+  <main class="main">
+    <div class="tab-nav">
+      <a href="/admin?tab=pending" class="pill {{ 'active' if active_tab=='pending' else '' }}">Pending Users</a>
       <a href="/admin?tab=logs&logs_view={{ logs_view|default('summary') }}" class="pill {{ 'active' if active_tab=='logs' else '' }}">User Logs</a>
-      <a href="/admin?tab=allusers"  class="pill {{ 'active' if active_tab=='allusers'  else '' }}">All Users</a>
+      <a href="/admin?tab=allusers" class="pill {{ 'active' if active_tab=='allusers' else '' }}">All Users</a>
       <a href="/admin?tab=uploadcsv" class="pill {{ 'active' if active_tab=='uploadcsv' else '' }}">Upload CSV</a>
+      <form method="get" action="/admin" class="search-bar ml-auto">
+        <input type="hidden" name="tab" value="allusers"/>
+        <input type="text" name="users_q" value="{{ users_q }}" placeholder="Search name or email…"/>
+        <button type="submit">Search</button>
+      </form>
     </div>
 
-    {% if msg %}
-      <div class="mb-4 p-3 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">{{ msg }}</div>
-    {% endif %}
-    {% if error %}
-      <div class="mb-4 p-3 rounded bg-rose-50 text-rose-800 border border-rose-200">{{ error }}</div>
-    {% endif %}
-
-    <!-- ========== PENDING USERS ========== -->
-    <section id="pending" class="tab-content {{ '' if active_tab=='pending' else 'hidden' }} ">
-      <h2 class="text-lg font-semibold mb-3">Pending Users</h2>
+    <!-- Pending Users -->
+    <section id="pending" class="tab-content {{ '' if active_tab=='pending' else 'hidden' }} panel">
+      <h2>Pending Users</h2>
       {% if pending_users %}
-        <table class="list w-full">
-          <thead>
-            <tr>
-              <th>Name / ID</th>
-              <th>Email</th>
-              <th style="width:140px; text-align:right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for user in pending_users %}
-            <tr class="row">
-              <td>
-                <div class="font-semibold">{{ user.full_name }}</div>
-                <div class="text-xs text-gray-500">ID: {{ user.id }}</div>
-              </td>
-              <td>{{ user.email }}</td>
-              <td>
-                <div class="flex items-center justify-end gap-2">
-                  <form method="post" action="/admin/approve/{{ user.id }}" onsubmit="return confirm('Approve {{ user.full_name }}?');">
-                    <button type="submit" class="icon-btn btn-approve" title="Approve">&#10003;<span class="sr-only">Approve</span></button>
-                  </form>
-                  <form method="post" action="/admin/reject/{{ user.id }}" onsubmit="return confirm('Reject {{ user.full_name }}? This will delete the user.');">
-                    <button type="submit" class="icon-btn btn-reject" title="Reject">&#10005;<span class="sr-only">Reject</span></button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="empty">No pending users.</div>
-      {% endif %}
-    </section>
-
-    <!-- ========== USER LOGS ========== -->
-    <section id="logs" class="tab-content {{ '' if active_tab=='logs' else 'hidden' }}">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold">User Logs (last {{ log_days }} days)</h2>
-        <a class="px-3 py-1.5 rounded bg-gray-200 hover:bg-gray-300 text-sm" href="/admin/logs-export">Export CSV</a>
-      </div>
-
-      <!-- Toggle buttons: Grouped vs Events -->
-      <div class="toggle flex gap-2 mb-4">
-        <button id="btn-summary" class="pill {{ 'active' if logs_view=='summary' else '' }}" type="button" onclick="showLogsView('summary')">Grouped by user</button>
-        <button id="btn-events"  class="pill {{ 'active' if logs_view=='events' else '' }}"  type="button" onclick="showLogsView('events')">All events</button>
-      </div>
-
-      <!-- Grouped (Summary) -->
-      <div id="logs-summary" class="{{ '' if logs_view=='summary' else 'hidden' }}">
-        {% if logs_summary %}
-          <table class="list w-full">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th class="nowrap">Last activity</th>
-                <th class="nowrap">Events</th>
-                <th style="width:140px; text-align:right">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in logs_summary %}
-              <tr class="row">
-                <td>
-                  <div class="font-semibold">{{ row.username }}</div>
-                  <div class="text-xs text-gray-500">ID: {{ row.user_id }}</div>
-                </td>
-                <td class="nowrap">{{ row.last_ts }}</td>
-                <td class="nowrap">{{ row.events }}</td>
-                <td class="text-right">
-                  <button
-                    type="button"
-                    class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                    onclick="openLogModal({{ row.user_id }}, '{{ row.username|e }}')"
-                  >View</button>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        {% else %}
-          <div class="empty">No activity in the selected window.</div>
-        {% endif %}
-      </div>
-
-      <!-- All events (original list) -->
-      <div id="logs-events" class="{{ '' if logs_view=='events' else 'hidden' }}">
-        <div class="user-logs">
-          <table>
-            <thead>
-              <tr>
-                <th class="col-id">User ID</th>
-                <th>Username</th>
-                <th>Action</th>
-                <th class="nowrap">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-            {% for log in user_logs %}
-              <tr>
-                <td class="col-id">{{ log.user_id }}</td>
-                <td>{{ log.username }}</td>
-                <td>{{ log.action }}</td>
-                <td class="nowrap">{{ log.timestamp }}</td>
-              </tr>
-            {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========== ALL USERS ========== -->
-    <section id="allusers" class="tab-content {{ '' if active_tab=='allusers' else 'hidden' }}">
-      <h2 class="text-lg font-semibold mb-3">All Users</h2>
-
-      <form method="get" class="mb-3 flex gap-2 items-center" action="/admin">
-        <input type="hidden" name="tab" value="allusers"/>
-        <input type="text" name="users_q" value="{{ users_q }}" placeholder="Search name or email…" class="border rounded px-3 py-2 w-72"/>
-        <button class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300" type="submit">Search</button>
-      </form>
-
-      <table class="list w-full">
+      <table>
         <thead>
-          <tr>
-            <th>Name / ID</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th style="width:220px; text-align:right">Actions</th>
-          </tr>
+          <tr><th>Name / ID</th><th>Email</th><th style="text-align:right">Actions</th></tr>
         </thead>
         <tbody>
-          {% for user in all_users_page %}
-          <tr class="row">
+          {% for user in pending_users %}
+          <tr>
             <td>
               <div class="font-semibold">{{ user.full_name }}</div>
               <div class="text-xs text-gray-500">ID: {{ user.id }}</div>
             </td>
             <td>{{ user.email }}</td>
-            <td>
-              {% if user.is_active %}
-                <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-sm">Active</span>
-              {% else %}
-                <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-sm">Pending</span>
-              {% endif %}
-            </td>
-            <td>
-              <div class="flex justify-end gap-2">
-                <a href="/admin/users/{{ user.id }}/view"
-                   class="px-3 py-1 rounded border text-sm hover:bg-gray-50">View</a>
-                <a href="/admin/users/{{ user.id }}/edit"
-                   class="px-3 py-1 rounded border text-sm hover:bg-gray-50">Edit</a>
-                <form method="post" action="/admin/remove/{{ user.id }}" onsubmit="return confirm('Remove {{ user.full_name }}? This deletes the account.');">
-                  <button class="px-3 py-1 rounded bg-rose-500 text-white hover:bg-rose-600" type="submit">Remove</button>
-                </form>
-              </div>
+            <td style="text-align:right">
+              <form method="post" action="/admin/approve/{{ user.id }}" style="display:inline-block" onsubmit="return confirm('Approve {{ user.full_name }}?');">
+                <button type="submit" class="icon-btn btn-approve">Approve</button>
+              </form>
+              <form method="post" action="/admin/reject/{{ user.id }}" style="display:inline-block" onsubmit="return confirm('Reject {{ user.full_name }}?');">
+                <button type="submit" class="icon-btn btn-reject">Reject</button>
+              </form>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      {% else %}
+      <div class="empty">No pending users.</div>
+      {% endif %}
+    </section>
 
-      <div class="mt-3 text-sm text-gray-600">
-        Page {{ users_page }} of {{ users_total_pages }} — {{ users_total }} users
+    <!-- User Logs -->
+    <section id="logs" class="tab-content {{ '' if active_tab=='logs' else 'hidden' }} panel">
+      <h2>User Logs (last {{ log_days }} days)</h2>
+      <div class="flex gap-2 mb-4">
+        <button id="btn-summary" class="pill {{ 'active' if logs_view=='summary' else '' }}" type="button" onclick="showLogsView('summary')">Grouped by user</button>
+        <button id="btn-events"  class="pill {{ 'active' if logs_view=='events' else '' }}"  type="button" onclick="showLogsView('events')">All events</button>
+      </div>
+
+      <div id="logs-summary" class="{{ '' if logs_view=='summary' else 'hidden' }}">
+        {% if logs_summary %}
+        <table>
+          <thead>
+            <tr><th>User</th><th>Last activity</th><th>Events</th><th style="text-align:right">Details</th></tr>
+          </thead>
+          <tbody>
+            {% for row in logs_summary %}
+            <tr>
+              <td>
+                <div class="font-semibold">{{ row.username }}</div>
+                <div class="text-xs text-gray-500">ID: {{ row.user_id }}</div>
+              </td>
+              <td>{{ row.last_ts }}</td>
+              <td>{{ row.events }}</td>
+              <td style="text-align:right">
+                <!-- Changed: redirect to a dedicated page instead of modal popup.
+                     We pass the selected days so the new page shows the same window. -->
+                <a href="/admin/logs/user/{{ row.user_id }}?days={{ log_days }}" class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">View</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty">No activity in this period.</div>
+        {% endif %}
+      </div>
+
+      <div id="logs-events" class="{{ '' if logs_view=='events' else 'hidden' }}">
+        <table>
+          <thead>
+            <tr><th>User ID</th><th>Username</th><th>Action</th><th>Timestamp</th></tr>
+          </thead>
+          <tbody>
+            {% for log in user_logs %}
+            <tr>
+              <td>{{ log.user_id }}</td><td>{{ log.username }}</td><td>{{ log.action }}</td><td>{{ log.timestamp }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- ========== UPLOAD CSV (working form) ========== -->
-    <section id="uploadcsv" class="tab-content {{ '' if active_tab=='uploadcsv' else 'hidden' }} ">
-      <h2 class="text-lg font-semibold mb-3">Upload CSV</h2>
-      <form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="bg-white border border-gray-200 rounded-xl p-5 max-w-lg">
-        <div class="mb-3">
-          <label class="block text-sm font-medium mb-1">Select CSV file</label>
-          <input type="file" name="file" accept=".csv,text/csv" required class="block w-full border border-gray-300 rounded px-3 py-2"/>
-        </div>
-        <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Upload</button>
-        <p class="mt-2 text-xs text-gray-500">Your file will be saved on the server and the action will be logged.</p>
-      </form>
+    <!-- All Users -->
+    <section id="allusers" class="tab-content {{ '' if active_tab=='allusers' else 'hidden' }} panel">
+      <h2>All Users</h2>
+      <table>
+        <thead>
+          <tr><th>Name / ID</th><th>Email</th><th>Status</th><th style="text-align:right">Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for user in all_users_page %}
+          <tr>
+            <td><div class="font-semibold">{{ user.full_name }}</div><div class="text-xs text-gray-500">ID: {{ user.id }}</div></td>
+            <td>{{ user.email }}</td>
+            <td>{% if user.is_active %}<span class="text-green-600 font-medium">Active</span>{% else %}<span class="text-yellow-600 font-medium">Pending</span>{% endif %}</td>
+            <td style="text-align:right">
+              <a href="/admin/users/{{ user.id }}/view" class="px-3 py-1 rounded border text-sm hover:bg-gray-50">View</a>
+              <a href="/admin/users/{{ user.id }}/edit" class="px-3 py-1 rounded border text-sm hover:bg-gray-50">Edit</a>
+              <form method="post" action="/admin/remove/{{ user.id }}" style="display:inline-block" onsubmit="return confirm('Remove {{ user.full_name }}?');">
+                <button type="submit" class="px-3 py-1 rounded bg-rose-500 text-white hover:bg-rose-600">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </section>
 
+    <!-- Upload CSV -->
+    <section id="uploadcsv" class="tab-content {{ '' if active_tab=='uploadcsv' else 'hidden' }} panel">
+      <h2>Upload CSV</h2>
+      <form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="max-w-md">
+        <label class="block mb-2 font-medium">Select CSV file</label>
+        <input type="file" name="file" accept=".csv,text/csv" required class="block w-full border border-gray-300 rounded px-3 py-2 mb-3"/>
+        <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Upload</button>
+      </form>
+       <!-- Add this inside the Upload CSV panel (after the CSV upload form) -->
+    <div class="mt-6 max-w-md">
+      <h3 class="font-medium mb-2">Extract from Google Drive folder</h3>
+      <form method="post" action="/admin/extract-resumes" class="flex gap-2 items-start" onsubmit="return confirm('Start resume extraction? This will read files from the provided Drive folder.');">
+        <input type="text" name="drive_link" placeholder="Paste Drive folder link (or folder id)" required
+              class="block w-full border border-gray-300 rounded px-3 py-2"/>
+        <button type="submit" class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Extract</button>
+      </form>
+      <p class="text-xs text-gray-500 mt-2">Supported: PDF, DOCX, DOC. Use a service-account-accessible folder (service account JSON present in project).</p>
+    </div>
+
+    </section>
   </main>
 
-  <!-- User Logs Modal (popup) -->
-  <div id="log-modal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/40" onclick="closeLogModal()"></div>
-    <div class="relative z-10 mx-auto mt-16 w-11/12 max-w-2xl rounded-xl bg-white shadow-xl">
-      <div class="flex items-center justify-between border-b px-5 py-3">
-        <h3 id="log-modal-title" class="text-lg font-semibold">User Activity</h3>
-        <button class="px-2 py-1 text-gray-600 hover:text-gray-900" onclick="closeLogModal()">✕</button>
-      </div>
-      <div id="log-modal-body" class="max-h-[60vh] overflow-auto px-5 py-4 text-sm">
-        <div class="text-gray-500">Loading…</div>
-      </div>
-      <div class="flex items-center justify-between gap-3 border-t px-5 py-3">
-        <div class="text-xs text-gray-500">Tip: press <kbd class="rounded border px-1">M</kbd> to load more</div>
-        <div class="flex gap-2">
-          <button id="log-more-btn" class="rounded border px-3 py-1.5 hover:bg-gray-50" onclick="loadMoreLogs()">Load more</button>
-          <button class="rounded bg-gray-800 px-3 py-1.5 text-white hover:bg-gray-900" onclick="closeLogModal()">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- NOTE: modal removed as per new requirement -->
+
+   <!-- CSV Upload Toast (drop-in) -->
+  <style>
+    /* Toast container (keeps existing design untouched) */
+    #csv-toast-container {
+      position: fixed;
+      bottom: 90px;
+      right: 40px;
+      z-index: 2000; /* above modals etc */
+      font-family: inherit;
+    }
+
+    .csv-toast {
+      min-width: 300px;
+      max-width: 420px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      background: #ffffff;
+      color: #111;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      border-left: 6px solid #4f46e5; /* success indicator */
+      transition: transform 240ms ease, opacity 240ms ease;
+      transform: translateY(-8px);
+      opacity: 0;
+    }
+
+    .csv-toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .csv-toast.error { border-left-color: #dc3545; }
+    .csv-toast .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: rgba(0,0,0,0.05);
+      font-weight: 600;
+    }
+
+    .csv-toast .content {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .csv-toast .title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .csv-toast .close-btn {
+      margin-left: 8px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      color: #666;
+    }
+
+    /* small responsive tweaks */
+    @media (max-width: 480px) {
+      #csv-toast-container { left: 10px; right: 10px; top: 12px; }
+      .csv-toast { max-width: 100%; min-width: 0; }
+    }
+  </style>
+
+  <div id="csv-toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <script>
-    /* Toggle inside Logs tab; does NOT change the 'tab' URL param anymore */
+  (function() {
+    // parse query params into an object
+    function parseQuery(q) {
+      var obj = {};
+      if (!q) return obj;
+      q = q.replace(/^\?/, '');
+      q.split('&').forEach(function(pair) {
+        if (!pair) return;
+        var parts = pair.split('=');
+        var key = decodeURIComponent(parts[0] || '');
+        var val = decodeURIComponent((parts[1] || '').replace(/\+/g, ' '));
+        obj[key] = val;
+      });
+      return obj;
+    }
+
+    // show toast
+    function showCsvToast(options) {
+      var container = document.getElementById('csv-toast-container');
+      if (!container) return;
+
+      var toast = document.createElement('div');
+      toast.className = 'csv-toast' + (options.type === 'error' ? ' error' : '');
+
+      var icon = document.createElement('div');
+      icon.className = 'icon';
+      icon.innerText = options.type === 'error' ? '!' : '✓';
+
+      var content = document.createElement('div');
+      content.className = 'content';
+      var title = document.createElement('div');
+      title.className = 'title';
+      title.innerText = options.title || (options.type === 'error' ? 'Upload failed' : 'Upload successful');
+
+      var msg = document.createElement('div');
+      msg.className = 'msg';
+      msg.innerText = options.message || '';
+
+      content.appendChild(title);
+      content.appendChild(msg);
+
+      var closeBtn = document.createElement('button');
+      closeBtn.className = 'close-btn';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.onclick = function() {
+        hide(toast);
+      };
+
+      toast.appendChild(icon);
+      toast.appendChild(content);
+      toast.appendChild(closeBtn);
+
+      container.appendChild(toast);
+
+      // small delay to trigger animation
+      requestAnimationFrame(function() {
+        toast.classList.add('show');
+      });
+
+      var autoDismiss = options.autoDismiss !== false;
+      var duration = options.duration || 6000;
+
+      if (autoDismiss) {
+        setTimeout(function() {
+          hide(toast);
+        }, duration);
+      }
+
+      function hide(el) {
+        if (!el) return;
+        el.classList.remove('show');
+        // allow transition to finish
+        setTimeout(function() {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 260);
+      }
+    }
+
+    // run on load
+    document.addEventListener('DOMContentLoaded', function() {
+      var q = window.location.search || '';
+      var params = parseQuery(q);
+
+      // If backend sends separate filename & inserted params, prefer that to construct exact message:
+      // ?filename=foo.csv&inserted=100
+      if (params.filename || params.inserted) {
+        var fname = params.filename || '';
+        var cnt = params.inserted || params.inserted_rows || params.inserted_count || '';
+        if (fname) {
+          var rowsText = '';
+          if (cnt) {
+            rowsText = ' (' + cnt + ' rows)';
+          }
+          showCsvToast({
+            type: params.error ? 'error' : 'success',
+            title: params.error ? 'CSV Upload Error' : 'CSV Uploaded',
+            message: (params.error ? params.error : ('Uploaded ' + fname + rowsText)),
+            duration: params.error ? 9000 : 7000
+          });
+        }
+      } else if (params.msg) {
+        // Backend sets msg and duplicates in redirect (e.g. ?msg=Uploaded%20file.csv%20(100%20rows)...)
+        var msgText = params.msg || '';
+        showCsvToast({
+          type: params.error ? 'error' : 'success',
+          title: params.error ? 'CSV Upload Error' : 'CSV Uploaded',
+          message: msgText,
+          duration: params.error ? 9000 : 7000
+        });
+      } else if (params.error) {
+        // fallback: show the error if only ?error= provided
+        var errText = params.error || 'CSV upload failed';
+        showCsvToast({
+          type: 'error',
+          title: 'CSV Upload Error',
+          message: errText,
+          duration: 9000
+        });
+      }
+
+      // Prevent the toast from reappearing on refresh / back button by removing query params
+      if (params.msg || params.error || params.filename) {
+        try {
+          var clean = window.location.pathname + (window.location.hash || '');
+          history.replaceState({}, '', clean);
+        } catch (e) {
+          // ignore if not allowed
+        }
+      }
+    });
+  })();
+  </script>
+
+  <!-- Original scripts preserved; only visual behaviour toggles were used above -->
+  <script>
     function showLogsView(which) {
       const summary = document.getElementById('logs-summary');
       const events  = document.getElementById('logs-events');
@@ -316,148 +451,42 @@
 
       try {
         const url = new URL(window.location.href);
-        /* DO NOT touch the 'tab' param here */
         url.searchParams.set('logs_view', w);
         history.replaceState(null, '', url.toString());
       } catch (e) {/* noop */}
     }
 
-    // ----- Modal-based user logs -----
-    let _logModalState = { userId: null, skip: 0, limit: 10, days: {{ log_days }}, username: '' };
-
-    function openLogModal(userId, username) {
-      _logModalState.userId = userId;
-      _logModalState.skip = 0;
-      _logModalState.limit = 10;
-      _logModalState.username = username || '';
-      document.getElementById('log-modal-title').textContent = `Activity for ${username || ('User ' + userId)}`;
-      document.getElementById('log-modal').classList.remove('hidden');
-      fetchAndRenderLogs(true);
-    }
-
-    function closeLogModal() {
-      document.getElementById('log-modal').classList.add('hidden');
-    }
-
-    async function fetchAndRenderLogs(reset=false) {
-      const body = document.getElementById('log-modal-body');
-      if (reset) body.innerHTML = '<div class="text-gray-500">Loading…</div>';
-
-      const { userId, skip, limit, days } = _logModalState;
-      try {
-        const resp = await fetch(`/admin/logs/user/${userId}.json?days=${encodeURIComponent(days)}&skip=${skip}&limit=${limit}`, { credentials: 'same-origin' });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-
-        const list = (data.items || []).map(it => {
-          const ts = escapeHtml(it.timestamp || '');
-          const act = escapeHtml(it.action || '');
-          return `<li class="flex items-start gap-2">
-                    <span class="mt-1 inline-block h-2 w-2 rounded-full bg-gray-400"></span>
-                    <div><span class="font-medium">${act}</span>
-                      <span class="ml-2 text-gray-500">${ts}</span></div>
-                  </li>`;
-        }).join('');
-
-        if (reset) {
-          body.innerHTML = list ? `<ul id="log-list" class="space-y-1">${list}</ul>` :
-            '<div class="text-gray-500">No events found for this user in the selected window.</div>';
-        } else {
-          const ul = document.getElementById('log-list');
-          if (ul) ul.insertAdjacentHTML('beforeend', list);
-        }
-      } catch (e) {
-        body.innerHTML = '<div class="text-rose-600">Failed to load events.</div>';
-        console.error(e);
-      }
-    }
-
-    function loadMoreLogs() {
-      _logModalState.skip += _logModalState.limit;
-      fetchAndRenderLogs(false);
-    }
-
-    document.addEventListener('keydown', (ev) => {
-      const modal = document.getElementById('log-modal');
-      if (modal && !modal.classList.contains('hidden')) {
-        if (ev.key === 'm' || ev.key === 'M') {
-          ev.preventDefault();
-          loadMoreLogs();
-        }
-        if (ev.key === 'Escape') {
-          ev.preventDefault();
-          closeLogModal();
-        }
-      }
-    });
-
-    function escapeHtml(str) {
-      return (str ?? '').toString()
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#39;');
-    }
-
-    /* Only initialize the logs view if you're actually on the Logs tab */
     document.addEventListener('DOMContentLoaded', () => {
       if ("{{ active_tab }}".trim() === "logs") {
         const initial = "{{ logs_view|default('summary') }}";
         showLogsView(initial === 'events' ? 'events' : 'summary');
       }
+
+      // preserve tab state logic (unchanged)
+      (function() {
+        function setCookie(name, value, maxAgeSeconds) { document.cookie = name + "=" + encodeURIComponent(value) + "; path=/; max-age=" + (maxAgeSeconds || 86400); }
+        function getCookie(name) { const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\/+^])/g, '\$1') + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+        function setURLTabParam(tab) { var url = new URL(window.location.href); url.searchParams.set("tab", tab); window.history.replaceState({}, "", url.toString()); }
+        function activateTab(tab) { document.querySelectorAll("[data-tab]").forEach(function(el){ if (el.getAttribute("data-tab") === tab) el.classList.add("active"); else el.classList.remove("active"); }); }
+
+        document.querySelectorAll("[data-tab]").forEach(function(el) { el.addEventListener("click", function(e) { if (el.getAttribute("href") === "#" || el.getAttribute("href") === "") e.preventDefault(); const tab = el.getAttribute("data-tab"); if (!tab) return; setCookie("admin_last_tab", tab, 86400); try { localStorage.setItem("admin_last_tab", tab); } catch(e) {} setURLTabParam(tab); activateTab(tab); }); });
+
+        (function initFromServerOrStorage() {
+          var serverActive = "{{ active_tab }}".trim();
+          var url = new URL(window.location.href);
+          var urlTab = url.searchParams.get("tab");
+          var saved = getCookie("admin_last_tab") || (function(){ try { return localStorage.getItem("admin_last_tab"); } catch(e) { return null; } })();
+          var tab = urlTab || serverActive || saved || "pending";
+          if (!urlTab) setURLTabParam(tab);
+          setCookie("admin_last_tab", tab, 86400);
+          try { localStorage.setItem("admin_last_tab", tab); } catch(e) {}
+          activateTab(tab);
+        })();
+      })();
     });
   </script>
 
   {% block scripts %}
-  <script>
-  (function() {
-    function setCookie(name, value, maxAgeSeconds) {
-      document.cookie = name + "=" + encodeURIComponent(value) + "; path=/; max-age=" + (maxAgeSeconds || 86400);
-    }
-    function getCookie(name) {
-      const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\\]\\/+^])/g, '\\$1') + '=([^;]*)'));
-      return m ? decodeURIComponent(m[1]) : null;
-    }
-    function setURLTabParam(tab) {
-      var url = new URL(window.location.href);
-      url.searchParams.set("tab", tab);
-      window.history.replaceState({}, "", url.toString());
-    }
-    function activateTab(tab) {
-      document.querySelectorAll("[data-tab]").forEach(function(el){
-        if (el.getAttribute("data-tab") === tab) el.classList.add("active");
-        else el.classList.remove("active");
-      });
-    }
-
-    document.querySelectorAll("[data-tab]").forEach(function(el) {
-      el.addEventListener("click", function(e) {
-        if (el.getAttribute("href") === "#" || el.getAttribute("href") === "") e.preventDefault();
-        const tab = el.getAttribute("data-tab");
-        if (!tab) return;
-        setCookie("admin_last_tab", tab, 86400);
-        try { localStorage.setItem("admin_last_tab", tab); } catch(e) {}
-        setURLTabParam(tab);
-        activateTab(tab);
-      });
-    });
-
-    (function initFromServerOrStorage() {
-      var serverActive = "{{ active_tab }}".trim();
-      var url = new URL(window.location.href);
-      var urlTab = url.searchParams.get("tab");
-      var saved = getCookie("admin_last_tab") || (function(){
-        try { return localStorage.getItem("admin_last_tab"); } catch(e) { return null; }
-      })();
-      var tab = urlTab || serverActive || saved || "pending";
-      if (!urlTab) setURLTabParam(tab);
-      setCookie("admin_last_tab", tab, 86400);
-      try { localStorage.setItem("admin_last_tab", tab); } catch(e) {}
-      activateTab(tab);
-    })();
-  })();
-  </script>
   {% endblock %}
 </body>
 </html>

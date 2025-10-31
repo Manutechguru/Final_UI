@@ -1,0 +1,273 @@
+{# landing_page_app/templates/admin_user_logs.html #}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Activity — {{ target_user.full_name or target_user.email }}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f6f8fb; margin:0; color:#0f172a; }
+      .container { max-width:1200px; margin:28px auto; padding:18px; }
+      .card { background:white; border-radius:12px; padding:0; box-shadow:0 8px 30px rgba(2,6,23,0.06); overflow:hidden; }
+      .activity-header { background:#4f46e5; color:#fff; }
+      .activity-header .muted { color: rgba(255,255,255,0.92); }
+      .activity-header h1 { color: #fff; }
+      .header-input {
+        background: rgba(255,255,255,0.92);
+        color: #000;
+        border: 1px solid rgba(0,0,0,0.08);
+        outline: none;
+      }
+      .header-input::placeholder { color: rgba(0,0,0,0.45); }
+      .header-input:focus { box-shadow: 0 0 0 4px rgba(79,70,229,0.12); border-color: rgba(0,0,0,0.12); }
+      select.header-input { color: #000; background: rgba(255,255,255,0.94); }
+      .header-icon { color: #fff; fill: #fff; stroke: #fff; }
+      .header-back { border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); color: #000; }
+      .header-back .back-icon { color: #fff; stroke: #fff; }
+      .type-dot { width:12px; height:12px; display:inline-block; border-radius:9999px; }
+      .small-meta { letter-spacing:0.1px; color:#6b7280; }
+      @media (max-width:640px) {
+        .container { padding:12px; }
+        .card { border-radius:10px; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="card">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 activity-header rounded-t-lg">
+          <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">
+              {{ target_user.full_name or target_user.email }}
+            </h1>
+            <div class="mt-1 text-sm muted">
+              <span>ID: <span class="font-medium">{{ target_user.id }}</span></span>
+              <span class="mx-2">•</span>
+              <span>Last <strong id="daysLabel">{{ days }}</strong> days</span>
+              <span class="mx-2">•</span>
+              <span class="text-indigo-200 font-semibold">{{ total }}</span> events
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <label for="days" class="text-sm hidden md:inline muted">Days</label>
+              <input id="days" name="days" type="number" min="1" max="90" value="{{ days }}"
+                     class="header-input w-20 rounded px-2 py-1 text-sm" />
+            </div>
+
+            <div class="relative">
+              <input id="activitySearch" type="search" placeholder="Search actions, jobs, clients..."
+                     aria-label="Search actions"
+                     class="header-input w-56 md:w-72 rounded-lg px-3 py-2 text-sm pr-10" />
+              <svg class="absolute right-3 top-2.5 h-4 w-4 header-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+
+            <!-- ✅ Added Unlink + Gmail options -->
+            <div class="relative">
+              <label for="activityType" class="sr-only">Filter by type</label>
+              <select id="activityType" class="header-input rounded-lg px-3 py-2 text-sm">
+                <option value="">All types</option>
+                <option value="Link">Link</option>
+                <option value="Unlink">Unlink</option>
+                <option value="Download">Download</option>
+                <option value="Gmail">Gmail</option>
+                <option value="Edit">Edit</option>
+                <option value="Login">Login</option>
+                <option value="Logout">Logout</option>
+                <option value="Create">Create</option>
+                <option value="Activated">Activated</option>
+                <option value="Deactivated">Deactivated</option>
+                <option value="Delete">Delete</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <a href="/admin?tab=logs" class="inline-flex items-center gap-2 px-3 py-1.5 rounded header-back text-sm">
+              <svg class="h-4 w-4 back-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Back</span>
+            </a>
+          </div>
+        </div>
+
+        {% if items and items|length > 0 %}
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[720px] divide-y" id="activityTable">
+            <thead class="bg-gradient-to-r from-indigo-50 to-white sticky top-0 z-10">
+              <tr>
+                <th class="text-left p-4 text-sm font-semibold text-gray-700 w-3/5">Action</th>
+                <th class="text-left p-4 text-sm font-semibold text-gray-700 w-2/5">When</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y" id="activityTbody">
+              {% for r in items %}
+              <tr class="activity-row hover:bg-gray-50 transition-colors">
+                <td class="p-4 align-top">
+                  <div class="flex items-start gap-4">
+                    <div class="flex-shrink-0 mt-0.5">
+                      <span class="type-dot inline-block w-3 h-3 rounded-full bg-indigo-500 shadow-sm" aria-hidden="true"></span>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-sm font-semibold text-gray-800 leading-snug action-text">{{ r.action }}</div>
+                      <div class="text-xs text-gray-400 mt-1 small-meta"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="p-4 align-top text-sm text-gray-600">
+                  {% if r.timestamp %}
+                    <div class="timestamp-iso">{{ r.timestamp.isoformat() }}</div>
+                    <div class="timestamp-local text-xs text-gray-400 mt-1"></div>
+                  {% else %}
+                    <div class="text-gray-400">—</div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-between gap-4 p-6 border-t">
+          <div class="text-sm text-gray-600">
+            Showing {{ (skip + 1) if total > 0 else 0 }} - {{ total if (skip + limit) > total else (skip + limit) }} of {{ total }}
+          </div>
+          <div class="flex items-center gap-2">
+            {% set prev_skip = (skip - limit) if (skip - limit) >= 0 else 0 %}
+            {% set next_skip = skip + limit %}
+            <a href="?days={{ days }}&skip={{ prev_skip }}&limit={{ limit }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm {% if skip == 0 %}opacity-50 pointer-events-none{% endif %}">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Prev
+            </a>
+            <a href="?days={{ days }}&skip={{ next_skip }}&limit={{ limit }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm {% if (skip + limit) >= total %}opacity-50 pointer-events-none{% endif %}">
+              Next
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+          </div>
+        </div>
+
+        {% else %}
+        <div class="p-10 text-center text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-14 w-14 text-indigo-100" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3" />
+          </svg>
+          <h3 class="text-lg font-semibold mt-4 text-gray-900">No activity found</h3>
+          <p class="text-sm text-gray-500 mt-1">No events recorded in the last <strong id="noDays">{{ days }}</strong> days.</p>
+          <div class="mt-4"><a href="/admin?tab=logs" class="text-indigo-600 hover:underline">Back to logs</a></div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <script>
+    (function () {
+      function debounce(fn, wait) { let t; return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); }; }
+      function timeAgo(date) {
+        const s = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (s < 60) return s + 's ago';
+        const m = Math.floor(s / 60);
+        if (m < 60) return m + 'm ago';
+        const h = Math.floor(m / 60);
+        if (h < 24) return h + 'h ago';
+        const d = Math.floor(h / 24);
+        return d + 'd ago';
+      }
+
+      document.querySelectorAll('.timestamp-iso').forEach(el => {
+        const iso = el.textContent.trim(); if (!iso) return;
+        const d = new Date(iso); if (isNaN(d)) return;
+        const local = d.toLocaleString();
+        const rel = timeAgo(d);
+        const localEl = el.parentElement.querySelector('.timestamp-local');
+        if (localEl) localEl.textContent = `${local} • ${rel}`;
+      });
+
+      function classifyType(text) {
+        const a = (text || '').toLowerCase();
+        if (a.includes('unlink') || a.includes('unlinked')) return 'Unlink';
+        if (a.includes('gmail') || a.includes('mail sent') || a.includes('email') || a.includes('sent message') || a.includes('sent job') || a.includes('sent details') || a.includes('sent resumes') || a.includes('sent mail')) return 'Gmail';
+        if (a.includes('deactiv')) return 'Deactivated';
+        if (a.includes('activat')) return 'Activated';
+        if (a.includes('link') || a.includes('linked')) return 'Link';
+        if (a.includes('edit') || a.includes('update')) return 'Edit';
+        if (a.includes('download') || a.includes('export')) return 'Download';
+        if (a.includes('login')) return 'Login';
+        if (a.includes('logout')) return 'Logout';
+        if (a.includes('create')) return 'Create';
+        if (a.includes('delete') || a.includes('remove')) return 'Delete';
+        return 'Other';
+      }
+
+      function colorForType(t) {
+        switch(t) {
+          case 'Unlink': return 'bg-orange-500';
+          case 'Gmail': return 'bg-sky-500';
+          case 'Login': return 'bg-indigo-500';
+          case 'Logout': return 'bg-gray-400';
+          case 'Edit': return 'bg-yellow-500';
+          case 'Link': return 'bg-teal-500';
+          case 'Download': return 'bg-green-500';
+          case 'Create': return 'bg-cyan-600';
+          case 'Activated': return 'bg-emerald-500';
+          case 'Deactivated': return 'bg-rose-500';
+          case 'Delete': return 'bg-red-500';
+          default: return 'bg-indigo-400';
+        }
+      }
+
+      document.querySelectorAll('.activity-row').forEach(row => {
+        const actionEl = row.querySelector('.action-text');
+        const actionText = actionEl ? actionEl.innerText : row.innerText;
+        const t = classifyType(actionText);
+        const hintEl = row.querySelector('.small-meta');
+        if (hintEl) hintEl.textContent = t;
+        row.setAttribute('data-atype', t);
+        const dot = row.querySelector('.type-dot');
+        if (dot) dot.className = 'type-dot inline-block w-3 h-3 rounded-full shadow-sm ' + colorForType(t);
+      });
+
+      const searchInput = document.getElementById('activitySearch');
+      const typeSelect = document.getElementById('activityType');
+      function applyFilters() {
+        const q = searchInput.value.trim().toLowerCase();
+        const selectedType = typeSelect.value;
+        document.querySelectorAll('#activityTbody tr').forEach(tr => {
+          const text = tr.innerText.toLowerCase();
+          const rowType = tr.getAttribute('data-atype') || '';
+          let visible = true;
+          if (q && text.indexOf(q) === -1) visible = false;
+          if (selectedType && selectedType !== '' && rowType !== selectedType) visible = false;
+          tr.style.display = visible ? '' : 'none';
+        });
+      }
+      searchInput.addEventListener('input', debounce(applyFilters, 150));
+      typeSelect.addEventListener('change', applyFilters);
+
+      const daysInput = document.getElementById('days');
+      const daysLabel = document.getElementById('daysLabel');
+      const noDays = document.getElementById('noDays');
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentLimit = urlParams.get('limit') || '{{ limit }}';
+      function reloadWithDays(val) {
+        let d = parseInt(val) || 1;
+        if (d < 1) d = 1; if (d > 90) d = 90;
+        if (daysLabel) daysLabel.textContent = d;
+        if (noDays) noDays.textContent = d;
+        const params = new URLSearchParams(window.location.search);
+        params.set('days', d); params.set('skip', 0); params.set('limit', currentLimit);
+        window.location.href = window.location.pathname + '?' + params.toString();
+      }
+      daysInput.addEventListener('input', debounce(e => reloadWithDays(e.target.value), 600));
+      document.addEventListener('DOMContentLoaded', applyFilters);
+    })();
+    </script>
+  </body>
+</html>

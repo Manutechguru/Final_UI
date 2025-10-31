@@ -1,3 +1,4 @@
+# admin.py (updated: added route admin_user_logs_page)
 # landing_page_app/routers/admin.py
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus
@@ -460,6 +461,7 @@ def remove_user(user_id: int, db: Session = Depends(get_db), user_email: str | N
 
 
 # ------------------------------ CSV upload ------------------------------
+# ------------------------------ CSV upload ------------------------------
 @router.post("/upload-csv")
 def upload_csv(
     file: UploadFile = File(...),
@@ -477,19 +479,72 @@ def upload_csv(
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     safe_name = f"{ts}-{file.filename}"
     dest = upload_dir / safe_name
-    raw = file.file.read()
-    dest.write_bytes(raw)
 
-    # parse CSV and insert unique candidates
-    inserted, duplicates = 0, []
     try:
-        text = raw.decode("utf-8", errors="ignore")
+        raw = file.file.read()
+        dest.write_bytes(raw)
+
+        # try a couple of decodings (utf-8 fallback to latin-1)
+        text = None
+        try:
+            text = raw.decode("utf-8")
+        except Exception:
+            try:
+                text = raw.decode("latin-1")
+            except Exception:
+                text = raw.decode("utf-8", errors="ignore")
+
+        # helper: normalize header keys to lowercase trimmed values
         reader = csv.DictReader(io.StringIO(text))
+        if not reader.fieldnames:
+            raise ValueError("CSV file has no header row or unreadable header")
+
+        # normalize fieldnames map: maps lowercase stripped header -> original header
+        normalized_field_map = {fn.strip().lower(): fn for fn in (reader.fieldnames or [])}
+
+        def get_field(row, *possible_names):
+            """Return stripped string value for the first matching header in possible_names (case-insensitive)."""
+            for nm in possible_names:
+                key = nm.strip().lower()
+                if key in normalized_field_map:
+                    val = row.get(normalized_field_map[key], "")
+                    return (val or "").strip()
+            return ""
+
+        def safe_int(val):
+            if val is None:
+                return None
+            s = str(val).strip()
+            if s == "":
+                return None
+            # remove commas and whitespace
+            s = s.replace(",", "")
+            try:
+                return int(float(s))
+            except Exception:
+                return None
+
+        inserted = 0
+        duplicates = []
 
         for row in reader:
-            email = row.get("email")
-            name = row.get("candidate_name")
-            contact = row.get("contact")
+            # read common fields using flexible header names
+            email = get_field(row, "email", "e-mail")
+            name = get_field(row, "candidate_name", "name", "full_name")
+            contact = get_field(row, "contact", "phone", "phone_number", "mobile")
+            location = get_field(row, "location")
+            skillset = get_field(row, "skillset", "skills")
+            relevant_experience = get_field(row, "relevant_experience", "experience", "relevantexp")
+            it_experience = get_field(row, "it_experience", "it_experience_years", "it_experience_years")
+            education = get_field(row, "education")
+            company = get_field(row, "company", "current_company")
+            resumelinks = get_field(row, "resumelinks", "resume_link", "resume")
+            comment = get_field(row, "comment", "notes")
+            clients_field = get_field(row, "clients")
+            notice_period = get_field(row, "notice_period", "notice")
+            recruitment_notes = get_field(row, "recruitment_notes", "recruiter_notes", "recruitment_notes")
+            ai_score = safe_int(get_field(row, "ai_score", "ai score", "ai_score"))
+            ai_explanation = get_field(row, "ai_explanation", "ai explanation")
 
             # uniqueness rule
             if email:
@@ -508,32 +563,46 @@ def upload_csv(
                 candidate_name=name,
                 contact=contact,
                 email=email,
-                location=row.get("location"),
-                skillset=row.get("skillset"),
-                relevant_experience=row.get("relevant_experience"),
-                it_experience=row.get("it_experience"),
-                education=row.get("education"),
-                company=row.get("company"),
-                resumelinks=row.get("resumelinks"),
-                comment=row.get("comment"),
-                clients=row.get("clients"),
-                notice_period=row.get("notice_period"),
-                recruitment_notes=row.get("recruitment_notes"),
-                ai_score=int(row["ai_score"]) if row.get("ai_score") else None,
-                ai_explanation=row.get("ai_explanation"),
+                location=location,
+                skillset=skillset,
+                relevant_experience=relevant_experience,
+                it_experience=it_experience,
+                education=education,
+                company=company,
+                resumelinks=resumelinks,
+                comment=comment,
+                clients=clients_field,
+                notice_period=notice_period,
+                recruitment_notes=recruitment_notes,
+                ai_score=ai_score,
+                ai_explanation=ai_explanation,
             )
             db.add(candidate)
             inserted += 1
 
+        # Commit once after processing all rows
         db.add(UserLog(user_id=admin.id, action=f"CSV UPLOAD {file.filename} inserted={inserted}, duplicates={len(duplicates)}"))
         db.commit()
 
     except Exception as e:
-        print("Error processing CSV:", e)
-        inserted, duplicates = 0, []
+        # Log to console for debugging and return to UI with error visible
+        print("Error processing CSV:", repr(e))
+        try:
+            # attempt to rollback any partial transaction
+            db.rollback()
+        except Exception:
+            pass
 
+        # Redirect back and show the error (URL-encoded)
+        return RedirectResponse(
+            url=f"/admin?tab=uploadcsv&error=CSV+upload+failed:+{quote_plus(str(e))}",
+            status_code=302,
+        )
+
+    # Success redirect (duplicates list optional)
+    dup_param = ",".join(duplicates) if duplicates else ""
     return RedirectResponse(
-        url=f"/admin?tab=uploadcsv&msg=Uploaded%20{quote_plus(file.filename)}%20({inserted}%20rows)&duplicates={','.join(duplicates)}",
+        url=f"/admin?tab=uploadcsv&msg=Uploaded%20{quote_plus(file.filename)}%20({inserted}%20rows)&duplicates={quote_plus(dup_param)}",
         status_code=302,
     )
 
@@ -568,8 +637,10 @@ def logs_export(db: Session = Depends(get_db), user_email: str | None = Cookie(N
 
 # --------------------- JSON: logs for a single user ---------------------
 
-@router.get("/logs/user/{user_id}.json")
-def logs_for_user_json(
+# --------------------- NEW: HTML page for logs of single user ---------------------
+@router.get("/logs/user/{user_id}", response_class=HTMLResponse)
+def admin_user_logs_page(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     user_email: str | None = Cookie(None),
@@ -577,7 +648,105 @@ def logs_for_user_json(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=300),
 ):
-    _, redirect = _require_admin(db, user_email)
+    admin, redirect = _require_admin(db, user_email)
+    if redirect:
+        return redirect
+
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(days=days)
+
+    rows = (
+        db.query(UserLog.action, UserLog.timestamp)
+        .filter(
+            UserLog.user_id == user_id,
+            UserLog.timestamp >= since,
+            UserLog.timestamp <= now,
+        )
+        .order_by(UserLog.timestamp.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # ✅ Friendly LINK/UNLINK Activity Formatter
+    from landing_page_app.models.candidates import Candidate
+    from landing_page_app.models.jobs import Job
+    from landing_page_app.models.clients import Client
+
+    processed_items = []
+    for r in rows:
+        text = r.action
+
+        # ✅ LINKED example:
+        # "LINKED CANDIDATE ID:714 to JOB 20"
+        if text.startswith("LINKED CANDIDATE"):
+            parts = text.split()
+            cand_id = int(parts[2].replace("ID:", ""))
+            job_id = int(parts[-1])
+
+            cand = db.get(Candidate, cand_id)
+            job = db.get(Job, job_id)
+            client = db.get(Client, job.client_id) if job else None
+
+            if cand and job:
+                text = (
+                    f"LINKED {cand.candidate_name} → {job.job_title}"
+                    f" @ {client.client_name if client else 'N/A'}"
+                )
+
+        # ✅ UNLINKED example:
+        # "UNLINKED CANDIDATE ID:714 from JOB 20"
+        if text.startswith("UNLINKED CANDIDATE"):
+            parts = text.split()
+            cand_id = int(parts[2].replace("ID:", ""))
+            job_id = int(parts[-1])
+
+            cand = db.get(Candidate, cand_id)
+            job = db.get(Job, job_id)
+            client = db.get(Client, job.client_id) if job else None
+
+            if cand and job:
+                text = (
+                    f"UNLINKED {cand.candidate_name} ✕ {job.job_title}"
+                    f" @ {client.client_name if client else 'N/A'}"
+                )
+
+        processed_items.append({"action": text, "timestamp": r.timestamp})
+
+    ctx = {
+        "request": request,
+        "admin": admin,
+        "target_user": user,
+        "days": days,
+        "skip": skip,
+        "limit": limit,
+        "total": len(processed_items),
+        "items": processed_items,
+    }
+
+    return templates.TemplateResponse("admin_user_logs.html", ctx)
+
+
+# --------------------- NEW: HTML page for logs of single user ---------------------
+@router.get("/logs/user/{user_id}", response_class=HTMLResponse)
+def admin_user_logs_page(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db),
+    user_email: str | None = Cookie(None),
+    days: int = Query(7, ge=1, le=90),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=300),
+):
+    """
+    Render a dedicated page showing the logs for a single user.
+    This uses the same filters/paging as the JSON endpoint but returns a template.
+    """
+    admin, redirect = _require_admin(db, user_email)
     if redirect:
         return redirect
 
@@ -596,14 +765,19 @@ def logs_for_user_json(
     rows = base.order_by(UserLog.timestamp.desc()).offset(skip).limit(limit).all()
 
     user = db.get(User, user_id)
-    return {
-        "user_id": user_id,
-        "username": getattr(user, "full_name", "") if user else "",
-        "total": total,
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    ctx = {
+        "request": request,
+        "admin": admin,
+        "target_user": user,
+        "days": days,
         "skip": skip,
         "limit": limit,
-        "items": [
-            {"action": r.action, "timestamp": r.timestamp.isoformat()}
-            for r in rows
-        ],
+        "total": total,
+        "items": [{"action": r.action, "timestamp": r.timestamp} for r in rows],
     }
+
+    # Render a simple template (see admin_user_logs.html below)
+    return templates.TemplateResponse("admin_user_logs.html", ctx)
