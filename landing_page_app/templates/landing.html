@@ -74,6 +74,16 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
 }
 .reset-btn svg { width:18px; height:18px; color:#6366f1; }
 
+/* Rotation animation for reset button */
+@keyframes spinClockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.reset-btn.spin {
+  animation: spinClockwise 0.7s ease-in-out;
+}
+
+
 /* Stage buttons container - now buttons will shrink equally to fit in one line */
 .stage-buttons {
   display:flex;
@@ -603,34 +613,67 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadManagers(clientId){
-    try {
-      const res = await fetch(`/pipeline/managers/${clientId}`);
-      if(!res.ok) return;
-      const data = await res.json();
-      managerSelect.innerHTML = '<option value="">Select Manager</option>';
-      data.forEach(m => {
-        managerSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`;
-      });
-      managerSelect.disabled = false;
-    } catch (error) {
-      console.error("Failed to load managers:", error);
-    }
+  try {
+    const res = await fetch(`/pipeline/managers/${clientId}`);
+    if(!res.ok) return;
+    const data = await res.json();
+
+    managerSelect.innerHTML = '<option value="">Select Manager</option>';
+    data.forEach(m => {
+      managerSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+    });
+    managerSelect.disabled = false;
+
+    // 🔹 Bring visual focus to the manager dropdown
+    managerSelect.focus();
+    managerSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    // 🔹 Temporary highlight effect to simulate "open" feedback
+    managerSelect.style.boxShadow = "0 0 0 3px rgba(79,70,229,0.3)";
+    managerSelect.style.transform = "scale(1.03)";
+    managerSelect.style.transition = "all 0.2s ease";
+
+    managerSelect.addEventListener("change", () => {
+      managerSelect.style.boxShadow = "";
+      managerSelect.style.transform = "";
+    }, { once: true });
+
+  } catch (error) {
+    console.error("Failed to load managers:", error);
   }
+}
+
 
   async function loadJobs(managerId){
-    try {
-      const res = await fetch(`/pipeline/jobs/${managerId}`);
-      if(!res.ok) return;
-      const data = await res.json();
-      jobSelect.innerHTML = '<option value="">Select Job</option>';
-      data.forEach(j => {
-        jobSelect.innerHTML += `<option value="${j.id}">${j.title}</option>`;
-      });
-      jobSelect.disabled = false;
-    } catch (error) {
-      console.error("Failed to load jobs:", error);
-    }
+  try {
+    const res = await fetch(`/pipeline/jobs/${managerId}`);
+    if(!res.ok) return;
+    const data = await res.json();
+
+    jobSelect.innerHTML = '<option value="">Select Job</option>';
+    data.forEach(j => {
+      jobSelect.innerHTML += `<option value="${j.id}">${j.title}</option>`;
+    });
+    jobSelect.disabled = false;
+
+    // 🔹 Bring visual focus to the job dropdown
+    jobSelect.focus();
+    jobSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    // 🔹 Temporary highlight effect to simulate "open" feedback
+    jobSelect.style.boxShadow = "0 0 0 3px rgba(79,70,229,0.3)";
+    jobSelect.style.transform = "scale(1.03)";
+    jobSelect.style.transition = "all 0.2s ease";
+
+    jobSelect.addEventListener("change", () => {
+      jobSelect.style.boxShadow = "";
+      jobSelect.style.transform = "";
+    }, { once: true });
+
+  } catch (error) {
+    console.error("Failed to load jobs:", error);
   }
+}
 
   async function loadCandidates(jobId){
     try {
@@ -654,6 +697,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+    // --- Replace renderCandidates and showCandidateModal with these versions ---
+
   function renderCandidates(candidates){
     candidateBody.innerHTML = "";
     if(!candidates || candidates.length === 0){
@@ -661,9 +706,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // remember current selection context to build redirect link
+    const currentClientId = clientSelect ? clientSelect.value : '';
+    const currentManagerId = managerSelect ? managerSelect.value : '';
+    const currentJobId = jobSelect ? jobSelect.value : '';
+
     candidates.forEach(candidate => {
       const tr = document.createElement("tr");
-      tr.addEventListener("click", () => showCandidateModal(candidate));
+
+      // 1) EXPAND BUTTON cell (first column). Only clicking this opens modal.
+      const expandTd = document.createElement("td");
+      expandTd.style.whiteSpace = "nowrap";
+      expandTd.style.width = "36px";
+      expandTd.style.textAlign = "center";
+      const expandBtn = document.createElement("button");
+      expandBtn.type = "button";
+      expandBtn.className = "expand-btn";
+      expandBtn.title = "View details";
+      expandBtn.style.border = "none";
+      expandBtn.style.background = "transparent";
+      expandBtn.style.cursor = "pointer";
+      expandBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18l6-6-6-6"/></svg>`;
+      expandBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        // open modal for this candidate only
+        showCandidateModal(candidate);
+      });
+      expandTd.appendChild(expandBtn);
+
+      // 2) Build main row cells (note: we shift index since we added expand cell)
       const resumeLink = candidate.resumelinks
         ? `<a href="${candidate.resumelinks}" target="_blank" class="resume-link" title="View Resume">
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -675,6 +746,7 @@ document.addEventListener("DOMContentLoaded", async () => {
            </a>`
         : '<span style="color: var(--muted);">N/A</span>';
 
+      // Compose the rest of the row cells as HTML (we keep same order except new first column)
       tr.innerHTML = `
         <td title="${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}">${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}</td>
         <td title="${candidate.email || 'N/A'}">${candidate.email || 'N/A'}</td>
@@ -687,85 +759,113 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td title="${candidate.skillset || 'N/A'}">${candidate.skillset || 'N/A'}</td>
       `;
 
+      // Insert expandTd as first cell
+      tr.insertBefore(expandTd, tr.firstChild);
+
+      // 3) Row click -> redirect to shortlist page (except clicks on links/buttons etc.)
+      tr.addEventListener('click', (e) => {
+        const t = e.target;
+        if (!t) return;
+
+  // Prevent triggering redirect if clicking on expand icon, link, or any interactive element
+        if (t.closest('a, button, input, select')) return;
+
+  // Correctly get the context values
+        const candidateId = candidate.candidates_id || candidate.candidate_id || candidate.id || '';
+        const jobId = currentJobId || jobSelect?.value || '';
+        const clientId = currentClientId || clientSelect?.value || '';
+        const managerId = currentManagerId || managerSelect?.value || '';
+
+        if (!candidateId || !jobId) return; // prevent empty redirects
+
+  // ✅ Redirect to valid backend route (/candidates/jd-candidates/{jd_id})
+        const url = `/candidates/jd-candidates/${encodeURIComponent(jobId)}?candidate_id=${encodeURIComponent(candidateId)}&client_id=${encodeURIComponent(clientId)}&manager_id=${encodeURIComponent(managerId)}`;
+        window.location.href = url;
+      });
+
+
       candidateBody.appendChild(tr);
     });
   }
 
-  
-function showCandidateModal(candidate){
-  modalTitle.textContent = (candidate.candidate_name || candidate.name || candidate.full_name || 'Unknown');
-  modalHeaderSub.textContent = `${candidate.location || 'N/A'} • ${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}`;
-  modalAiScore.innerHTML = `AI Score: <strong>${candidate.ai_score || 'N/A'}</strong>`;
+  function showCandidateModal(candidate){
+    modalTitle.textContent = (candidate.candidate_name || candidate.name || candidate.full_name || 'Unknown');
 
-  if (candidate.resumelinks) {
-    modalResumeLink.style.display = 'inline-flex';
-    modalResumeLink.href = candidate.resumelinks;
-  } else {
-    modalResumeLink.style.display = 'none';
-    modalResumeLink.href = '#';
+    // Header sub: only keep the location and the primary contact here (user requested contact in header remain)
+    modalHeaderSub.textContent = `${candidate.location || 'N/A'} • ${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}`;
+
+    modalAiScore.innerHTML = `AI Score: <strong>${candidate.ai_score || 'N/A'}</strong>`;
+
+    if (candidate.resumelinks) {
+      modalResumeLink.style.display = 'inline-flex';
+      modalResumeLink.href = candidate.resumelinks;
+    } else {
+      modalResumeLink.style.display = 'none';
+      modalResumeLink.href = '#';
+    }
+
+    // Modal body: use Company in Details instead of the duplicate Contact field
+    modalBody.innerHTML = `
+      <div class="modal-section-title">Skills & Experience</div>
+
+      <div class="modal-field skills-full">
+        <div class="modal-label">Skills</div>
+        <div class="modal-value">${candidate.skillset || 'N/A'}</div>
+      </div>
+
+      <div class="modal-field skills-full">
+        <div class="modal-label">Relevant Experience</div>
+        <div class="modal-value">${candidate.relevant_experience || 'N/A'}</div>
+      </div>
+
+      <div class="modal-section-title">Details</div>
+
+      <div class="modal-field">
+        <div class="modal-label">Email</div>
+        <div class="modal-value">${candidate.email || 'N/A'}</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-label">Company</div>
+        <div class="modal-value">${candidate.company || 'N/A'}</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-label">IT Experience</div>
+        <div class="modal-value">${candidate.it_experience || 'N/A'}</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-label">Education</div>
+        <div class="modal-value">${candidate.education || 'N/A'}</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-label">Notice Period</div>
+        <div class="modal-value">${candidate.notice_period || 'N/A'}</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-label">Clients</div>
+        <div class="modal-value">${candidate.clients || 'N/A'}</div>
+      </div>
+
+      <div class="modal-section-title">Comment</div>
+      <div class="modal-field modal-full">
+        <div class="modal-value">${candidate.comment || 'N/A'}</div>
+      </div>
+
+      <div class="modal-section-title">Recruitment Notes</div>
+      <div class="modal-field modal-full">
+        <div class="modal-value">${candidate.recruitment_notes || candidate.recruiter_notes || 'N/A'}</div>
+      </div>
+    `;
+
+    // show modal (unchanged mechanics)
+    candidateModal.style.display = "block";
+    candidateModal.setAttribute('aria-hidden','false');
+    modalBody.scrollTop = 0;
   }
-
-  modalBody.innerHTML = `
-    <div class="modal-section-title">Skills & Experience</div>
-
-    <div class="modal-field skills-full">
-      <div class="modal-label">Skills</div>
-      <div class="modal-value">${candidate.skillset || 'N/A'}</div>
-    </div>
-
-    <div class="modal-field skills-full">
-      <div class="modal-label">Relevant Experience</div>
-      <div class="modal-value">${candidate.relevant_experience || 'N/A'}</div>
-    </div>
-
-    <div class="modal-section-title">Details</div>
-
-    <div class="modal-field">
-      <div class="modal-label">Email</div>
-      <div class="modal-value">${candidate.email || 'N/A'}</div>
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Contact</div>
-      <div class="modal-value">${candidate.contact || candidate.phone || candidate.phone_number || 'N/A'}</div>
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">IT Experience</div>
-      <div class="modal-value">${candidate.it_experience || 'N/A'}</div>
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Education</div>
-      <div class="modal-value">${candidate.education || 'N/A'}</div>
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Notice Period</div>
-      <div class="modal-value">${candidate.notice_period || 'N/A'}</div>
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Clients</div>
-      <div class="modal-value">${candidate.clients || 'N/A'}</div>
-    </div>
-
-    <div class="modal-section-title">Comment</div>
-    <div class="modal-field modal-full">
-      <div class="modal-value">${candidate.comment || 'N/A'}</div>
-    </div>
-
-    <div class="modal-section-title">Recruitment Notes</div>
-    <div class="modal-field modal-full">
-      <div class="modal-value">${candidate.recruitment_notes || 'N/A'}</div>
-    </div>
-  `;
-
-  candidateModal.style.display = "block";
-  candidateModal.setAttribute('aria-hidden','false');
-  modalBody.scrollTop = 0;
-}
-
 
   function renderStageButtons(){
     stageButtons.innerHTML = "";
@@ -857,21 +957,27 @@ function showCandidateModal(candidate){
   });
 
   jobSelect.addEventListener("change", e => {
-    const id = e.target.value;
-    if(id) {
-      // Show table and load candidates for the selected job
-      toggleCandidateTable(true);
-      loadCandidates(id);
-    } else {
-      allCandidates = [];
-      candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">Select a job to view candidates</td></tr>';
-      toggleCandidateTable(false);
-      updateStageCounts();
-    }
-  });
+  const id = e.target.value;
+  if(id) {
+    // Show table and load candidates for the selected job
+    toggleCandidateTable(true);
+    loadCandidates(id);
+    // important: remember current job id so row-click redirect can use it
+    window.currentJobId = id;
+  } else {
+    allCandidates = [];
+    candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">Select a job to view candidates</td></tr>';
+    toggleCandidateTable(false);
+    updateStageCounts();
+    window.currentJobId = null;
+  }
+});
 
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
+       // Add spin animation
+      resetBtn.classList.add('spin');
+      setTimeout(() => resetBtn.classList.remove('spin'), 700);
       clientSelect.selectedIndex = 0;
       managerSelect.selectedIndex = 0;
       jobSelect.selectedIndex = 0;
@@ -1033,4 +1139,5 @@ function showCandidateModal(candidate){
   loadKpiStats();
 });
 </script>
+
 {% endblock %}
