@@ -94,7 +94,6 @@
 
     <!-- Table Container -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
             <tr>
@@ -495,7 +494,7 @@ async function loadJobs() {
       jobsTableBody.appendChild(row);
     });
 
-    attachRowActionListeners();
+    attachRowActionListeners(); // attaches listeners and sets new dropdown-behavior
 
   } catch (error) {
     console.error('Error loading jobs:', error);
@@ -504,101 +503,135 @@ async function loadJobs() {
   }
 }
 
+/* ---------------------------
+   NEW: Robust dropdown behavior
+   ---------------------------
+   - Move the actual `.dropdown-menu` element to document.body when opening,
+     position it with fixed coordinates to never be clipped by table overflow.
+   - Handles viewport edges and places above button if needed.
+   - Keeps same edit/delete event handlers (no backend changes).
+*/
 function attachRowActionListeners() {
+  // helper to close all dropdowns
+  function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(m => {
+      if (!m.classList.contains('hidden')) {
+        m.classList.add('hidden');
+        m.style.position = '';
+        m.style.top = '';
+        m.style.left = '';
+        m.style.visibility = '';
+      }
+    });
+    document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  }
+
+  // Attach toggles
   document.querySelectorAll('.dropdown-toggle').forEach(btn => {
+    // get the menu element (sibling inside same container)
     const menu = btn.parentElement.querySelector('.dropdown-menu');
+
+    // set some base styles for measurement & z stacking
+    menu.style.zIndex = 9999;
+    menu.style.boxSizing = 'border-box';
+
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const expanded = btn.getAttribute('aria-expanded') === 'true';
-      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
-      document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
 
-      if (!expanded) {
-        menu.classList.remove('hidden');
-        btn.setAttribute('aria-expanded', 'true');
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      closeAllDropdowns();
+      if (expanded) return; // it was open -> we've closed it, so just return
+
+      // show menu and move to body so it's not clipped by overflow
+      menu.classList.remove('hidden');
+      menu.style.visibility = 'hidden'; // hide while measuring
+
+      // append to body — moving the real element preserves event listeners
+      if (!document.body.contains(menu)) {
+        document.body.appendChild(menu);
       } else {
-        menu.classList.add('hidden');
-        btn.setAttribute('aria-expanded', 'false');
+        document.body.appendChild(menu);
       }
+
+      // make it fixed and measure
+      menu.style.position = 'fixed';
+      menu.style.top = '0px';
+      menu.style.left = '0px';
+      menu.style.visibility = 'hidden';
+      menu.classList.remove('hidden');
+      const menuRect = menu.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+
+      // basic positioning: align right edge of menu with right edge of button
+      let top = btnRect.bottom + 6; // below button with small margin
+      let left = btnRect.right - menuRect.width;
+
+      // clamp left to viewport
+      if (left < 6) left = 6;
+
+      // if not enough space below, place above
+      const spaceBelow = window.innerHeight - btnRect.bottom;
+      if (spaceBelow < menuRect.height + 10) {
+        top = btnRect.top - menuRect.height - 6;
+        if (top < 6) top = 6;
+      }
+
+      menu.style.top = `${top}px`;
+      menu.style.left = `${left}px`;
+      menu.style.visibility = 'visible';
+      btn.setAttribute('aria-expanded', 'true');
+
+      // prevent clicks inside the menu from closing it immediately
+      menu.addEventListener('click', (ev) => ev.stopPropagation());
     });
   });
 
+  // Edit handlers (unchanged endpoints)
   document.querySelectorAll('.edit-action').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const jobId = el.getAttribute('data-job-id');
+
+      // hide dropdowns before opening modal
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+      document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
+
       openEditModal(jobId);
     });
   });
 
+  // Delete handlers (unchanged endpoints)
   document.querySelectorAll('.delete-action').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const jobId = el.getAttribute('data-job-id');
+
+      // hide dropdowns before opening modal
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+      document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
+
       openDeleteModal(jobId);
     });
   });
-}
 
-window.addEventListener('click', () => {
-  document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
-  document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
-});
-
-function clearAllFilters() {
-  clientFilter.value = '';
-  managerFilter.value = '';
-  statusFilter.value = '';
-  recentFilter.value = '';
-  jobSearch.value = '';
-  
-  currentFilters = {
-    client_id: null,
-    manager_id: null,
-    status: null,
-    recent: null,
-    job_search: null
-  };
-  
-  filterManagersByClient();
-  loadJobs();
-}
-
-clientFilter.addEventListener('change', () => {
-  filterManagersByClient();
-  loadJobs();
-});
-
-managerFilter.addEventListener('change', loadJobs);
-statusFilter.addEventListener('change', loadJobs);
-recentFilter.addEventListener('change', loadJobs);
-jobSearch.addEventListener('input', loadJobs); // NEW - filter on input
-
-clearFilters.addEventListener('click', clearAllFilters);
-clearFiltersEmpty.addEventListener('click', clearAllFilters);
-
-window.addEventListener('load', () => {
-  filterSidebar.classList.add('-translate-x-full');
-  sidebarOverlay.classList.add('hidden');
-  filterManagersByClient();
-  loadJobs();
-});
-
-window.addEventListener('resize', () => {
-  if (window.innerWidth >= 1024) {
-    sidebarOverlay.classList.add('hidden');
-    if (desktopSidebarHidden) {
-      filterSidebar.classList.add('hidden-desktop');
-    } else {
-      filterSidebar.classList.remove('hidden-desktop');
+  // Close all on Escape
+  window.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') {
+      closeAllDropdowns();
     }
-  } else {
-    filterSidebar.classList.add('-translate-x-full');
-    sidebarOverlay.classList.add('hidden');
-  }
-});
+  });
 
-/* EDIT MODAL HELPERS */
+  // Clicking outside closes dropdowns
+  window.addEventListener('click', () => {
+    closeAllDropdowns();
+  });
+}
+
+/* END of dropdown fix */
+
+/* The rest of your modal helpers and event wiring remain unchanged. */
 function openEditModal(jobId) {
   const job = jobsCache[jobId];
   if (!job) {
@@ -713,6 +746,60 @@ confirmDeleteBtn.addEventListener('click', async () => {
     confirmDeleteBtn.textContent = 'Delete Job';
   }
 });
+
+/* Filters and events */
+function clearAllFilters() {
+  clientFilter.value = '';
+  managerFilter.value = '';
+  statusFilter.value = '';
+  recentFilter.value = '';
+  jobSearch.value = '';
+  
+  currentFilters = {
+    client_id: null,
+    manager_id: null,
+    status: null,
+    recent: null,
+    job_search: null
+  };
+  
+  filterManagersByClient();
+  loadJobs();
+}
+
+clientFilter.addEventListener('change', () => {
+  filterManagersByClient();
+  loadJobs();
+});
+
+managerFilter.addEventListener('change', loadJobs);
+statusFilter.addEventListener('change', loadJobs);
+recentFilter.addEventListener('change', loadJobs);
+jobSearch.addEventListener('input', loadJobs); // NEW - filter on input
+
+clearFilters.addEventListener('click', clearAllFilters);
+clearFiltersEmpty.addEventListener('click', clearAllFilters);
+
+window.addEventListener('load', () => {
+  filterSidebar.classList.add('-translate-x-full');
+  sidebarOverlay.classList.add('hidden');
+  filterManagersByClient();
+  loadJobs();
+});
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth >= 1024) {
+    sidebarOverlay.classList.add('hidden');
+    if (desktopSidebarHidden) {
+      filterSidebar.classList.add('hidden-desktop');
+    } else {
+      filterSidebar.classList.remove('hidden-desktop');
+    }
+  } else {
+    filterSidebar.classList.add('-translate-x-full');
+    sidebarOverlay.classList.add('hidden');
+  }
+});
 </script>
 
 <style>
@@ -766,5 +853,10 @@ table thead {
 
 #deleteConfirmModal { display: none; }
 #deleteConfirmModal.flex { display: flex; align-items: center; justify-content: center; }
+
+/* table-wrap sizing (kept as before) */
+.table-wrap { max-height: calc(100vh - 260px); overflow:auto; }
+.table-wrap::-webkit-scrollbar { height: 8px; }
+.table-wrap::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 6px; }
 </style>
 {% endblock %}
