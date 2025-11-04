@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Compose Mail — Teetli{% endblock %}
+
+{% block content %}
+<section class="w-full flex justify-center m-0 p-0">
+  <div class="w-full bg-white shadow-lg border-t border-b border-gray-200 rounded-none">
+    <!-- Top bar -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center space-x-3">
+        <h2 class="text-lg font-semibold text-gray-800">Send mail</h2>
+        <span class="text-sm text-gray-500">Compose your mail</span>
+      </div>
+
+      <!-- Authorize button hidden when has_google_token true -->
+      {% if not has_google_token %}
+      <a id="authorizeBtn" href="/candidates/gmail/auth" class="flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+        <i class="fab fa-google mr-2"></i>Authorize
+      </a>
+      {% else %}
+      <div class="small-muted">Google: connected</div>
+      {% endif %}
+    </div>
+
+    <!-- Form -->
+    <form id="gmailComposeForm" class="flex flex-col space-y-5 px-8 py-6 w-full" onsubmit="return false;">
+      <!-- From + Template -->
+      <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+        <label class="w-24 text-gray-600 font-medium">From</label>
+        <select id="from_email" class="w-full md:w-1/2 border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="{{ from_email|default('') }}">{{ from_email|default('') }}</option>
+        </select>
+
+        <select id="templateSelect" class="w-full md:w-1/3 border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="">Template: None</option>
+          <option value="logout_update">Logout Update</option>
+
+           <!-- Candidate Templates -->
+  <optgroup label="Candidate Templates">
+    <option value="application_received">Application Received</option>
+    <option value="interview_scheduled">Interview Scheduled</option>
+    <option value="shortlisted_notification">Shortlisted Notification</option>
+    <option value="offer_letter">Offer Letter</option>
+    <option value="rejection_mail">Rejection Mail</option>
+    <option value="follow_up">Follow-Up Reminder</option>
+  </optgroup>
+
+  <!-- Recruiter Templates -->
+  <optgroup label="Recruiter Templates">
+    <option value="new_requirement">New Requirement Shared</option>
+    <option value="candidate_update">Candidate Status Update</option>
+    <option value="jd_clarification">JD Clarification</option>
+    <option value="joining_confirmation">Joining Confirmation</option>
+    <option value="thank_you_recruiter">Thank You Note</option>
+  </optgroup>
+</select>
+        </select>
+      </div>
+
+      <!-- To -->
+      <div>
+        <div class="flex flex-col md:flex-row md:items-start space-y-2 md:space-y-0 md:space-x-4 w-full">
+          <label class="w-24 text-gray-600 font-medium pt-2">To</label>
+          <div class="flex-1 space-y-2">
+            <input id="to" type="text" placeholder="Add recipients..." class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" value="{{ to_emails|default('') }}">
+            <div class="flex justify-between items-center text-sm text-gray-500">
+              <div class="space-x-4">
+                <button type="button" id="toggleCcBtn" class="text-blue-600 hover:underline">Add Cc</button>
+                <button type="button" id="toggleBccBtn" class="text-blue-600 hover:underline">Add Bcc</button>
+              </div>
+              <span>Press comma <strong>","</strong> to add multiple</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="ccBccArea" class="mt-2 hidden space-y-2 w-full">
+          <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+            <label class="w-24 text-gray-600 font-medium">Cc</label>
+            <input id="cc" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+            <label class="w-24 text-gray-600 font-medium">Bcc</label>
+            <input id="bcc" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- Subject -->
+      <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+        <label class="w-24 text-gray-600 font-medium">Subject</label>
+        <input id="subject" type="text" placeholder="Subject" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+      </div>
+
+      <!-- Attach -->
+      <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
+        <label class="w-24 text-gray-600 font-medium">Attach</label>
+        <div class="flex-1 flex items-center space-x-4 flex-wrap">
+          <button id="attachBtn" type="button" class="flex items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-100">
+            <i class="fas fa-paperclip"></i><span>Attach files</span>
+          </button>
+          <div id="attachList" class="flex flex-wrap gap-2"></div>
+          <input id="fileInput" type="file" multiple class="hidden" />
+        </div>
+      </div>
+
+      <!-- Editor -->
+      <div class="border rounded-md bg-gray-50 w-full compose-editor">
+        <div class="editor-toolbar">
+          <div class="compose-toolbar">
+            <button type="button" data-cmd="bold" title="Bold"><i class="fas fa-bold"></i></button>
+            <button type="button" data-cmd="italic" title="Italic"><i class="fas fa-italic"></i></button>
+            <button type="button" data-cmd="underline" title="Underline"><i class="fas fa-underline"></i></button>
+            <button type="button" data-cmd="ul" title="Bullet list"><i class="fas fa-list-ul"></i></button>
+            <button type="button" data-cmd="ol" title="Numbered list"><i class="fas fa-list-ol"></i></button>
+            <button type="button" data-cmd="link" title="Insert link"><i class="fas fa-link"></i></button>
+          </div>
+
+          <div style="margin-left:auto; display:flex; gap:8px; align-items:center; position:relative;">
+            <select id="fontSelect" class="border rounded-md px-2 py-1 text-sm">
+              <option value="Inter, Arial, sans-serif">Inter</option>
+              <option value="Poppins, Arial, sans-serif">Poppins</option>
+              <option value="Times New Roman, serif">Times</option>
+            </select>
+            <select id="fontSizeSelect" class="border rounded-md px-2 py-1 text-sm">
+              <option value="14px">14</option>
+              <option value="16px" selected>16</option>
+              <option value="18px">18</option>
+            </select>
+            <button id="emojiBtn" type="button" class="p-2"><i class="fas fa-face-smile"></i></button>
+            <div id="emojiPicker" class="emoji-picker" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div id="editorBody" class="editor-body">
+          <div id="wysiwyg" contenteditable="true" class="min-h-[280px] p-4 focus:outline-none" style="background:#fbfcfd;"></div>
+          <textarea id="bodyTextarea" name="body" class="hidden"></textarea>
+        </div>
+      </div>
+
+      <!-- JD / Resume Preview area -->
+      <div id="previewArea" class="mt-2 w-full">
+        <label class="w-24 text-gray-600 font-medium mb-2 block">Preview</label>
+        <div id="previewGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {# if server passed jd_link or preview_links they will be inserted here by JS #}
+        </div>
+        <div id="previewNotice" class="small-muted mt-2">Previewed files are embedded read-only previews (Google preview). Use "Attach files" to include local files.</div>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0 pt-2 border-t w-full">
+        <div class="text-sm text-gray-500">Draft saved at <span id="draftTime">—</span></div>
+        <div class="flex space-x-3">
+          <button id="discardBtn" type="button" class="px-4 py-2 border rounded-md hover:bg-gray-100">Discard</button>
+          <button id="sendBtn" type="button" class="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2">
+            <i class="fas fa-paper-plane"></i><span>Send</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hidden meta fields for JS -->
+      <input type="hidden" id="init_mode" value="{{ mode|default('candidates') }}">
+      <input type="hidden" id="init_candidate_ids" value="{{ candidate_ids|default('') }}">
+      <input type="hidden" id="init_jd_id" value="{{ jd_id|default('') }}">
+      <input type="hidden" id="init_jd_link" value="{{ jd_link|default('') }}">
+      <input type="hidden" id="init_preview_links" value="{{ preview_links|join(',')|default('') }}">
+      <input type="hidden" id="has_google_token" value="{{ '1' if has_google_token else '' }}">
+    </form>
+  </div>
+</section>
+
+<!-- reuse alerts/modal from base.html -->
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='js/gmail_compose.js') }}"></script>
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/gmail_compose.css') }}">
+<script>
+  // Pass init data for older clients
+  window.__GMAIL_INIT = {
+    mode: "{{ mode|default('candidates') }}",
+    candidate_ids: "{{ candidate_ids|default('') }}",
+    jd_id: "{{ jd_id|default('') }}",
+    jd_link: "{{ jd_link|default('') }}",
+    preview_links: {{ preview_links|tojson }},
+    from_email: "{{ from_email|default('') }}",
+    to_emails: "{{ to_emails|default('') }}",
+    has_google_token: {{ 'true' if has_google_token else 'false' }}
+  };
+</script>
+{% endblock %}
