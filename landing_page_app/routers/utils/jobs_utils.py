@@ -11,6 +11,7 @@ import logging
 # Define IST timezone once
 IST = ZoneInfo("Asia/Kolkata")
 logger = logging.getLogger(__name__)
+UTC = ZoneInfo("UTC")
 
 # -----------------------------
 # Get Manager by ID
@@ -45,26 +46,38 @@ def get_jobs_by_manager(db: Session, manager_id: int) -> list[Job]:
         if updated:
             db.commit()
 
+        # Attach readable user names for created_by / updated_by for template usage
+        for job in jobs:
+            # created_by_name
+            job.created_by_name = None
+            job.updated_by_name = None
+            try:
+                if getattr(job, "created_by", None):
+                    u = db.query(User).filter(User.id == job.created_by).first()
+                    job.created_by_name = getattr(u, "full_name", None) or getattr(u, "email", None)
+                if getattr(job, "updated_by", None):
+                    u2 = db.query(User).filter(User.id == job.updated_by).first()
+                    job.updated_by_name = getattr(u2, "full_name", None) or getattr(u2, "email", None)
+            except Exception:
+                # safe fallback if anything goes wrong; do not stop flow
+                job.created_by_name = job.created_by_name or None
+                job.updated_by_name = job.updated_by_name or None
+
         logger.info(f"Retrieved {len(jobs)} jobs for manager {manager_id}")
         return jobs
     except Exception as e:
         logger.error(f"Error getting jobs for manager {manager_id}: {str(e)}")
         return []
 
-
 # -----------------------------
 # Add New Job for Manager
 # -----------------------------
-def add_new_job(db: Session, manager_id: int, job_title: str, job_description: str = "") -> Job:
+def add_new_job(db: Session, manager_id: int, job_title: str, job_description: str = "", created_by: int | None = None) -> Job:
     try:
-        # Clean inputs
         job_title_clean = (job_title or "").strip()
         job_description_clean = (job_description or "").strip()
-        
         if not job_title_clean:
             raise ValueError("Job title is required")
-
-        # Check if job already exists for this manager
         existing_job = (
             db.query(Job)
             .filter(
@@ -73,7 +86,6 @@ def add_new_job(db: Session, manager_id: int, job_title: str, job_description: s
             )
             .first()
         )
-        
         if existing_job:
             raise ValueError(f"Job '{job_title_clean}' already exists for this manager")
 
@@ -81,19 +93,17 @@ def add_new_job(db: Session, manager_id: int, job_title: str, job_description: s
             manager_id=manager_id,
             job_title=job_title_clean,
             job_description=job_description_clean,
-            status="active",   # ✅ FIXED: Default new jobs to ACTIVE
-            created_by=None,
-            created_at=datetime.now(IST),
+            status="active",
+            created_by=created_by,
+            created_at=datetime.now(UTC),
             updated_by=None,
             updated_at=None
         )
         db.add(job)
         db.commit()
         db.refresh(job)
-        
         logger.info(f"Successfully added job '{job_title_clean}' for manager {manager_id}")
         return job
-        
     except Exception as e:
         db.rollback()
         logger.error(f"Error adding new job for manager {manager_id}: {str(e)}")

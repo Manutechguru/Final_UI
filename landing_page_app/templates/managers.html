@@ -146,10 +146,10 @@
                       <button class="view-details-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                               data-manager-id="{{ m.manager_id }}"
                               data-manager-name="{{ m.manager_name }}"
-                              data-created-by="{{ m.created_by }}"
-                              data-created-at="{{ m.created_at }}"
-                              data-updated-by="{{ m.updated_by }}"
-                              data-updated-at="{{ m.updated_at }}">
+                              data-created-by="{{ m.created_by_name if m.created_by_name else m.created_by or 'N/A' }}"
+                              data-created-at="{{ m.created_at.isoformat() if m.created_at else '' }}"
+                              data-updated-by="{{ m.updated_by_name if m.updated_by_name else m.updated_by or 'N/A' }}"
+                              data-updated-at="{{ m.updated_at.isoformat() if m.updated_at else '' }}">
                         View Details
                       </button>
 

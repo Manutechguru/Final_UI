@@ -62,6 +62,11 @@ def add_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    
+    logger.info(f"DEBUG cookies: {request.cookies}")
+    logger.info(f"DEBUG current_user.id: {getattr(current_user, 'id', None)}")
+    logger.info(f"DEBUG current_user.email: {getattr(current_user, 'email', None)}")
+
     manager = get_manager_by_id(db, manager_id)
     if not manager:
         raise HTTPException(status_code=404, detail="Manager not found")
@@ -77,7 +82,7 @@ def add_job(
         if any(getattr(job, "job_title", "").lower() == job_title_clean.lower() for job in (jobs or [])):
             message = f"Job '{job_title_clean}' already exists!"
         else:
-            add_new_job(db, manager_id, job_title_clean, job_description_clean)
+            add_new_job(db, manager_id, job_title_clean, job_description_clean, created_by=getattr(current_user, "id", None))
             # log job creation (commit immediately) — now with readable names
             try:
                 uname = getattr(current_user, "full_name", None) or getattr(current_user, "email", "Unknown User")
@@ -105,7 +110,7 @@ def toggle_job_status_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    job = toggle_job_status(db, job_id, manager_id)
+    job = toggle_job_status(db, job_id, manager_id, updated_by=getattr(current_user, "id", None))
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     message = f"Job '{getattr(job, 'job_title', f'Job {job_id}')}' status updated!"

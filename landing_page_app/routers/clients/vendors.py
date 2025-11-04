@@ -39,8 +39,8 @@ router = APIRouter(prefix="/clients/vendors", tags=["Client Vendors"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 logger = logging.getLogger(__name__)
 
-# IST timezone
-IST = ZoneInfo("Asia/Kolkata")
+# UTC timezone
+UTC = ZoneInfo("Asia/Kolkata")
 
 
 def get_client_or_404(db: Session, client_id: int) -> Client:
@@ -102,25 +102,59 @@ def list_managers_page(
 
     managers_with_jobs = []
     for manager in managers:
-        # manager might be dict from util or SQL object — normalize to an object when possible
-        manager_obj = manager if isinstance(manager, Manager) else get_manager_by_id(db, manager.get("manager_id"))
+        # If the util returned a dict (it may include readable names already), use it directly.
+        if isinstance(manager, dict):
+            # Ensure jobs are filled (fetch if not present)
+            jobs = manager.get("jobs") or get_jobs_by_manager(db, manager.get("manager_id"))
+            managers_with_jobs.append({
+                "manager_id": manager.get("manager_id"),
+                "manager_name": manager.get("manager_name") or f"Manager {manager.get('manager_id', '')}",
+                "status": manager.get("status", "active"),
+                "client_id": client_id,
+                "jobs": jobs,
+                "created_by": manager.get("created_by", None),
+                "created_by_name": manager.get("created_by_name", "N/A"),
+                "created_at": manager.get("created_at", None),
+                "updated_by": manager.get("updated_by", None),
+                "updated_by_name": manager.get("updated_by_name", "N/A"),
+                "updated_at": manager.get("updated_at", None),
+            })
+            continue
 
+        # Otherwise the util returned an ORM Manager object — normalize and enrich with names
+        manager_obj = manager if isinstance(manager, Manager) else get_manager_by_id(db, manager.get("manager_id"))
         if not manager_obj:
             continue
 
         jobs = get_jobs_by_manager(db, manager_obj.manager_id)
-        # Build stable structure for template
+
+        # Try to resolve readable user names from user IDs
+        created_by_id = getattr(manager_obj, "created_by", None)
+        updated_by_id = getattr(manager_obj, "updated_by", None)
+
+        created_by_name = None
+        updated_by_name = None
+        if created_by_id is not None:
+            u = db.query(User).filter(User.id == created_by_id).first()
+            created_by_name = getattr(u, "full_name", None) or getattr(u, "email", None) if u else "N/A"
+        if updated_by_id is not None:
+            u2 = db.query(User).filter(User.id == updated_by_id).first()
+            updated_by_name = getattr(u2, "full_name", None) or getattr(u2, "email", None) if u2 else "N/A"
+
         managers_with_jobs.append({
             "manager_id": getattr(manager_obj, "manager_id", None),
-            "manager_name": getattr(manager_obj, "manager_name", None) or getattr(manager_obj, "name", None) or f"Manager {getattr(manager_obj, 'manager_id', '')}",
+            "manager_name": getattr(manager_obj, "manager_name", None) or f"Manager {getattr(manager_obj, 'manager_id', '')}",
             "status": getattr(manager_obj, "status", "active"),
             "client_id": client_id,
             "jobs": jobs,
-            "created_by": getattr(manager_obj, "created_by", None),
+            "created_by": created_by_id,
+            "created_by_name": created_by_name or "N/A",
             "created_at": getattr(manager_obj, "created_at", None),
-            "updated_by": getattr(manager_obj, "updated_by", None),
+            "updated_by": updated_by_id,
+            "updated_by_name": updated_by_name or "N/A",
             "updated_at": getattr(manager_obj, "updated_at", None),
         })
+
 
     return templates.TemplateResponse(
         "managers.html",
@@ -202,7 +236,7 @@ def add_new_manager(
             if any(getattr(j, "job_title", "").lower() == t.lower() for j in (existing_jobs or [])):
                 message += f" (Job '{t}' already exists)"
                 continue
-            add_new_job(db, getattr(manager, "manager_id", None), t, desc)
+            add_new_job(db, getattr(manager, "manager_id", None), t, desc, created_by=getattr(current_user, "id", None))
             try:
                 uname = getattr(current_user, "full_name", getattr(current_user, "email", "Unknown User"))
                 mname = getattr(manager, "manager_name", name)
@@ -374,7 +408,7 @@ def add_job(
             message = f"Job '{job_title_clean}' already exists!"
         else:
             try:
-                add_new_job(db, manager_id, job_title_clean, job_description_clean)
+                add_new_job(db, manager_id, job_title_clean, job_description_clean, created_by=getattr(current_user, "id", None))
                 # log creation with names
                 try:
                     uname = getattr(current_user, "full_name", getattr(current_user, "email", "Unknown User"))
@@ -427,7 +461,7 @@ def add_job_from_list(
             message = f"Job '{job_title_clean}' already exists!"
         else:
             try:
-                add_new_job(db, manager_id, job_title_clean, job_description_clean)
+                add_new_job(db, manager_id, job_title_clean, job_description_clean, created_by=getattr(current_user, "id", None))
                 try:
                     uname = getattr(current_user, "full_name", getattr(current_current_user := current_user, "email", "Unknown User"))
                     mname = getattr(manager, "manager_name", f"Manager {manager_id}")
@@ -527,7 +561,7 @@ def edit_job_route(
     job.job_title = (job_title or "").strip()
     job.job_description = (job_description or "").strip()
     job.updated_by = getattr(current_current_user := current_user, "id", None)
-    job.updated_at = datetime.now(IST)
+    job.updated_at = datetime.now(UTC)
     db.add(job)
     db.commit()
     db.refresh(job)
