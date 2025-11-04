@@ -447,8 +447,9 @@ async function loadJobs() {
 
       const isActive = job.status === 'Active' || job.status === 'active' || job.status === true || job.status === 1;
       
+      // JD link: ensure it stops propagation so row click isn't triggered
       const jobDescriptionLink = job.job_description && job.job_description !== '-' 
-        ? `<a href="${job.job_description}" target="_blank" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors duration-200" title="View Job Description">
+        ? `<a href="${job.job_description}" onclick="event.stopPropagation()" target="_blank" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors duration-200" title="View Job Description">
             <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
@@ -462,6 +463,30 @@ async function loadJobs() {
 
       const row = document.createElement('tr');
       row.className = 'hover:bg-gray-50 transition-colors duration-200';
+      // cursor pointer to show row is clickable; don't change visual design otherwise
+      row.style.cursor = 'pointer';
+      // store the target job page link (use job.job_page_link if backend provides it)
+      // Prefer explicit job_page_link from backend if present
+      let jobPageLink = job.job_page_link || null;
+
+// If backend didn't provide explicit link, resolve manager id if available
+      if (!jobPageLink) {
+  // try numeric manager id first (backend now returns manager_id)
+        if (job.manager_id) {
+          jobPageLink = `/managers/jobs/${job.manager_id}?focus_job=${job.job_id}`;
+        } else if (job.managerId) {
+          jobPageLink = `/managers/jobs/${job.managerId}?focus_job=${job.job_id}`;
+        }
+      }
+
+// Final fallback: if no manager info, open the job's candidate shortlist (safe)
+      if (!jobPageLink) {
+        jobPageLink = job.link || `/candidates/jd-candidates/${job.job_id}`;
+      }
+
+      row.setAttribute('data-job-page', jobPageLink);
+
+      row.setAttribute('tabindex', '0'); // make it focusable for keyboard navigation
       row.innerHTML = `
         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${job.job_id}</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${job.job_title}</td>
@@ -472,7 +497,7 @@ async function loadJobs() {
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${job.created_at}</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm">
           <div class="flex items-center gap-2">
-            <a href="${job.link}" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">
+            <a href="${job.link}" onclick="event.stopPropagation()" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">
               View Candidates
             </a>
 
@@ -492,6 +517,37 @@ async function loadJobs() {
         </td>
       `;
       jobsTableBody.appendChild(row);
+
+      // Row click navigates to job page (except when inner clickable elements are used)
+      row.addEventListener('click', (e) => {
+        // ignore clicks that were prevented by inner elements; row-level click should navigate
+        const targetLink = row.getAttribute('data-job-page');
+        if (targetLink) {
+          window.location.href = targetLink;
+        }
+      });
+
+      // Keyboard: Enter key navigates as well when row focused
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const targetLink = row.getAttribute('data-job-page');
+          if (targetLink) {
+            window.location.href = targetLink;
+          }
+        } else if (e.key === 'Escape') {
+          // keep Escape behavior consistent with dropdown code
+          document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+          document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
+        }
+      });
+
+      // Ensure anchor and button children don't trigger row click (defensive)
+      row.querySelectorAll('a, button').forEach(el => {
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+        });
+      });
     });
 
     attachRowActionListeners(); // attaches listeners and sets new dropdown-behavior

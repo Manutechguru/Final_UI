@@ -76,16 +76,23 @@ def get_all_jobs_data(
 
         result = []
         for job in jobs:
+            manager_id_val = job.manager.manager_id if job.manager else None
+            client_id_val = job.manager.client.client_id if job.manager and job.manager.client else None
+
             result.append({
                 "job_id": job.job_id,
                 "job_title": job.job_title,
                 "job_description": job.job_description or "-",
+                "manager_id": manager_id_val,  # 👈 added
+                "client_id": client_id_val,    # 👈 optional but useful
                 "manager_name": job.manager.manager_name if job.manager else "-",
                 "client_name": job.manager.client.client_name if job.manager and job.manager.client else "-",
                 "status": job.status,
                 "created_at": job.created_at.strftime("%Y-%m-%d"),
-                "link": f"/candidates/jd-candidates/{job.job_id}" if job.job_id else "#"
+                "link": f"/candidates/jd-candidates/{job.job_id}" if job.job_id else "#",
+                "job_page_link": f"/managers/jobs/{manager_id_val}" if manager_id_val else None  # 👈 added
             })
+
 
     return {"jobs": result}
 

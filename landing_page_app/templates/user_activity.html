@@ -3,9 +3,112 @@
 {% block title %}Your activity{% endblock %}
 
 {% block content %}
+<!-- ==== Layout CSS (minimal overrides to make header sticky, table-scroll internal, pagination visible above base footer) ==== -->
+<style>
+  /* ---------- layout fixes: container, scroll area, pagination ---------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #f9fafb;
+  /* keep body scroll allowed so base footer stays visible if page taller than viewport */
+  overflow: auto;
+}
+
+.container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* height will be computed dynamically by JS to fit between header and footer */
+}
+
+/* card fills the container; we will let JS set proper heights for children */
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #fff;
+  overflow: hidden;
+}
+
+/* header remains sticky at top of the viewport area */
+.card > .flex {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: white;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* MAIN SCROLL AREA: we will assign an explicit height to it via JS so pagination does NOT overlap */
+.overflow-x-auto {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 0 20px 0 20px !important;
+  box-sizing: border-box;
+  /* do NOT set flex:1 here; JS will explicitly set its height */
+}
+
+/* pagination should be a normal block immediately after the scroll area (not sticky) */
+.activity-pagination {
+  position: relative;      /* important: not sticky, so it won't float above content */
+  z-index: 30;
+  background: #fff;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(0,0,0,0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: none;
+}
+
+/* subtle inner scrollbar styling for the scroll area */
+.overflow-x-auto::-webkit-scrollbar { width: 8px; }
+.overflow-x-auto::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 6px; }
+
+  /* Column resizer handle UI */
+  #activityTable th { position: relative; white-space: nowrap; }
+  #activityTable th .col-resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 10px;
+    cursor: col-resize;
+    transform: translateX(50%);
+    z-index: 30;
+  }
+  #activityTable th .col-resizer::after {
+    content: "";
+    position: absolute;
+    right: 4px;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 1px;
+  }
+
+  /* small responsive tweaks */
+  @media (max-width: 640px) {
+    .overflow-x-auto { padding-left: 12px !important; padding-right: 12px !important; }
+    .activity-pagination { padding-left: 12px; padding-right: 12px; }
+  }
+</style>
+
 <div class="container mx-auto mt-6">
   <div class="card">
-    <!-- Header / Controls -->
+    <!-- Header / Controls (kept exactly as you had) -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
       <div>
         <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900">{{ username or "User" }}</h1>
@@ -19,7 +122,7 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- Days input: removed Apply button; will auto-reload with debounce -->
+        <!-- Days input -->
         <div class="flex items-center gap-2">
           <label for="days" class="text-sm text-gray-600 hidden md:inline">Days</label>
           <input id="days" name="days" type="number" min="1" max="90" value="{{ days }}"
@@ -33,7 +136,7 @@
           <i class="fas fa-search absolute right-3 top-2.5 text-gray-400"></i>
         </div>
 
-        <!-- Type dropdown (restored & improved) -->
+        <!-- Type dropdown -->
         <div class="relative">
           <label for="activityType" class="sr-only">Filter by type</label>
           <select id="activityType" class="rounded-lg border px-3 py-2 text-sm border-gray-200 bg-white focus:ring-2 focus:ring-indigo-200">
@@ -62,7 +165,7 @@
     <!-- Two-column table (Action | When) -->
     {% if items and items|length > 0 %}
     <div class="overflow-x-auto">
-      <table class="w-full min-w-[720px] divide-y shadow-sm" id="activityTable">
+      <table class="w-full min-w-[720px] divide-y shadow-sm activity-table" id="activityTable">
         <thead class="bg-gradient-to-r from-indigo-50 to-white sticky top-0 z-10">
           <tr>
             <th class="text-left p-3 text-sm font-semibold text-gray-700 w-3/5">Action</th>
@@ -76,12 +179,10 @@
             <td class="p-3 align-top">
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
-                  <!-- accent: add 'type-dot' class so JS can target it and change color -->
                   <span class="type-dot inline-block w-3 h-3 rounded-full bg-indigo-500 shadow-sm" aria-hidden="true"></span>
                 </div>
                 <div class="flex-1">
                   <div class="text-sm font-semibold text-gray-800 leading-snug">{{ r.action }}</div>
-                  <!-- small meta line (optional) -->
                   <div class="text-xs text-gray-400 mt-1 small-meta"></div>
                 </div>
               </div>
@@ -101,8 +202,8 @@
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div class="flex items-center justify-between mt-4">
+    <!-- Pagination: add activity-pagination class so JS can place it above real footer -->
+    <div class="flex items-center justify-between mt-4 activity-pagination" id="activityPagination">
       <div class="text-sm text-gray-600">
         Showing {{ skip + 1 if total>0 else 0 }} - {{ (skip + limit) if (skip + limit) < total else total }} of {{ total }}
       </div>
@@ -127,7 +228,7 @@
   </div>
 </div>
 
-<!-- Client-side JS: auto-submit days (debounced), search, type dropdown filtering, friendly timestamps -->
+<!-- Client-side JS: original behavior + layout adjustments + column resizer injection -->
 <script>
 (function () {
   // debounce helper
@@ -167,7 +268,7 @@
     }
   });
 
-  // classifier for type - reintroduced for dropdown filtering and for visual hint
+  // classifier for type - for dropdown filtering and visual hint
   function classifyType(text) {
     const a = (text || '').toLowerCase();
     if (a.includes('unlink') || a.includes('unlinked')) return 'Unlink';
@@ -201,20 +302,20 @@
     }
   }
 
-  // attach small hint (type) into each row meta (purely visual, non-backend)
+  // attach small hint (type) into each row meta (visual)
   document.querySelectorAll('.activity-row').forEach(function(row){
     try {
-      const actionText = row.querySelector('td:nth-child(1) .text-sm').innerText;
+      const actionEl = row.querySelector('td:nth-child(1) .text-sm');
+      const actionText = actionEl ? actionEl.innerText : row.innerText;
       const t = classifyType(actionText);
       const hintEl = row.querySelector('.small-meta');
       if (hintEl) hintEl.textContent = t;
       // set a data-type attribute for filtering
       row.setAttribute('data-atype', t);
 
-      // update dot color using the type-dot element (this fixes the blue-only issue)
+      // update dot color using the type-dot element
       const dot = row.querySelector('.type-dot');
       if (dot) {
-        // replace classes but preserve sizing/round/shadow utilities
         dot.className = 'type-dot inline-block w-3 h-3 rounded-full shadow-sm ' + colorForType(t);
       }
     } catch(e) { /* ignore */ }
@@ -223,8 +324,8 @@
   // client-side search
   const searchInput = document.getElementById('activitySearch');
   function applyFilters() {
-    const q = searchInput.value.trim().toLowerCase();
-    const selectedType = document.getElementById('activityType').value;
+    const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    const selectedType = document.getElementById('activityType') ? document.getElementById('activityType').value : '';
     document.querySelectorAll('#activityTbody tr').forEach(function(tr){
       const text = tr.innerText.toLowerCase();
       const rowType = tr.getAttribute('data-atype') || '';
@@ -239,7 +340,7 @@
     searchInput.addEventListener('input', debounce(applyFilters, 150));
   }
 
-  // type dropdown filter restored and connected
+  // type dropdown filter connection
   const typeSelect = document.getElementById('activityType');
   if (typeSelect) {
     typeSelect.addEventListener('change', function() {
@@ -247,7 +348,7 @@
     });
   }
 
-  // Days input: when changed, auto-reload the page with new ?days=X&skip=0&limit=<limit>
+  // Days input: when changed, auto-reload page
   const daysInput = document.getElementById('days');
   const daysLabel = document.getElementById('daysLabel');
   const noDays = document.getElementById('noDays');
@@ -255,38 +356,125 @@
   const currentLimit = currentParams.get('limit') || '{{ limit }}';
 
   function reloadWithDays(val) {
-    // clamp to 1..90 on client
     let d = parseInt(val) || 1;
     if (d < 1) d = 1;
     if (d > 90) d = 90;
-    // update label
     if (daysLabel) daysLabel.textContent = d;
     if (noDays) noDays.textContent = d;
-    // update URL params and reload
     const params = new URLSearchParams(window.location.search);
     params.set('days', d);
     params.set('skip', 0);
     params.set('limit', currentLimit);
-    // reload to server to fetch new dataset
-    const newUrl = window.location.pathname + '?' + params.toString();
-    window.location.href = newUrl;
+    window.location.href = window.location.pathname + '?' + params.toString();
   }
 
   if (daysInput) {
-    // debounce to prevent instant reload on every keypress
     daysInput.addEventListener('input', debounce(function(e){
       const v = e.target.value;
-      // If empty, don't reload yet
       if (!v) return;
       reloadWithDays(v);
     }, 600));
   }
 
-  // on page load, apply client filters if search/type already present in page state (keeps consistent)
+  // apply filters on load
   document.addEventListener('DOMContentLoaded', function(){
-    // apply initial filters
     applyFilters();
   });
+
+  /* ========== Layout adjustments so base footer shows & pagination stays visible ========== */
+   function adjustLayoutForFooterAndPagination() {
+    const footer = document.querySelector('footer') || document.querySelector('footer.site-footer') || document.querySelector('#site-footer') || null;
+    const container = document.querySelector('.container');
+    const cardHeader = document.querySelector('.card > .flex'); // first header flex (filters)
+    const scrollArea = document.querySelector('.overflow-x-auto');
+    const pagination = document.querySelector('.activity-pagination') || document.getElementById('activityPagination');
+
+    // actual heights (0 if not present)
+    const footerHeight = footer ? footer.offsetHeight : 0;
+    const headerHeight = cardHeader ? cardHeader.getBoundingClientRect().height : 0;
+    const paginationHeight = pagination ? pagination.getBoundingClientRect().height : 0;
+
+    // viewport height
+    const vh = window.innerHeight;
+
+    // Compute available height for our container (we want the base footer visible)
+    // container will fill viewport minus footer so footer remains at bottom of page
+    if (container) {
+      container.style.minHeight = `calc(100vh - ${footerHeight}px)`;
+      container.style.height = `calc(100vh - ${footerHeight}px)`;
+    }
+
+    // Compute height for scroll area = viewport - header - pagination - footer - small safety gap(0)
+    const available = vh - headerHeight - paginationHeight - footerHeight;
+
+    // Enforce a sensible minimum height so things don't collapse on small screens
+    const scrollHeight = Math.max(200, available);
+
+    if (scrollArea) {
+      scrollArea.style.height = scrollHeight + 'px';
+    }
+
+    // Ensure pagination is below the scroll area (no overlap). It is placed as normal flow element.
+    if (pagination) {
+      // remove sticky behaviour (ensure it's positioned normally below scroll area)
+      pagination.style.position = 'relative';
+      // if you want slight separation remove margin; we ensure no overlap
+      pagination.style.marginTop = '0px';
+    }
+  }
+
+  // Run on load and on resize and after a short delay (footer might be async)
+  window.addEventListener('load', adjustLayoutForFooterAndPagination);
+  window.addEventListener('resize', adjustLayoutForFooterAndPagination);
+  // run a few times to catch dynamic changes
+  setTimeout(adjustLayoutForFooterAndPagination, 150);
+  setTimeout(adjustLayoutForFooterAndPagination, 500);
+
+  /* ========== Column resizer injection (lightweight, no external libs) ========== */
+  (function injectResizers(){
+    const table = document.getElementById('activityTable');
+    if (!table) return;
+    const thead = table.querySelector('thead');
+    if (!thead) return;
+    const ths = Array.from(thead.querySelectorAll('th'));
+
+    ths.forEach((th, index) => {
+      // do not add to last header
+      if (index === ths.length - 1) return;
+      if (th.querySelector('.col-resizer')) return;
+
+      const resizer = document.createElement('span');
+      resizer.className = 'col-resizer';
+      th.appendChild(resizer);
+
+      resizer.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        const startX = e.clientX;
+        const nextTh = ths[index + 1];
+        const startWidth = th.getBoundingClientRect().width;
+        const nextStartWidth = nextTh ? nextTh.getBoundingClientRect().width : 0;
+
+        function onMouseMove(ev) {
+          const dx = ev.clientX - startX;
+          const newW = Math.max(80, startWidth + dx);
+          th.style.width = newW + 'px';
+          if (nextTh) {
+            const newNextW = Math.max(80, nextStartWidth - dx);
+            nextTh.style.width = newNextW + 'px';
+          }
+        }
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    });
+  })();
+
+  // expose re-injection function in case the table is re-rendered dynamically
+  window.injectActivityResizers = function(){ injectResizers(); };
 
 })();
 </script>

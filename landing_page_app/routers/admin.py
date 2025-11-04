@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, Request, Cookie, Query, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import or_, func, desc
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 
 from landing_page_app.database import get_db
 from landing_page_app.models.user import User, UserRole
@@ -161,6 +163,7 @@ def admin_dashboard(
     display_end = total_count if (log_skip + log_limit) > total_count else (log_skip + log_limit)
 
     # ---------- LOGS SUMMARY (grouped by user) ----------
+        # ---------- LOGS SUMMARY (grouped by user) ----------
     count_distinct_q = (
         db.query(func.count(func.distinct(UserLog.user_id)))
         .join(User, User.id == UserLog.user_id)
@@ -173,6 +176,7 @@ def admin_dashboard(
         count_distinct_q = count_distinct_q.filter(UserLog.action == action_filter)
     summary_total_users = count_distinct_q.scalar() or 0
 
+    # raw grouped rows (same as before)
     summary_rows_q = (
         db.query(
             User.id.label("user_id"),
@@ -189,7 +193,7 @@ def admin_dashboard(
     if action_filter:
         summary_rows_q = summary_rows_q.filter(UserLog.action == action_filter)
 
-    logs_summary = (
+    raw_summary_rows = (
         summary_rows_q
         .group_by(User.id, User.full_name)
         .order_by(desc("last_ts"))
@@ -197,6 +201,51 @@ def admin_dashboard(
         .limit(summary_limit)
         .all()
     )
+
+    # Build a processed list that includes the login status for each user.
+    # Determine status by looking up the latest UserLog.action (no date window) for that user.
+    # Mapping rule:
+    #  - latest action starting with "LOGIN" (case-insensitive) => Active
+    #  - latest action starting with "LOGOUT" => Inactive
+    #  - otherwise fallback: if "LOGIN" appears anywhere => Active, else Inactive
+    processed_logs_summary = []
+    for r in raw_summary_rows:
+        status = "Inactive"  # default
+
+# Find the most recent UserLog for this user (no date window)
+        latest = (
+            db.query(UserLog.action, UserLog.timestamp)
+            .filter(UserLog.user_id == r.user_id)
+            .order_by(UserLog.timestamp.desc())
+            .limit(1)
+            .first()
+        )
+
+        if latest:
+            action_text = (latest.action or "").strip().upper()
+            # ✅ Detect "LOGIN" even if it's embedded (e.g., "USER LOGIN SUCCESS")
+            if "LOGIN" in action_text and not "LOGOUT" in action_text:
+                status = "Active"
+            elif "LOGOUT" in action_text:
+                status = "Inactive"
+            else:
+                # Optional fallback: if last log was within last 10 minutes, treat as active
+                now = datetime.now(timezone.utc)
+                if (now - latest.timestamp) < timedelta(minutes=10):
+                    status = "Active"
+
+
+        processed_logs_summary.append({
+            "user_id": r.user_id,
+            "username": r.username,
+            "events": r.events,
+            "last_ts": r.last_ts,
+            "status": status,
+        })
+
+    # expose processed list to the template (keeps the same variable name)
+    logs_summary = processed_logs_summary
+
 
     # BUILD CONTEXT ONCE, THEN RETURN AND SET COOKIE
     context = {
@@ -378,6 +427,9 @@ def admin_update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # remember old role for comparison
+    old_role = getattr(user, "role", None)
+
     # Basic info
     user.full_name = (full_name or "").strip()
     user.email = (email or "").strip()
@@ -385,8 +437,10 @@ def admin_update_user(
 
     # Role
     coerced = _coerce_role(role)
-    if coerced is not None:
+    role_changed = False
+    if coerced is not None and coerced != old_role:
         user.role = coerced
+        role_changed = True
 
     # Password change (optional)
     did_change_password = False
@@ -413,7 +467,24 @@ def admin_update_user(
     db.add(UserLog(user_id=admin.id, action=f"EDITED USER {user.email}"))
     db.commit()
 
-    return RedirectResponse(url="/admin?tab=allusers&msg=User%20updated", status_code=302)
+    # Build a friendly msg parameter depending on what changed
+    msgs = []
+    if did_change_password:
+        msgs.append("Password updated successfully")
+    if role_changed:
+        # role is an enum; convert to displayable string
+        try:
+            role_display = user.role.name if hasattr(user.role, "name") else str(user.role)
+        except Exception:
+            role_display = str(user.role)
+        msgs.append(f"Role updated to {role_display} successfully")
+
+    # Fallback generic message if nothing specific
+    if not msgs:
+        msgs.append("User updated")
+
+    combined_msg = "; ".join(msgs)
+    return RedirectResponse(url=f"/admin?tab=allusers&msg={quote_plus(combined_msg)}", status_code=302)
 
 
 # -------------------------- user moderation --------------------------
@@ -453,11 +524,47 @@ def remove_user(user_id: int, db: Session = Depends(get_db), user_email: str | N
         return redirect
 
     target = db.get(User, user_id)
-    if target:
+    if not target:
+        return RedirectResponse(url="/admin?tab=allusers&error=User%20not%20found", status_code=302)
+
+    try:
+        # 🧩 Step 1: Delete any impersonation records pointing to this user.
+        # Your table only has "target_user_id", so we delete by that column only.
+        db.execute(
+            text("DELETE FROM impersonations WHERE target_user_id = :uid"),
+            {"uid": target.id}
+        )
+
+        # 🧩 Step 2: Flush to apply dependent deletions before removing the user.
+        db.flush()
+
+        # 🧩 Step 3: Delete the user and log the admin action.
         db.delete(target)
         db.add(UserLog(user_id=admin.id, action=f"REMOVED {target.email}"))
+
+        # 🧩 Step 4: Commit everything.
         db.commit()
-    return RedirectResponse(url="/admin?tab=allusers&msg=User%20removed", status_code=302)
+
+        return RedirectResponse(url="/admin?tab=allusers&msg=User%20removed", status_code=302)
+
+    except IntegrityError:
+        db.rollback()
+        import logging
+        logging.exception("Foreign key constraint failed while deleting user %s", user_id)
+        return RedirectResponse(
+            url="/admin?tab=allusers&error=Cannot%20remove%20user%20-%20references%20exist",
+            status_code=303,
+        )
+
+    except Exception:
+        db.rollback()
+        import logging
+        logging.exception("Unexpected error deleting user %s", user_id)
+        return RedirectResponse(
+            url="/admin?tab=allusers&error=Failed%20to%20remove%20user",
+            status_code=303,
+        )
+
 
 
 # ------------------------------ CSV upload ------------------------------

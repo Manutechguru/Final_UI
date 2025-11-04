@@ -1,4 +1,4 @@
-{# landing_page_app/templates/admin_user_logs.html #}
+{# landing_page_app/templates/admin_user_logs.html (UPDATED layout only) #}
 <!doctype html>
 <html lang="en">
   <head>
@@ -9,12 +9,59 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-      body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f6f8fb; margin:0; color:#0f172a; }
-      .container { max-width:1200px; margin:28px auto; padding:18px; }
-      .card { background:white; border-radius:12px; padding:0; box-shadow:0 8px 30px rgba(2,6,23,0.06); overflow:hidden; }
-      .activity-header { background:#4f46e5; color:#fff; }
+      /* ---------- Page baseline / remove outer scrollbars & gaps ---------- */
+      html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* prevent outer scrollbars */
+        background: #f6f8fb;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        color: #0f172a;
+      }
+
+      /* container now fills the viewport; no outer gaps */
+      .container {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 12px; /* small breathing room, can be 0 if you want flush edges */
+        box-sizing: border-box;
+      }
+
+      /* card fills horizontally; vertical layout handled inside */
+      .card {
+        width: 100%;
+        height: calc(100% - 24px); /* account for container padding */
+        background: white;
+        border-radius: 12px;
+        padding: 0;
+        box-shadow: 0 8px 30px rgba(2,6,23,0.06);
+        overflow: hidden; /* keep inner scroll inside the card */
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* header is sticky / fixed inside the card */
+      .activity-header {
+        background: #4f46e5;
+        color: #fff;
+        padding: 20px 24px;
+        box-sizing: border-box;
+        /* Make header visually elevated and fixed at top of card */
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+      }
+
       .activity-header .muted { color: rgba(255,255,255,0.92); }
-      .activity-header h1 { color: #fff; }
+      .activity-header h1 { color: #fff; margin:0; }
+
+      /* header controls styling (unchanged look) */
       .header-input {
         background: rgba(255,255,255,0.92);
         color: #000;
@@ -24,22 +71,131 @@
       .header-input::placeholder { color: rgba(0,0,0,0.45); }
       .header-input:focus { box-shadow: 0 0 0 4px rgba(79,70,229,0.12); border-color: rgba(0,0,0,0.12); }
       select.header-input { color: #000; background: rgba(255,255,255,0.94); }
+
       .header-icon { color: #fff; fill: #fff; stroke: #fff; }
       .header-back { border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); color: #000; }
       .header-back .back-icon { color: #fff; stroke: #fff; }
+
       .type-dot { width:12px; height:12px; display:inline-block; border-radius:9999px; }
       .small-meta { letter-spacing:0.1px; color:#6b7280; }
-      @media (max-width:640px) {
-        .container { padding:12px; }
-        .card { border-radius:10px; }
+
+      /* ---------- TABLE area: make it the only scrollable region ---------- */
+      /* wrapper that contains the table and footer; will scroll */
+      .table-area {
+        flex: 1 1 auto;
+        min-height: 0; /* allow children to size correctly in flex */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* hide anything overflowing outside this wrapper */
       }
+
+      /* scrollable table wrapper where vertical scrollbar appears */
+      .table-scroll {
+        overflow-y: auto;
+        overflow-x: auto; /* preserve horizontal scroll only inside the wrapper */
+        -webkit-overflow-scrolling: touch;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+
+      /* small improvement: ensure the header inside the table (thead) remains sticky */
+      table thead.sticky-top { position: sticky; top: 0; z-index: 20; }
+
+      /* keep table lean - content width unchanged but horizontal scroll will be inside table-scroll */
+      .activity-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      /* footer with pagination sits after the scrollable table, not inside it */
+      .card-footer {
+        border-top: 1px solid rgba(0,0,0,0.04);
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #fff;
+        flex: 0 0 auto;
+      }
+
+      /* responsive small adjustments */
+      @media (max-width: 640px) {
+        .container { padding: 8px; }
+        .activity-header { padding: 14px; }
+        .header-input.w-56 { width: 220px; }
+      }
+
+      /* FULLSCREEN — absolutely no gaps anywhere */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* forcefully remove browser scrollbars */
+  background: #f6f8fb;
+}
+
+/* remove padding that created gaps */
+.container {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* card now fills the page completely */
+.card {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important; /* removes rounded corners */
+  box-shadow: none !important; /* optional: remove floating look */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* sticky purple header remains unchanged but now flush at top */
+.activity-header {
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+/* the scrollable list must stretch to the bottom */
+.table-area {
+  flex: 1;
+  overflow: hidden;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* this is where the internal scrollbar stays */
+.table-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* remove padding under table footer */
+.card-footer {
+  margin: 0 !important;
+  padding: 12px 16px !important;
+  border-radius: 0 !important;
+}
+
     </style>
   </head>
 
   <body>
     <div class="container">
       <div class="card">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 activity-header rounded-t-lg">
+        <!-- header remains the same but is now sticky at the top of the card -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 activity-header rounded-t-lg">
           <div>
             <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">
               {{ target_user.full_name or target_user.email }}
@@ -70,7 +226,6 @@
               </svg>
             </div>
 
-            <!-- ✅ Added Unlink + Gmail options -->
             <div class="relative">
               <label for="activityType" class="sr-only">Filter by type</label>
               <select id="activityType" class="header-input rounded-lg px-3 py-2 text-sm">
@@ -99,71 +254,76 @@
           </div>
         </div>
 
-        {% if items and items|length > 0 %}
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[720px] divide-y" id="activityTable">
-            <thead class="bg-gradient-to-r from-indigo-50 to-white sticky top-0 z-10">
-              <tr>
-                <th class="text-left p-4 text-sm font-semibold text-gray-700 w-3/5">Action</th>
-                <th class="text-left p-4 text-sm font-semibold text-gray-700 w-2/5">When</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y" id="activityTbody">
-              {% for r in items %}
-              <tr class="activity-row hover:bg-gray-50 transition-colors">
-                <td class="p-4 align-top">
-                  <div class="flex items-start gap-4">
-                    <div class="flex-shrink-0 mt-0.5">
-                      <span class="type-dot inline-block w-3 h-3 rounded-full bg-indigo-500 shadow-sm" aria-hidden="true"></span>
-                    </div>
-                    <div class="flex-1">
-                      <div class="text-sm font-semibold text-gray-800 leading-snug action-text">{{ r.action }}</div>
-                      <div class="text-xs text-gray-400 mt-1 small-meta"></div>
-                    </div>
-                  </div>
-                </td>
-                <td class="p-4 align-top text-sm text-gray-600">
-                  {% if r.timestamp %}
-                    <div class="timestamp-iso">{{ r.timestamp.isoformat() }}</div>
-                    <div class="timestamp-local text-xs text-gray-400 mt-1"></div>
-                  {% else %}
-                    <div class="text-gray-400">—</div>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="flex items-center justify-between gap-4 p-6 border-t">
-          <div class="text-sm text-gray-600">
-            Showing {{ (skip + 1) if total > 0 else 0 }} - {{ total if (skip + limit) > total else (skip + limit) }} of {{ total }}
+        <!-- TABLE AREA: the only region that scrolls -->
+        <div class="table-area">
+          <div class="table-scroll">
+            {% if items and items|length > 0 %}
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[720px] divide-y activity-table" id="activityTable">
+                <thead class="bg-gradient-to-r from-indigo-50 to-white sticky-top">
+                  <tr>
+                    <th class="text-left p-4 text-sm font-semibold text-gray-700 w-3/5">Action</th>
+                    <th class="text-left p-4 text-sm font-semibold text-gray-700 w-2/5">When</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y" id="activityTbody">
+                  {% for r in items %}
+                  <tr class="activity-row hover:bg-gray-50 transition-colors">
+                    <td class="p-4 align-top">
+                      <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 mt-0.5">
+                          <span class="type-dot inline-block w-3 h-3 rounded-full bg-indigo-500 shadow-sm" aria-hidden="true"></span>
+                        </div>
+                        <div class="flex-1">
+                          <div class="text-sm font-semibold text-gray-800 leading-snug action-text">{{ r.action }}</div>
+                          <div class="text-xs text-gray-400 mt-1 small-meta"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="p-4 align-top text-sm text-gray-600">
+                      {% if r.timestamp %}
+                        <div class="timestamp-iso">{{ r.timestamp.isoformat() }}</div>
+                        <div class="timestamp-local text-xs text-gray-400 mt-1"></div>
+                      {% else %}
+                        <div class="text-gray-400">—</div>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="p-10 text-center text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-14 w-14 text-indigo-100" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3" />
+              </svg>
+              <h3 class="text-lg font-semibold mt-4 text-gray-900">No activity found</h3>
+              <p class="text-sm text-gray-500 mt-1">No events recorded in the last <strong id="noDays">{{ days }}</strong> days.</p>
+              <div class="mt-4"><a href="/admin?tab=logs" class="text-indigo-600 hover:underline">Back to logs</a></div>
+            </div>
+            {% endif %}
           </div>
-          <div class="flex items-center gap-2">
-            {% set prev_skip = (skip - limit) if (skip - limit) >= 0 else 0 %}
-            {% set next_skip = skip + limit %}
-            <a href="?days={{ days }}&skip={{ prev_skip }}&limit={{ limit }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm {% if skip == 0 %}opacity-50 pointer-events-none{% endif %}">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Prev
-            </a>
-            <a href="?days={{ days }}&skip={{ next_skip }}&limit={{ limit }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm {% if (skip + limit) >= total %}opacity-50 pointer-events-none{% endif %}">
-              Next
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
+
+          <!-- footer / pagination (not part of scrollable table) -->
+          <div class="card-footer">
+            <div class="text-sm text-gray-600">
+              Showing {{ (skip + 1) if total > 0 else 0 }} - {{ total if (skip + limit) > total else (skip + limit) }} of {{ total }}
+            </div>
+            <div class="flex items-center gap-2">
+              {% set prev_skip = (skip - limit) if (skip - limit) >= 0 else 0 %}
+              {% set next_skip = skip + limit %}
+              <a href="?days={{ days }}&skip={{ prev_skip }}&limit={{ limit }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm {% if skip == 0 %}opacity-50 pointer-events-none{% endif %}">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Prev
+              </a>
+              <a href="?days={{ days }}&skip={{ next_skip }}&limit={{ limit }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-white hover:bg-gray-50 text-sm {% if (skip + limit) >= total %}opacity-50 pointer-events-none{% endif %}">
+                Next
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+            </div>
           </div>
         </div>
-
-        {% else %}
-        <div class="p-10 text-center text-gray-500">
-          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-14 w-14 text-indigo-100" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3" />
-          </svg>
-          <h3 class="text-lg font-semibold mt-4 text-gray-900">No activity found</h3>
-          <p class="text-sm text-gray-500 mt-1">No events recorded in the last <strong id="noDays">{{ days }}</strong> days.</p>
-          <div class="mt-4"><a href="/admin?tab=logs" class="text-indigo-600 hover:underline">Back to logs</a></div>
-        </div>
-        {% endif %}
       </div>
     </div>
 

@@ -1,5 +1,5 @@
-// jd_candidates.js - full
-// Only modification: prevent candidate details popup when clicking Recruiter Notes or AI Score columns
+// jd_candidates.js - updated to correctly use #candidateDetailsModal from the template
+// Only modification: candidate details popup wiring fixed to use existing modal IDs in HTML
 
 let jdId = null;
 let statusOptions = [];
@@ -63,11 +63,12 @@ function setupEventListeners() {
   confirmationCancel?.addEventListener('click', closeConfirmationDialog);
   confirmationConfirm?.addEventListener('click', executeConfirmedAction);
 
-  // modal close
+  // modal close (generic)
   document.querySelectorAll('.modal-close').forEach(btn => {
     btn.addEventListener('click', () => {
-      const modal = btn.closest('.modal');
+      const modal = btn.closest('.modal') || btn.closest('.custom-modal');
       if (modal) modal.classList.remove('open');
+      if (modal) modal.setAttribute('aria-hidden', 'true');
     });
   });
 
@@ -235,12 +236,13 @@ function setupAIExplanation() {
       const content = document.getElementById('aiExplanationContent');
       if (content) content.textContent = explanation;
       modal?.classList.add('open');
+      modal?.setAttribute('aria-hidden', 'false');
       modal?.addEventListener('click', (ev) => { if (ev.target === modal) modal.classList.remove('open'); }, { once: true });
     });
   });
 }
 
-// Row expansion
+// Row expansion and row click -> open details modal
 function setupRowExpansion() {
   document.querySelectorAll('.expander-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -279,51 +281,171 @@ function setupRowExpansion() {
   document.getElementById('candidateDetailsClose')?.addEventListener('click', closeCandidateDetailsModal);
 }
 
-// Candidate modal
+// Replace existing openCandidateDetailsModal with this tighter version
 function openCandidateDetailsModal(row) {
   const modal = document.getElementById('candidateDetailsModal');
-  const titleEl = document.getElementById('candidateDetailsTitle');
-  const contentEl = document.getElementById('candidateDetailsContent');
-  if (!modal || !titleEl || !contentEl) return;
+  const contentContainer = document.getElementById('candidateDetailsContent');
+  if (!modal || !contentContainer || !row) return;
 
-  const expanded = row.nextElementSibling?.classList.contains('expanded-row') ? row.nextElementSibling : null;
-  const headers = [...row.closest('table').querySelectorAll('thead th')].slice(2).map(h => h.textContent.trim());
-  const mainCells = [...row.querySelectorAll('td')].slice(2);
-  const expandedCells = expanded ? [...expanded.querySelectorAll('td')].slice(2) : [];
+  // Collect headers and cells (prefer expanded row values when present)
+  const table = row.closest('table');
+  const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+  const cells = [...row.querySelectorAll('td')];
+  const expandedRow = (row.nextElementSibling && row.nextElementSibling.classList.contains('expanded-row')) ? row.nextElementSibling : null;
+  const expandedCells = expandedRow ? [...expandedRow.querySelectorAll('td')] : [];
 
-  const nameCell = expandedCells[0] || mainCells[0];
-  titleEl.textContent = (nameCell?.textContent || '').trim() || 'Candidate Details';
-
-  let html = '<div class="candidate-details-grid">';
-  headers.forEach((label, i) => {
-    const cell = expandedCells[i] || mainCells[i];
-    let valueHTML = 'N/A';
-    if (cell) {
-      if (label.toLowerCase().includes('recruiter notes')) {
-        const nd = cell.querySelector('.notes-display');
-        valueHTML = nd ? escapeHTML(nd.textContent.trim()) : escapeHTML(cell.textContent.trim());
-      } else if (label.toLowerCase().includes('notice') || label.toLowerCase().includes('ctc')) {
-        const ed = cell.querySelector('.editable-display');
-        valueHTML = ed ? escapeHTML(ed.textContent.trim()) : escapeHTML(cell.textContent.trim());
-      } else {
-        valueHTML = cell.innerHTML.trim() || escapeHTML(cell.textContent.trim());
+  const getByHeader = (cands) => {
+    for (const cand of cands) {
+      const idx = headers.findIndex(h => h.toLowerCase() === cand.toLowerCase());
+      if (idx >= 0) {
+        const prefer = (expandedCells[idx] && expandedCells[idx].innerText.trim()) ? expandedCells[idx] : cells[idx];
+        return (prefer?.innerText || '').trim() || 'N/A';
       }
     }
-    html += `<div class="label">${escapeHTML(label)}</div><div class="value">${valueHTML}</div>`;
-  });
-  html += '</div>';
+    return 'N/A';
+  };
 
-  contentEl.innerHTML = html;
+  // Gather fields
+  const name = getByHeader(['Name']) || 'N/A';
+  const skills = getByHeader(['Skills','Skillset']) || 'N/A';
+  const relExp = getByHeader(['Rel Exp','Relevant Experience','Relevant']) || 'N/A';
+  const location = getByHeader(['Location']) || 'N/A';
+  const contact = getByHeader(['Contact','Phone']) || 'N/A';
+  const email = getByHeader(['Email']) || 'N/A';
+  const itExp = getByHeader(['IT Exp','IT Experience']) || 'N/A';
+  const education = getByHeader(['Education']) || 'N/A';
+  const company = getByHeader(['Company']) || 'N/A';
+  const clients = getByHeader(['Clients']) || 'N/A';
+  const notice = getByHeader(['Notice','Notice Period']) || 'N/A';
+  const ctc = getByHeader(['CTC']) || 'N/A';
+  const comment = getByHeader(['Comment']) || 'N/A';
+  const recruiterNotes = getByHeader(['Recruiter Notes','Recruitment Notes']) || 'N/A';
+  const stage = getByHeader(['Stage']) || 'N/A';
+  const aiScoreRaw = getByHeader(['AI Score','AI']) || 'N/A';
+
+  // resume link detection
+  let resumeHref = '#';
+  const resumeIdx = headers.findIndex(h => /resume/i.test(h));
+  if (resumeIdx >= 0) {
+    const targetCell = (expandedCells[resumeIdx] && expandedCells[resumeIdx].querySelector('a')) ? expandedCells[resumeIdx] : cells[resumeIdx];
+    resumeHref = targetCell?.querySelector?.('a')?.href || '#';
+  } else {
+    const a = row.querySelector('a[href*="resume"], a[title*="resume"], a[aria-label*="resume"]');
+    resumeHref = a?.href || '#';
+  }
+
+  // Build header (NO "Candidate Details" title, compact)
+  const headerHtml = `
+    <div class="custom-modal-header-strip" role="banner" aria-hidden="false">
+      <div class="modal-header-left" style="padding-right:12px;">
+        <div class="candidate-title" style="margin:0; font-weight:800; font-size:1rem;">${escapeHtml(name)}</div>
+        <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+          ${resumeHref && resumeHref !== '#' ? `<a class="resume-action" href="${resumeHref}" target="_blank" rel="noopener noreferrer">View Resume <i class="bi bi-box-arrow-up-right"></i></a>` : ''}
+          <div class="candidate-meta" style="font-size:0.9rem; opacity:0.95;">${escapeHtml(location)}${contact && contact !== 'N/A' ? ' • ' + escapeHtml(contact) : ''}</div>
+        </div>
+      </div>
+
+      <div class="modal-header-right" style="display:flex; align-items:center; gap:10px;">
+        <div class="ai-badge" aria-hidden="true">AI Score: ${escapeHtml(aiScoreRaw)}</div>
+        <button class="custom-modal-close header-close" id="candidateDetailsCloseInner" aria-label="Close">&times;</button>
+      </div>
+    </div>
+  `;
+
+  // Details grid (two columns)
+  const detailsGrid = `
+    <div class="candidate-details-grid" style="margin-top:6px;">
+      <div class="label">Email</div><div class="value">${escapeHtml(email)}</div>
+      <div class="label">Company</div><div class="value">${escapeHtml(company)}</div>
+      <div class="label">IT Exp</div><div class="value">${escapeHtml(itExp)}</div>
+      <div class="label">Education</div><div class="value">${escapeHtml(education)}</div>
+      <div class="label">Notice</div><div class="value">${escapeHtml(notice)}</div>
+      <div class="label">Clients</div><div class="value">${escapeHtml(clients)}</div>
+      <div class="label">CTC</div><div class="value">${escapeHtml(ctc)}</div>
+      <div class="label">Stage</div><div class="value">${escapeHtml(stage)}</div>
+    </div>
+  `;
+
+  const skillsHtml = `
+    <div class="section" style="padding:14px 0 6px 0;">
+      <div style="font-weight:700; margin-bottom:10px;">Skills & Experience</div>
+      <div style="font-size:0.92rem; color:#374151;">
+        <div style="font-weight:700; text-transform:uppercase; color:var(--muted,#6b7280); font-size:0.78rem;">SKILLS</div>
+        <div style="margin:6px 0 10px 0;">${escapeHtml(skills)}</div>
+        <div style="font-weight:700; text-transform:uppercase; color:var(--muted,#6b7280); font-size:0.78rem; margin-top:8px;">RELEVANT EXPERIENCE</div>
+        <div style="margin:6px 0 0 0;">${escapeHtml(relExp)}</div>
+      </div>
+    </div>
+  `;
+
+  const commentHtml = `
+    <div class="section" style="padding-top:12px;">
+      <div style="font-weight:700; margin-bottom:8px;">Comment</div>
+      <div style="color:#374151;">${escapeHtml(comment)}</div>
+    </div>
+    <div class="section" style="padding-top:12px;">
+      <div style="font-weight:700; margin-bottom:8px;">Recruitment Notes</div>
+      <div style="color:#374151;">${escapeHtml(recruiterNotes)}</div>
+    </div>
+  `;
+
+  // Compose final HTML (into existing .custom-modal-body container)
+  contentContainer.innerHTML = `
+    ${headerHtml}
+    <div class="modal-body-content" role="document">
+      ${skillsHtml}
+      <div style="border-top:1px solid var(--border,#eef2f7); padding-top:12px;">
+        <div style="font-weight:700; margin-bottom:10px;">Details</div>
+        ${detailsGrid}
+      </div>
+      ${commentHtml}
+    </div>
+  `;
+
+  // Show overlay and center it
   modal.classList.add('open');
-  const onKey = (ev) => { if (ev.key === 'Escape') { closeCandidateDetailsModal(); document.removeEventListener('keydown', onKey); } };
-  document.addEventListener('keydown', onKey);
+  modal.setAttribute('aria-hidden','false');
+
+  document.body.style.overflow = 'hidden';                          // prevent background scroll
+  // reset inner content scroll to top if exists
+  const inner = contentContainer.querySelector('.modal-body-content');
+  if (inner) inner.scrollTop = 0;
+
+
+  // Bind inner close (header)
+  const innerClose = document.getElementById('candidateDetailsCloseInner');
+  if (innerClose) innerClose.addEventListener('click', closeCandidateDetailsModal);
+
+  // Accessibility focus
+  const closeBtn = modal.querySelector('.header-close');
+  if (closeBtn) closeBtn.focus();
+
+  // Small helper to escape HTML
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"'`=\/]/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c];
+    });
+  }
 }
+
 function closeCandidateDetailsModal() {
-  document.getElementById('candidateDetailsModal')?.classList.remove('open');
+  const modal = document.getElementById('candidateDetailsModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
 }
-function escapeHTML(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
+
+document.body.style.overflow = '';  // restore background scroll
+
+// Close button handler (bind once)
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.getElementById("closePopup");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => closeCandidateDetailsModal());
+  }
+});
+
 
 // Highlight new rows
 function highlightRowsFromURL() {
@@ -381,13 +503,60 @@ function handleDownloadZip() {
     setTimeout(() => { window.location.href = `/candidates/download/resumes?candidate_ids=${selected.join(',')}&jd_id=${jdId}`; hideProgress(); showToast('Download started', 'success'); }, 800);
   });
 }
-function handleDownloadXlsx() {
-  showConfirmation('Export Excel', 'Export all candidate data?', () => {
-    showProgress('Exporting', 'Preparing Excel...');
-    setTimeout(() => { window.location.href = `/candidates/export/xlsx?jd_id=${jdId}`; hideProgress(); showToast('Export started', 'success'); }, 800);
-  });
-}
 
+
+// ✅ UPDATED: Excel Export (handles both ALL + SELECTED candidates)
+function handleDownloadXlsx() {
+  const selected = getCheckboxes().filter(c => c.checked).map(c => c.value);
+
+  if (selected.length) {
+    // 👉 Export only selected candidates
+    showConfirmation(
+      'Export Selected Candidates',
+      `Do you want to export ${selected.length} selected candidates?`,
+      async () => {
+        showProgress('Exporting', 'Preparing Excel for selected candidates...');
+        try {
+          const response = await fetch("/candidates/export/xlsx", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ candidate_ids: selected })
+          });
+
+          if (!response.ok) throw new Error("Failed to export selected candidates");
+          
+          // Convert response to a downloadable file
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "selected_candidates.xlsx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+
+          hideProgress();
+          showToast('Exported selected candidates', 'success');
+        } catch (err) {
+          hideProgress();
+          showToast('Error exporting candidates', 'error');
+          console.error(err);
+        }
+      }
+    );
+  } else {
+    // 👉 Export all candidates (existing flow)
+    showConfirmation('Export Excel', 'Export all candidate data?', () => {
+      showProgress('Exporting', 'Preparing Excel...');
+      setTimeout(() => { 
+        window.location.href = `/candidates/export/xlsx?jd_id=${jdId}`; 
+        hideProgress(); 
+        showToast('Export started', 'success'); 
+      }, 800);
+    });
+  }
+}
 // Toast + dialogs
 function showToast(msg, type='default', time=3000) {
   const c = document.getElementById('toastContainer'); if (!c) return;
@@ -440,3 +609,100 @@ function hideColumns(cols) {
 
 // call it
 hideColumns([1, 4, 7, 9, 10, 11, 13, 16]);
+
+// --- Gmail icon dropdown logic ---
+document.addEventListener("DOMContentLoaded", () => {
+  const gmailBtn = document.getElementById("gmailActionBtn");
+  const dropdown = document.getElementById("gmailActionDropdown");
+  const toCandidatesBtn = document.getElementById("gmailToCandidates");
+  const toClientsBtn = document.getElementById("gmailToClients");
+
+  if (!gmailBtn || !dropdown) return;
+
+  // Toggle dropdown visibility
+  gmailBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle("show");
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener("click", (e) => {
+    if (!gmailBtn.contains(e.target)) {
+      dropdown.classList.remove("show");
+    }
+  });
+
+  function getSelectedCandidateIds() {
+    const checkboxes = document.querySelectorAll(".candidateCheckbox:checked");
+    return Array.from(checkboxes).map(cb => cb.value);
+  }
+
+  // Redirect to compose (to candidates)
+  toCandidatesBtn.addEventListener("click", () => {
+    const ids = getSelectedCandidateIds();
+    if (!ids.length) {
+      alert("Please select at least one candidate.");
+      return;
+    }
+    const jdId = window.jdId || "{{ jd_id }}";
+    window.location.href = `/candidates/gmail/compose?mode=candidates&candidate_ids=${ids.join(',')}&jd_id=${jdId}`;
+  });
+
+  // Redirect to compose (to clients/recruiters)
+  toClientsBtn.addEventListener("click", () => {
+    const ids = getSelectedCandidateIds();
+    if (!ids.length) {
+      alert("Please select at least one candidate.");
+      return;
+    }
+    const jdId = window.jdId;
+    window.location.href = `/candidates/gmail/compose?mode=clients&candidate_ids=${ids.join(',')}&jd_id=${jdId}`;
+  });
+});
+
+// ======= Cleanup stray "AI Score Explanation" element and tidy header actions =======
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    // 1) Remove any stray section that contains heading text "AI Score Explanation"
+    // We search headings and plain text nodes to be robust against slight markup differences.
+    const possibleSelectors = [
+      '#aiScoreExplanation',            // if someone added an id
+      '.ai-score-explanation',          // common classname
+      '#aiExplanation',                 // alternate id
+      '#aiExplanationModalTrigger'      // alternate
+    ];
+    for (const sel of possibleSelectors) {
+      const el = document.querySelector(sel);
+      if (el) { el.remove(); }
+    }
+
+    // If the stray markup is a heading text on the page (e.g. <h3>AI Score Explanation</h3>),
+    // locate any heading containing that text and remove its container.
+    const headings = [...document.querySelectorAll('h1,h2,h3,h4,div,section,p')];
+    for (const h of headings) {
+      const txt = (h.textContent || '').trim();
+      if (/^ai score explanation$/i.test(txt)) {
+        // remove nearest block container to avoid leaving a hanging '×' or small element
+        const container = h.closest('section,div,article') || h.parentElement;
+        if (container) container.remove();
+      }
+    }
+
+    // Also remove any small lone "×" that appears directly after a short label like "AI Score Explanation"
+    // (covers cases where the close button is left behind)
+    [...document.querySelectorAll('button,span')].forEach(el => {
+      if ((el.textContent || '').trim() === '×' || (el.textContent || '').trim() === 'x') {
+        // only remove if it's adjacent to a removed/empty block or suspiciously near "AI Score"
+        const prev = el.previousSibling;
+        const next = el.nextSibling;
+        const context = ((prev && prev.textContent) || '') + ' ' + ((next && next.textContent) || '');
+        if (/ai score/i.test(context) || /ai score explanation/i.test(context) || !el.getAttribute('data-preserve')) {
+          // remove the icon (safe fallback)
+          el.remove();
+        }
+      }
+    });
+  } catch (e) {
+    console.warn('cleanup AI explanation failed', e);
+  }
+});

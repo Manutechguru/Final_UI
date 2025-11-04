@@ -1,29 +1,56 @@
 {% extends "base.html" %}
 {% block title %}JD Candidates - {{ jd_id }}{% endblock %}
-
 {% block content %}
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 <link rel="stylesheet" href="{{ request.url_for('static', path='css/jd_candidates.css') }}">
 
 <div class="nxg-container mt-2">
   <div class="page-head">
-    <h1>JD Candidates <small>(JD ID: {{ jd_id }})</small></h1>
+    <h1 class="text-2xl lg:text-3xl font-bold text-gray-800">
+      Candidates for <span class="job-title text-gray-800">{{ job_title }}</span>
+    </h1>
+
     
-    <!-- Three-dot menu -->
-    <div class="action-menu-container">
-      <button class="action-menu-btn" id="actionMenuBtn">
-        <i class="bi bi-three-dots-vertical"></i>
-      </button>
-      <div class="action-menu-dropdown" id="actionMenuDropdown">
-        <button type="button" class="action-menu-item" id="removeSelectedBtn">
-          <i class="bi bi-trash"></i>Remove Selected
+    <!-- Action section with counter, email, and menu -->
+    <div class="action-section">
+  <!-- Selected counter -->
+      <div class="selected-counter">
+       <span class="counter-label">Selected:</span>
+       <span class="counter-value" id="kpiSelected">0</span>
+  </div>
+       
+    <!-- Gmail action dropdown -->
+    <div class="gmail-action-container">
+      <button class="gmail-action-btn" id="gmailActionBtn" title="Send Email">
+        <i class="bi bi-envelope-fill"></i>
+     </button>
+     <div class="gmail-action-dropdown" id="gmailActionDropdown">
+        <button type="button" class="gmail-action-item" id="gmailToCandidates">
+          <i class="bi bi-people-fill"></i> To Candidates
         </button>
-        <button type="button" class="action-menu-item" id="downloadZipBtn">
-          <i class="bi bi-file-earmark-zip"></i>Download Resumes (ZIP)
+        <button type="button" class="gmail-action-item" id="gmailToClients">
+          <i class="bi bi-person-check-fill"></i> To  Recruiters
         </button>
-        <button type="button" class="action-menu-item" id="downloadXlsxBtn">
-          <i class="bi bi-file-earmark-excel"></i>Download XLSX
+      </div>
+    </div>
+
+  <!-- Three-dot menu -->
+      <div class="action-menu-container">
+        <button class="action-menu-btn" id="actionMenuBtn">
+          <i class="bi bi-three-dots-vertical"></i>
         </button>
+        <div class="action-menu-dropdown" id="actionMenuDropdown">
+          <button type="button" class="action-menu-item" id="removeSelectedBtn">
+            <i class="bi bi-trash"></i>Remove Selected
+          </button>
+          <button type="button" class="action-menu-item" id="downloadZipBtn">
+            <i class="bi bi-file-earmark-zip"></i>Download Resumes (ZIP)
+          </button>
+          <button type="button" class="action-menu-item" id="downloadXlsxBtn">
+            <i class="bi bi-file-earmark-excel"></i>Download XLSX
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -42,11 +69,9 @@
       </div>
     </div>
 
+    <!-- Removed the selected counter from toolbar-right since it's now in the header -->
     <div class="toolbar-right">
-      <div class="selected-counter">
-        <span class="counter-label">Selected:</span>
-        <span class="counter-value" id="kpiSelected">0</span>
-      </div>
+      <!-- You can add other toolbar elements here if needed -->
     </div>
   </div>
 
@@ -55,7 +80,7 @@
     {% if candidates %}
     <table class="candidates table" role="table" aria-label="JD candidates table">
       <thead>
-        <tr>
+        <tr style="background-color: #1e40af; color: white;">
           <th aria-hidden="true"></th>
           <th><input id="selectAll" type="checkbox" aria-label="Select all"></th>
           <th>Name</th>
@@ -69,10 +94,10 @@
           <th>Company</th>
           <th>Resume</th>
           <th>Clients</th>
-          <th>Notice Period</th>
+          <th>Notice</th>
           <th>CTC</th>
           <th>Comment</th>
-          <th>Recruiter Note</th>
+          <th>Recruiter Notes</th>
           <th>Stage</th>
           <th>AI Score</th>
         </tr>
@@ -289,18 +314,28 @@
   </div>
 </div>
 
-<!-- Candidate Details Modal (added) -->
-<div id="candidateDetailsModal" class="modal" aria-hidden="true">
-  <div class="modal-content">
-    <div class="modal-header">
+
+<!-- ================== HTML ================== -->
+<div id="candidateDetailsModal" class="custom-modal" aria-hidden="true" role="dialog" aria-labelledby="candidateDetailsTitle">
+  <div class="custom-modal-content" role="document">
+    <button type="button" class="custom-modal-close" id="candidateDetailsClose" aria-label="Close">&times;</button>
+
+    <!-- Header Strip -->
+    <div class="custom-modal-header-strip">
       <h3 id="candidateDetailsTitle">Candidate Details</h3>
-      <button type="button" class="modal-close" id="candidateDetailsClose">&times;</button>
     </div>
-    <div class="modal-body">
-      <div id="candidateDetailsContent"></div>
+
+    <!-- Modal Body -->
+    <div class="custom-modal-body redesigned" id="candidateDetailsContent">
+      <!-- Candidate details will be dynamically injected here -->
+      <div class="custom-modal-field">
+        <label>Name</label>
+        <span>Loading...</span>
+      </div>
     </div>
   </div>
 </div>
+
 
 <!-- AI Explanation Modal -->
 <div id="aiExplanationModal" class="modal">
@@ -328,5 +363,8 @@
       candidates: {{ candidates|tojson }}
     });
   });
+</script>
+<script>
+  window.jdId = "{{ jd_id }}";
 </script>
 {% endblock %}

@@ -35,7 +35,7 @@ from landing_page_app.routers.utils.jobs_utils import (
 from landing_page_app.models.user import User
 from landing_page_app.models.log import add_user_log
 
-router = APIRouter(prefix="/vendors", tags=["Vendors"])
+router = APIRouter(prefix="/clients/vendors", tags=["Client Vendors"])
 templates = Jinja2Templates(directory="landing_page_app/templates")
 logger = logging.getLogger(__name__)
 

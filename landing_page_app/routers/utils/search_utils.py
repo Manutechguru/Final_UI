@@ -354,6 +354,19 @@ def _extract_text_from_response(resp) -> str:
 
 def _call_gemini_with_rotation(prompt: str, max_output_tokens: int = 2048, temperature: float = 0.2,
                                per_key_attempts: int = 2, backoff_base: float = 0.8) -> str:
+    """
+    Robust Gemini caller with per-key reinitialization.
+
+    Key points:
+    - Iterates keys starting from the global rotation index.
+    - For each key, attempts up to `per_key_attempts` times.
+    - If a key fails repeatedly, reloads the genai module to clear any cached client state
+      and moves to the next key.
+    - On success advances global rotation index to the next key and returns text.
+    - Raises RuntimeError if all keys fail.
+    """
+    import importlib
+
     global _rotation_index
     if not API_KEYS:
         raise RuntimeError("No GEMINI API keys configured.")
@@ -369,16 +382,23 @@ def _call_gemini_with_rotation(prompt: str, max_output_tokens: int = 2048, tempe
     for attempt_idx in range(n):
         key_idx = (start_idx + attempt_idx) % n
         key = API_KEYS[key_idx]
+
+        # Try using this key per_key_attempts times
         for try_num in range(per_key_attempts):
             try:
+                # Always try to (re)configure the genai module for this specific key.
+                # If genai has internal cached state from a previous failure, we'll attempt
+                # to reload the module on subsequent failures for this key.
                 try:
                     genai.configure(api_key=key)
                 except Exception:
+                    # Fallback: try to set attribute (some versions may accept direct attr)
                     try:
                         setattr(genai, "api_key", key)
                     except Exception:
                         pass
 
+                # Try to call the modern `GenerativeModel` path first (if available)
                 try:
                     if hasattr(genai, "GenerativeModel"):
                         model = genai.GenerativeModel(GEMINI_MODEL_NAME)
@@ -397,11 +417,13 @@ def _call_gemini_with_rotation(prompt: str, max_output_tokens: int = 2048, tempe
                             logger.debug("Gemini success with key_idx=%d (GenerativeModel)", key_idx)
                             return text
                 except Exception as e:
-                    logger.debug("GenerativeModel failed for key %d: %s", key_idx, e)
+                    logger.debug("GenerativeModel failed for key %d on try %d: %s", key_idx, try_num, e)
 
+                # Fallback older API path
                 try:
                     if hasattr(genai, "generate_text"):
-                        resp = genai.generate_text(model=GEMINI_MODEL_NAME, input=prompt, max_output_tokens=max_output_tokens)
+                        resp = genai.generate_text(model=GEMINI_MODEL_NAME, input=prompt,
+                                                   max_output_tokens=max_output_tokens)
                         text = _extract_text_from_response(resp)
                         if text:
                             with _rotation_lock:
@@ -409,19 +431,43 @@ def _call_gemini_with_rotation(prompt: str, max_output_tokens: int = 2048, tempe
                             logger.debug("Gemini success with key_idx=%d (generate_text)", key_idx)
                             return text
                 except Exception as e:
-                    logger.debug("generate_text failed for key %d: %s", key_idx, e)
+                    logger.debug("generate_text failed for key %d on try %d: %s", key_idx, try_num, e)
 
+                # If neither approach produced readable text, raise to go to the outer except
                 raise RuntimeError(f"Gemini key index {key_idx} did not return readable text on try {try_num}")
 
             except Exception as e:
                 last_exc = e
                 logger.warning("Gemini key index %d failed (try %d): %s", key_idx, try_num, e)
-                time.sleep(backoff_base * (1.5 ** try_num))
+
+                # On repeated failure for the same key, attempt to reload the genai module once
+                # to clear any internal cached state and then retry this key (or move on).
+                try:
+                    # Only reload on the last attempt for this key to avoid excessive reloads
+                    if try_num == per_key_attempts - 1:
+                        logger.debug("Reloading genai module to clear state after key %d failures", key_idx)
+                        try:
+                            importlib.reload(genai)
+                        except Exception as reload_exc:
+                            # Not fatal — just log and continue to next key
+                            logger.debug("genai.reload() failed: %s", reload_exc)
+                except Exception:
+                    pass
+
+                # exponential backoff before next try for same key (or before moving to next key)
+                try:
+                    time.sleep(backoff_base * (1.5 ** try_num))
+                except Exception:
+                    # If sleep is interrupted for some reason, continue quickly
+                    pass
+
                 continue
 
         logger.warning("Gemini key index %d failed after %d attempts; trying next key.", key_idx, per_key_attempts)
 
+    # All keys exhausted
     raise RuntimeError(f"All Gemini API keys failed. Last error: {last_exc}")
+
 
 # -------------------------
 # JD extraction & scoring

@@ -307,9 +307,10 @@ async function loadManagers() {
 
   const params = new URLSearchParams();
   if (clientFilter.value) params.append('client_id', clientFilter.value);
+  if (recentFilter.value === 'true') params.append('recent', 'true');
+
   // keep passing status param (backend may support it) — we'll also apply client-side filter for robustness
   if (statusFilter && statusFilter.value) params.append('status', statusFilter.value);
-  if (recentFilter.value === 'true') params.append('recent', 'true');
 
   updateActiveFilters();
 
@@ -347,7 +348,22 @@ async function loadManagers() {
       const statusBadge = isActive ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>' : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactive</span>';
 
       const tr = document.createElement('tr');
-      tr.className = 'hover:bg-gray-50';
+      tr.className = 'hover:bg-gray-50 transition-colors duration-200';
+      tr.style.cursor = 'pointer';
+      tr.setAttribute('tabindex', '0');
+
+      /* ---------------------------
+         ROW CLICK TARGET RESOLUTION
+         - Prefer explicit backend-provided 'link' if it points to the main page.
+         - Primary target: /vendors/jobs/{manager_id} (vendors.py vendor_jobs route).
+         - Secondary fallback: use backend-provided 'link' field (all_managers.py currently sets /clients/manager/{id}).
+         - Final fallback: '#' (no-op) so we avoid weird undefined redirects.
+         --------------------------- */
+      const primaryVendorRoute = m.client_id ? `/clients/vendors/client/${m.client_id}` : null;
+      const backendLink = m.link || null;
+      const managerPageLink = primaryVendorRoute || backendLink || '#';
+      tr.setAttribute('data-manager-page', managerPageLink);
+
       tr.innerHTML = `
         <td class="px-4 py-3 text-sm font-medium text-gray-900">${m.manager_id}</td>
         <td class="px-4 py-3 text-sm text-gray-900">${m.manager_name}</td>
@@ -356,8 +372,8 @@ async function loadManagers() {
         <td class="px-4 py-3 text-sm text-gray-500">${m.created_at || '-'}</td>
         <td class="px-4 py-3 text-sm">
           <div class="flex items-center gap-2">
-            <!-- VIEW JOBS button: /managers/jobs/{manager_id} -->
-            <a href="/managers/jobs/${m.manager_id}" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">
+            <!-- VIEW JOBS button: keep exact behavior (do not change). Ensure click doesn't propagate to row -->
+            <a href="/managers/jobs/${m.manager_id}" onclick="event.stopPropagation()" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">
               View Jobs
             </a>
 
@@ -376,6 +392,33 @@ async function loadManagers() {
         </td>
       `;
       managersTableBody.appendChild(tr);
+
+      // Prevent inner anchors / buttons from triggering row click (defensive)
+      tr.querySelectorAll('a, button').forEach(el => {
+        el.addEventListener('click', (ev) => ev.stopPropagation());
+      });
+
+      // Row click navigates to manager main page
+      tr.addEventListener('click', () => {
+        const url = tr.getAttribute('data-manager-page');
+        if (url && url !== '#') {
+          window.location.href = url;
+        }
+      });
+
+      // Keyboard: Enter or Space navigates
+      tr.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const url = tr.getAttribute('data-manager-page');
+          if (url && url !== '#') {
+            window.location.href = url;
+          }
+        } else if (e.key === 'Escape') {
+          document.querySelectorAll('.dropdown-menu').forEach(mn => mn.classList.add('hidden'));
+          document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
+        }
+      });
     });
 
     attachRowListeners();
@@ -387,21 +430,12 @@ async function loadManagers() {
   }
 }
 
-/**
- * NEW dropdown handling approach:
- * - When a dropdown button is clicked, we remove the 'hidden' class and move the associated menu
- *   to document.body and set position:fixed so it will never be clipped by the table's overflow.
- * - Position is calculated from the button's bounding rect.
- * - Clicking anywhere outside will hide menus. Clicking inside menu won't immediately close it.
- */
-
+/* Dropdown and menus handling — same logic as before, moved to body to avoid clipping */
 function attachRowListeners() {
-  // prepare single close helper
   function closeAllDropdowns() {
     document.querySelectorAll('.dropdown-menu').forEach(m => {
       if (!m.classList.contains('hidden')) {
         m.classList.add('hidden');
-        // reset inline positioning styles (so if DOM is moved later it's clean)
         m.style.position = '';
         m.style.top = '';
         m.style.left = '';
@@ -411,60 +445,34 @@ function attachRowListeners() {
     document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
 
-  // Attach toggles
   document.querySelectorAll('.dropdown-toggle').forEach(btn => {
-    // get the menu element (sibling inside same container)
     const menu = btn.parentElement.querySelector('.dropdown-menu');
-
-    // ensure menu has a high z-index and box-sizing so positioning works
     menu.style.zIndex = 9999;
     menu.style.boxSizing = 'border-box';
 
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-
-      // if menu already visible -> hide all
       const expanded = btn.getAttribute('aria-expanded') === 'true';
       closeAllDropdowns();
       if (expanded) return;
 
-      // Show this menu: move it to body and position it near the button using fixed positioning.
-      // Keep the actual element (not a clone) so event handlers still work.
-      // Temporarily make it visible to measure width/height.
       menu.classList.remove('hidden');
-      menu.style.visibility = 'hidden'; // hide while measuring
-      // append to body so it floats above table and isn't clipped by container overflow
-      if (!document.body.contains(menu)) {
-        document.body.appendChild(menu);
-      } else {
-        // already in DOM somewhere; still append to body so it becomes child of body
-        document.body.appendChild(menu);
-      }
-
-      // compute coordinates
-      const rect = btn.getBoundingClientRect();
-
-      // If the menu would overflow the right edge, shift it left so it stays within viewport
-      // We'll set left such that its right aligns with the button's right
-      // But to compute we need menu's width — it may be unknown until visible; measure now.
+      menu.style.visibility = 'hidden';
+      if (!document.body.contains(menu)) document.body.appendChild(menu);
       menu.style.position = 'fixed';
       menu.style.top = '0px';
       menu.style.left = '0px';
       menu.style.visibility = 'hidden';
-      menu.classList.remove('hidden'); // ensure measuring correct width
+      menu.classList.remove('hidden');
+
+      const btnRect = btn.getBoundingClientRect();
       const menuRect = menu.getBoundingClientRect();
-      let top = rect.bottom + 6; // a small margin
-      let left = rect.right - menuRect.width;
-
-      // If left would go off screen on the left, clamp
+      let top = btnRect.bottom + 6;
+      let left = btnRect.right - menuRect.width;
       if (left < 6) left = 6;
-
-      // If bottom would go off screen, position above the button instead
-      const bottomSpace = window.innerHeight - rect.bottom;
-      if (bottomSpace < menuRect.height + 10) {
-        // try placing above
-        top = rect.top - menuRect.height - 6;
-        // if still off top, clamp to 6px
+      const spaceBelow = window.innerHeight - btnRect.bottom;
+      if (spaceBelow < menuRect.height + 10) {
+        top = btnRect.top - menuRect.height - 6;
         if (top < 6) top = 6;
       }
 
@@ -473,38 +481,33 @@ function attachRowListeners() {
       menu.style.visibility = 'visible';
       btn.setAttribute('aria-expanded', 'true');
 
-      // stop outside click from immediately closing if click is inside this menu
       menu.addEventListener('click', (ev) => ev.stopPropagation());
     });
   });
 
-  // Edit action
+  // Edit & Delete action handlers (unchanged endpoints)
   document.querySelectorAll('.edit-action').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       const id = el.getAttribute('data-manager-id');
-      // hide dropdowns before opening modal
       document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
       document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
       openEditManagerModal(id);
     });
   });
 
-  // Delete action
   document.querySelectorAll('.delete-action').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       const id = el.getAttribute('data-manager-id');
-      // hide dropdowns before opening modal
       document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
       document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
       openDeleteManagerModal(id);
     });
   });
 
-  // Hide menus on ESC
   window.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') {
       document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
@@ -512,7 +515,6 @@ function attachRowListeners() {
     }
   });
 
-  // Clicking anywhere outside should close open menus
   window.addEventListener('click', () => {
     document.querySelectorAll('.dropdown-menu').forEach(m => {
       if (!m.classList.contains('hidden')) {
@@ -525,10 +527,9 @@ function attachRowListeners() {
     });
     document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
   });
-
 }
 
-// Modal helpers (unchanged)
+/* Modal helpers (unchanged) */
 function openEditManagerModal(id) {
   const m = managersCache[id];
   if (!m) { alert('Manager data not available'); return; }
@@ -577,7 +578,7 @@ confirmDeleteManagerBtn.addEventListener('click', async () => {
   }
 });
 
-// events
+/* Events */
 clientFilter.addEventListener('change', loadManagers);
 searchManager.addEventListener('input', () => { loadManagers(); });
 if (statusFilter) statusFilter.addEventListener('change', loadManagers);

@@ -320,6 +320,40 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
   .modal-body.redesigned { grid-template-columns: 1fr; padding: 16px; max-height: calc(100vh - 120px); }
 }
 
+
+/* ==== Dedicated first column for expand button ==== */
+.compact-table thead th:first-child {
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  text-align: center;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* expand button centered inside its own column */
+.compact-table tbody td.expand-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* expand button style (same look as before) */
+.expand-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(15,27,43,0.04);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  color: #4f46e5;
+  padding: 0;
+}
+.expand-btn svg {
+  width: 14px;
+  height: 14px;
+}
 </style>
 
 <div class="container">
@@ -415,8 +449,9 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
     <!-- NOTE: container initially hidden; JS toggles visibility on job selection / reset -->
     <div class="candidate-table-container hidden" aria-live="polite" aria-hidden="true">
       <table class="candidate-table compact-table" id="candidateTable" role="table" aria-label="Candidates">
-        <thead>
+                <thead>
           <tr id="tableHeader">
+            <th></th>
             <th style="min-width:140px;">Name</th>
             <th style="min-width:140px;">Email</th>
             <th style="min-width:120px;">IT Experience</th>
@@ -697,98 +732,78 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-    // --- Replace renderCandidates and showCandidateModal with these versions ---
-
-  function renderCandidates(candidates){
-    candidateBody.innerHTML = "";
-    if(!candidates || candidates.length === 0){
-      candidateBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--muted);">No candidates found</td></tr>';
-      return;
-    }
-
-    // remember current selection context to build redirect link
-    const currentClientId = clientSelect ? clientSelect.value : '';
-    const currentManagerId = managerSelect ? managerSelect.value : '';
-    const currentJobId = jobSelect ? jobSelect.value : '';
-
-    candidates.forEach(candidate => {
-      const tr = document.createElement("tr");
-
-      // 1) EXPAND BUTTON cell (first column). Only clicking this opens modal.
-      const expandTd = document.createElement("td");
-      expandTd.style.whiteSpace = "nowrap";
-      expandTd.style.width = "36px";
-      expandTd.style.textAlign = "center";
-      const expandBtn = document.createElement("button");
-      expandBtn.type = "button";
-      expandBtn.className = "expand-btn";
-      expandBtn.title = "View details";
-      expandBtn.style.border = "none";
-      expandBtn.style.background = "transparent";
-      expandBtn.style.cursor = "pointer";
-      expandBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18l6-6-6-6"/></svg>`;
-      expandBtn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        // open modal for this candidate only
-        showCandidateModal(candidate);
-      });
-      expandTd.appendChild(expandBtn);
-
-      // 2) Build main row cells (note: we shift index since we added expand cell)
-      const resumeLink = candidate.resumelinks
-        ? `<a href="${candidate.resumelinks}" target="_blank" class="resume-link" title="View Resume">
-             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-               <polyline points="14,2 14,8 20,8"></polyline>
-               <line x1="16" y1="13" x2="8" y2="13"></line>
-               <line x1="16" y1="17" x2="8" y2="17"></line>
-             </svg>
-           </a>`
-        : '<span style="color: var(--muted);">N/A</span>';
-
-      // Compose the rest of the row cells as HTML (we keep same order except new first column)
-      tr.innerHTML = `
-        <td title="${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}">${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}</td>
-        <td title="${candidate.email || 'N/A'}">${candidate.email || 'N/A'}</td>
-        <td title="${candidate.it_experience || 'N/A'}">${candidate.it_experience || 'N/A'}</td>
-        <td style="text-align:center;">${resumeLink}</td>
-        <td title="${candidate.notice_period || 'N/A'}">${candidate.notice_period || 'N/A'}</td>
-        <td title="${candidate.ctc || 'N/A'}">${candidate.ctc || 'N/A'}</td>
-        <td><span class="status-badge stage-${candidate.stage || 'Screening'}">${candidate.stage || 'Screening'}</span></td>
-        <td title="${candidate.contact || 'N/A'}">${candidate.contact || 'N/A'}</td>
-        <td title="${candidate.skillset || 'N/A'}">${candidate.skillset || 'N/A'}</td>
-      `;
-
-      // Insert expandTd as first cell
-      tr.insertBefore(expandTd, tr.firstChild);
-
-      // 3) Row click -> redirect to shortlist page (except clicks on links/buttons etc.)
-      tr.addEventListener('click', (e) => {
-        const t = e.target;
-        if (!t) return;
-
-  // Prevent triggering redirect if clicking on expand icon, link, or any interactive element
-        if (t.closest('a, button, input, select')) return;
-
-  // Correctly get the context values
-        const candidateId = candidate.candidates_id || candidate.candidate_id || candidate.id || '';
-        const jobId = currentJobId || jobSelect?.value || '';
-        const clientId = currentClientId || clientSelect?.value || '';
-        const managerId = currentManagerId || managerSelect?.value || '';
-
-        if (!candidateId || !jobId) return; // prevent empty redirects
-
-  // ✅ Redirect to valid backend route (/candidates/jd-candidates/{jd_id})
-        const url = `/candidates/jd-candidates/${encodeURIComponent(jobId)}?candidate_id=${encodeURIComponent(candidateId)}&client_id=${encodeURIComponent(clientId)}&manager_id=${encodeURIComponent(managerId)}`;
-        window.location.href = url;
-      });
-
-
-      candidateBody.appendChild(tr);
-    });
+    // --- Replace renderCandidates and showCandidateMod
+function renderCandidates(candidates){
+  candidateBody.innerHTML = "";
+  if(!candidates || candidates.length === 0){
+    candidateBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--muted);">No candidates found</td></tr>';
+    return;
   }
 
-  function showCandidateModal(candidate){
+  const currentClientId = clientSelect ? clientSelect.value : '';
+  const currentManagerId = managerSelect ? managerSelect.value : '';
+  const currentJobId = jobSelect ? jobSelect.value : '';
+
+  candidates.forEach(candidate => {
+    const tr = document.createElement("tr");
+
+    const resumeLink = candidate.resumelinks
+      ? `<a href="${candidate.resumelinks}" target="_blank" class="resume-link" title="View Resume" onclick="event.stopPropagation()">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+             <polyline points="14,2 14,8 20,8"></polyline>
+             <line x1="16" y1="13" x2="8" y2="13"></line>
+             <line x1="16" y1="17" x2="8" y2="17"></line>
+           </svg>
+         </a>`
+      : '<span style="color: var(--muted);">N/A</span>';
+
+    tr.innerHTML = `
+      <td class="expand-cell"></td>
+      <td title="${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}">${candidate.candidate_name || candidate.name || candidate.full_name || 'N/A'}</td>
+      <td title="${candidate.email || 'N/A'}">${candidate.email || 'N/A'}</td>
+      <td title="${candidate.it_experience || 'N/A'}">${candidate.it_experience || 'N/A'}</td>
+      <td style="text-align:center;">${resumeLink}</td>
+      <td title="${candidate.notice_period || 'N/A'}">${candidate.notice_period || 'N/A'}</td>
+      <td title="${candidate.ctc || 'N/A'}">${candidate.ctc || 'N/A'}</td>
+      <td><span class="status-badge stage-${(candidate.stage || 'Screening')}">${candidate.stage || 'Screening'}</span></td>
+      <td title="${candidate.contact || 'N/A'}">${candidate.contact || 'N/A'}</td>
+      <td title="${candidate.skillset || 'N/A'}">${candidate.skillset || 'N/A'}</td>
+    `;
+
+    const expandBtn = document.createElement("button");
+    expandBtn.type = "button";
+    expandBtn.className = "expand-btn";
+    expandBtn.title = "View details";
+    expandBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18l6-6-6-6"/></svg>`;
+
+    expandBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      showCandidateModal(candidate);
+    });
+
+    tr.querySelector(".expand-cell").appendChild(expandBtn);
+
+    tr.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!t) return;
+      if (t.closest("a, button, input, select")) return;
+
+      const candidateId = candidate.candidates_id || candidate.candidate_id || candidate.id || "";
+      const jobId = currentJobId || jobSelect?.value || "";
+      const clientId = currentClientId || clientSelect?.value || "";
+      const managerId = currentManagerId || managerSelect?.value || "";
+
+      if (!candidateId || !jobId) return;
+
+      const url = `/candidates/jd-candidates/${encodeURIComponent(jobId)}?candidate_id=${encodeURIComponent(candidateId)}&client_id=${encodeURIComponent(clientId)}&manager_id=${encodeURIComponent(managerId)}`;
+      window.location.href = url;
+    });
+
+    candidateBody.appendChild(tr);
+  });
+}
+function showCandidateModal(candidate){
     modalTitle.textContent = (candidate.candidate_name || candidate.name || candidate.full_name || 'Unknown');
 
     // Header sub: only keep the location and the primary contact here (user requested contact in header remain)

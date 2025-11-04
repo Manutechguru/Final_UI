@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+from fastapi import Query
+from fastapi.responses import RedirectResponse
 
 from landing_page_app.database import get_db
 from landing_page_app.models.candidates import Candidate
@@ -74,6 +76,10 @@ def jd_candidates_page(
     Render JD candidates page. If `stage` is provided, filter candidates by that stage.
     """
     candidates = fetch_jd_candidates(db, jd_id)
+    
+    from landing_page_app.models import Job
+    job = db.query(Job).filter(Job.job_id == jd_id).first()
+    job_title = job.job_title if job else "Candidates List"
 
     # Filter by stage if provided
     if stage and stage in STATUS_OPTIONS:
@@ -87,9 +93,38 @@ def jd_candidates_page(
             "candidates": candidates,
             "status_options": STATUS_OPTIONS,
             "selected_stage": stage or "All",
-            "user": user,  # <-- added so header/profile works here
+            "user": user,
+            "job_title": job_title,# <-- added so header/profile works here
         }
     )
+
+@router.get("/shortlist")
+def shortlist_redirect(
+    candidate_id: int = Query(..., description="Candidate ID to highlight"),
+    job_id: Optional[int] = Query(None, description="Job / JD ID"),
+    client_id: Optional[int] = Query(None, description="Client ID"),
+    manager_id: Optional[int] = Query(None, description="Manager ID"),
+):
+    """
+    Accepts query params and redirects to the JD candidates page (or constructs
+    a URL your frontend expects). Keeps things backward-compatible with the
+    existing frontend call to /candidates/shortlist?...
+    """
+    # If job_id is present, redirect to jd-candidates page and pass highlight param
+    if job_id:
+        # highlight param is used by the candidates page to highlight/scroll to candidate
+        target = f"/candidates/jd-candidates/{job_id}?highlight={candidate_id}"
+        # preserve client/manager if you need them in the querystring
+        if client_id:
+            target += f"&client_id={client_id}"
+        if manager_id:
+            target += f"&manager_id={manager_id}"
+        return RedirectResponse(target)
+    
+    # fallback: if no job_id, redirect to candidate detail path (or show candidate page)
+    # This avoids sending "shortlist" into the dynamic int route.
+    return RedirectResponse(f"/candidates/{candidate_id}")
+
 
 # -----------------------------
 # UPDATE STAGE OF CANDIDATE

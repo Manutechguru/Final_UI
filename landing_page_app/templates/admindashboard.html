@@ -1,4 +1,3 @@
-<!-- admindashboard.html (updated) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,9 +34,10 @@
     table { width:100%; border-collapse:separate; border-spacing:0 10px; }
     thead th { text-align:left; color:var(--text-muted); font-size:0.85rem; font-weight:700; padding:10px 14px; }
     tbody tr { background: #fff; border-radius:10px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
-    tbody td { padding:12px 14px; font-size:0.9rem; }
+    tbody td { padding:12px 14px; font-size:0.9rem; vertical-align: middle; }
 
-    .icon-btn { border:none; padding:8px 14px; border-radius:8px; color:white; font-weight:600; cursor:pointer; }
+    .icon-btn { border:none; padding:8px 10px; border-radius:8px; color:white; font-weight:600; cursor:pointer; line-height:0; display:inline-flex; align-items:center; justify-content:center; }
+    .icon-btn svg { width:16px; height:16px; display:block; }
     .btn-approve { background:#10b981; }
     .btn-reject { background:#ef4444; }
 
@@ -46,6 +46,9 @@
     .search-bar { display:flex; align-items:center; gap:0.5rem; }
     .search-bar input { border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; width:260px; }
     .search-bar button { background:#e5e7eb; border-radius:8px; padding:8px 14px; font-weight:600; }
+
+    /* toast container minor override to ensure above modal */
+    #csv-toast-container { z-index: 2500; }
 
     @media(max-width:768px){
       .search-bar input { width:100%; }
@@ -100,11 +103,31 @@
             </td>
             <td>{{ user.email }}</td>
             <td style="text-align:right">
-              <form method="post" action="/admin/approve/{{ user.id }}" style="display:inline-block" onsubmit="return confirm('Approve {{ user.full_name }}?');">
-                <button type="submit" class="icon-btn btn-approve">Approve</button>
+              <!-- Approve form: same action & method preserved. No inline onclick. -->
+              <form method="post" action="/admin/approve/{{ user.id }}" style="display:inline-block">
+                <button type="button" class="icon-btn btn-approve"
+                        data-confirm-title="Approve request"
+                        data-confirm-message="Approve {{ user.full_name | e }}?"
+                        title="Approve">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6L9 17l-5-5"></path>
+                  </svg>
+                </button>
               </form>
-              <form method="post" action="/admin/reject/{{ user.id }}" style="display:inline-block" onsubmit="return confirm('Reject {{ user.full_name }}?');">
-                <button type="submit" class="icon-btn btn-reject">Reject</button>
+
+              <!-- Reject form: same action & method preserved. No inline onclick. -->
+              <form method="post" action="/admin/reject/{{ user.id }}" style="display:inline-block">
+                <button type="button" class="icon-btn btn-reject"
+                        data-confirm-title="Reject request"
+                        data-confirm-message="Reject {{ user.full_name | e }}?"
+                        title="Reject">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                  </svg>
+                </button>
               </form>
             </td>
           </tr>
@@ -128,7 +151,13 @@
         {% if logs_summary %}
         <table>
           <thead>
-            <tr><th>User</th><th>Last activity</th><th>Events</th><th style="text-align:right">Details</th></tr>
+            <tr>
+              <th>User</th>
+              <th>Last activity</th>
+              <th>Events</th>
+              <th>Status</th>
+              <th style="text-align:right">Details</th>
+            </tr>
           </thead>
           <tbody>
             {% for row in logs_summary %}
@@ -139,9 +168,14 @@
               </td>
               <td>{{ row.last_ts }}</td>
               <td>{{ row.events }}</td>
+              <td>
+                {% if row.status == 'Active' %}
+                  <span class="text-green-600 font-medium">Active</span>
+                {% else %}
+                  <span class="text-red-600 font-medium">Inactive</span>
+                {% endif %}
+              </td>
               <td style="text-align:right">
-                <!-- Changed: redirect to a dedicated page instead of modal popup.
-                     We pass the selected days so the new page shows the same window. -->
                 <a href="/admin/logs/user/{{ row.user_id }}?days={{ log_days }}" class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">View</a>
               </td>
             </tr>
@@ -155,13 +189,14 @@
 
       <div id="logs-events" class="{{ '' if logs_view=='events' else 'hidden' }}">
         <table>
-          <thead>
-            <tr><th>User ID</th><th>Username</th><th>Action</th><th>Timestamp</th></tr>
-          </thead>
+          <thead><tr><th>User ID</th><th>Username</th><th>Action</th><th>Timestamp</th></tr></thead>
           <tbody>
             {% for log in user_logs %}
             <tr>
-              <td>{{ log.user_id }}</td><td>{{ log.username }}</td><td>{{ log.action }}</td><td>{{ log.timestamp }}</td>
+              <td>{{ log.user_id }}</td>
+              <td>{{ log.username }}</td>
+              <td>{{ log.action }}</td>
+              <td>{{ log.timestamp }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -181,7 +216,7 @@
           <tr>
             <td><div class="font-semibold">{{ user.full_name }}</div><div class="text-xs text-gray-500">ID: {{ user.id }}</div></td>
             <td>{{ user.email }}</td>
-            <td>{% if user.is_active %}<span class="text-green-600 font-medium">Active</span>{% else %}<span class="text-yellow-600 font-medium">Pending</span>{% endif %}</td>
+            <td>{% if user.is_active %}<span class="text-green-600 font-medium">Accepted</span>{% else %}<span class="text-yellow-600 font-medium">Pending</span>{% endif %}</td>
             <td style="text-align:right">
               <a href="/admin/users/{{ user.id }}/view" class="px-3 py-1 rounded border text-sm hover:bg-gray-50">View</a>
               <a href="/admin/users/{{ user.id }}/edit" class="px-3 py-1 rounded border text-sm hover:bg-gray-50">Edit</a>
@@ -203,30 +238,55 @@
         <input type="file" name="file" accept=".csv,text/csv" required class="block w-full border border-gray-300 rounded px-3 py-2 mb-3"/>
         <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Upload</button>
       </form>
-       <!-- Add this inside the Upload CSV panel (after the CSV upload form) -->
-    <div class="mt-6 max-w-md">
-      <h3 class="font-medium mb-2">Extract from Google Drive folder</h3>
-      <form method="post" action="/admin/extract-resumes" class="flex gap-2 items-start" onsubmit="return confirm('Start resume extraction? This will read files from the provided Drive folder.');">
-        <input type="text" name="drive_link" placeholder="Paste Drive folder link (or folder id)" required
-              class="block w-full border border-gray-300 rounded px-3 py-2"/>
-        <button type="submit" class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Extract</button>
-      </form>
-      <p class="text-xs text-gray-500 mt-2">Supported: PDF, DOCX, DOC. Use a service-account-accessible folder (service account JSON present in project).</p>
-    </div>
 
+      <div class="mt-6 max-w-md">
+        <h3 class="font-medium mb-2">Extract from Google Drive folder</h3>
+        <form method="post" action="/admin/extract-resumes" class="flex gap-2 items-start" onsubmit="return confirm('Start resume extraction? This will read files from the provided Drive folder.');">
+          <input type="text" name="drive_link" placeholder="Paste Drive folder link (or folder id)" required class="block w-full border border-gray-300 rounded px-3 py-2"/>
+          <button type="submit" class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Extract</button>
+        </form>
+        <p class="text-xs text-gray-500 mt-2">Supported: PDF, DOCX, DOC. Use a service-account-accessible folder (service account JSON present in project).</p>
+      </div>
     </section>
   </main>
 
-  <!-- NOTE: modal removed as per new requirement -->
+  <!-- Confirmation Modal (hidden by default) -->
+  <div id="admin-confirm-overlay" class="hidden" aria-hidden="true" style="position:fixed;inset:0;display:none;place-items:center;z-index:3000;">
+    <div id="admin-confirm-backdrop" style="position:absolute;inset:0;background:rgba(11,15,30,0.45);backdrop-filter:blur(2px);"></div>
 
-   <!-- CSV Upload Toast (drop-in) -->
+    <div id="admin-confirm-card" role="dialog" aria-modal="true" aria-labelledby="admin-confirm-title"
+         style="position:relative;z-index:3001;max-width:520px;width:90%;background:var(--card-bg);border-radius:12px;padding:20px;box-shadow:0 10px 30px rgba(6,9,20,0.16);">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="flex:0 0 44px;height:44px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(180deg,#eef2ff,#eef7ff);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" stroke="#4f46e5" stroke-width="1.25" fill="rgba(79,70,229,0.06)"/>
+            <path d="M12 8v.01" stroke="#4f46e5" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M11 12h1v4h1" stroke="#4f46e5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div style="flex:1">
+          <h3 id="admin-confirm-title" style="margin:0;font-size:1.05rem;font-weight:700;color:var(--text-dark);">Confirm</h3>
+          <p id="admin-confirm-message" style="margin:8px 0 0;color:var(--text-muted);line-height:1.4;font-size:0.95rem;">Are you sure?</p>
+
+          <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+            <button id="admin-confirm-cancel" class="pill" style="background:#fff;border:1px solid #e5e7eb;">Cancel</button>
+            <button id="admin-confirm-ok" class="px-4 py-2 rounded bg-indigo-600 text-white" style="min-width:110px;font-weight:700;">Confirm</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="admin-confirm-close" aria-label="Close" style="position:absolute;right:12px;top:12px;background:transparent;border:none;font-size:20px;color:#8b8f98;">&times;</button>
+    </div>
+  </div>
+
+  <!-- CSV Upload Toast -->
   <style>
-    /* Toast container (keeps existing design untouched) */
     #csv-toast-container {
       position: fixed;
       bottom: 90px;
       right: 40px;
-      z-index: 2000; /* above modals etc */
+      z-index: 2500;
       font-family: inherit;
     }
 
@@ -241,50 +301,19 @@
       display: flex;
       gap: 12px;
       align-items: center;
-      border-left: 6px solid #4f46e5; /* success indicator */
+      border-left: 6px solid #4f46e5;
       transition: transform 240ms ease, opacity 240ms ease;
       transform: translateY(-8px);
       opacity: 0;
     }
 
-    .csv-toast.show {
-      transform: translateY(0);
-      opacity: 1;
-    }
-
+    .csv-toast.show { transform: translateY(0); opacity: 1; }
     .csv-toast.error { border-left-color: #dc3545; }
-    .csv-toast .icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      background: rgba(0,0,0,0.05);
-      font-weight: 600;
-    }
+    .csv-toast .icon { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; background: rgba(0,0,0,0.05); font-weight: 600; }
+    .csv-toast .content { flex: 1; font-size: 14px; line-height: 1.25; }
+    .csv-toast .title { font-weight: 600; margin-bottom: 4px; }
+    .csv-toast .close-btn { margin-left: 8px; background: transparent; border: none; cursor: pointer; font-size: 18px; line-height: 1; color: #666; }
 
-    .csv-toast .content {
-      flex: 1;
-      font-size: 14px;
-      line-height: 1.25;
-    }
-
-    .csv-toast .title {
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .csv-toast .close-btn {
-      margin-left: 8px;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 18px;
-      line-height: 1;
-      color: #666;
-    }
-
-    /* small responsive tweaks */
     @media (max-width: 480px) {
       #csv-toast-container { left: 10px; right: 10px; top: 12px; }
       .csv-toast { max-width: 100%; min-width: 0; }
@@ -293,9 +322,10 @@
 
   <div id="csv-toast-container" aria-live="polite" aria-atomic="true"></div>
 
+  <!-- Scripts -->
   <script>
   (function() {
-    // parse query params into an object
+    // helper: parse query string
     function parseQuery(q) {
       var obj = {};
       if (!q) return obj;
@@ -310,7 +340,7 @@
       return obj;
     }
 
-    // show toast
+    // toast builder (unchanged logic)
     function showCsvToast(options) {
       var container = document.getElementById('csv-toast-container');
       if (!container) return;
@@ -326,7 +356,7 @@
       content.className = 'content';
       var title = document.createElement('div');
       title.className = 'title';
-      title.innerText = options.title || (options.type === 'error' ? 'Upload failed' : 'Upload successful');
+      title.innerText = options.title || (options.type === 'error' ? 'Error' : 'Success');
 
       var msg = document.createElement('div');
       msg.className = 'msg';
@@ -338,9 +368,7 @@
       var closeBtn = document.createElement('button');
       closeBtn.className = 'close-btn';
       closeBtn.innerHTML = '&times;';
-      closeBtn.onclick = function() {
-        hide(toast);
-      };
+      closeBtn.onclick = function() { hide(toast); };
 
       toast.appendChild(icon);
       toast.appendChild(content);
@@ -348,45 +376,93 @@
 
       container.appendChild(toast);
 
-      // small delay to trigger animation
-      requestAnimationFrame(function() {
-        toast.classList.add('show');
-      });
+      requestAnimationFrame(function() { toast.classList.add('show'); });
 
       var autoDismiss = options.autoDismiss !== false;
       var duration = options.duration || 6000;
-
       if (autoDismiss) {
-        setTimeout(function() {
-          hide(toast);
-        }, duration);
+        setTimeout(function() { hide(toast); }, duration);
       }
 
       function hide(el) {
         if (!el) return;
         el.classList.remove('show');
-        // allow transition to finish
         setTimeout(function() {
           if (el && el.parentNode) el.parentNode.removeChild(el);
         }, 260);
       }
     }
 
-    // run on load
-    document.addEventListener('DOMContentLoaded', function() {
-      var q = window.location.search || '';
-      var params = parseQuery(q);
+    // Modal internals (open/close) - safe defaults
+    var _currentConfirm = { form: null };
 
-      // If backend sends separate filename & inserted params, prefer that to construct exact message:
-      // ?filename=foo.csv&inserted=100
+    function openConfirm(form, title, message) {
+      _currentConfirm.form = form;
+      var overlay = document.getElementById('admin-confirm-overlay');
+      document.getElementById('admin-confirm-title').innerText = title || 'Confirm';
+      document.getElementById('admin-confirm-message').innerText = message || '';
+      overlay.classList.remove('hidden');
+      overlay.style.display = 'grid';
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeConfirm() {
+      _currentConfirm.form = null;
+      var overlay = document.getElementById('admin-confirm-overlay');
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    // Attach handlers AFTER DOM is ready — only to buttons that have data-confirm-message.
+    // This guarantees the modal opens only when those specific buttons are clicked.
+    document.addEventListener('DOMContentLoaded', function() {
+      // wire modal buttons
+      var cancel = document.getElementById('admin-confirm-cancel');
+      var ok = document.getElementById('admin-confirm-ok');
+      var closeX = document.getElementById('admin-confirm-close');
+      var overlay = document.getElementById('admin-confirm-overlay');
+
+      if (cancel) cancel.addEventListener('click', closeConfirm);
+      if (closeX) closeX.addEventListener('click', closeConfirm);
+      if (overlay) overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeConfirm();
+      });
+
+      if (ok) ok.addEventListener('click', function() {
+        if (_currentConfirm.form) {
+          try {
+            _currentConfirm.form.querySelectorAll('button, input').forEach(function(el){ el.disabled = true; });
+          } catch (e) { /* ignore */ }
+          _currentConfirm.form.submit();
+        } else {
+          closeConfirm();
+        }
+      });
+
+      // Attach click listeners only to the confirm buttons in the page (approve/reject)
+      // This prevents accidental modal opens from other elements.
+      var confirmButtons = document.querySelectorAll('button[data-confirm-message]');
+      confirmButtons.forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          // safe dataset access (auto-handles escaping)
+          var title = btn.dataset.confirmTitle || 'Confirm';
+          var msg = btn.dataset.confirmMessage || 'Are you sure?';
+          // find the form surrounding the button
+          var form = btn.closest('form');
+          openConfirm(form, title, msg);
+        });
+      });
+
+            // Toast logic (enhanced)
+      var params = parseQuery(window.location.search || '');
       if (params.filename || params.inserted) {
         var fname = params.filename || '';
         var cnt = params.inserted || params.inserted_rows || params.inserted_count || '';
         if (fname) {
           var rowsText = '';
-          if (cnt) {
-            rowsText = ' (' + cnt + ' rows)';
-          }
+          if (cnt) rowsText = ' (' + cnt + ' rows)';
           showCsvToast({
             type: params.error ? 'error' : 'success',
             title: params.error ? 'CSV Upload Error' : 'CSV Uploaded',
@@ -395,39 +471,72 @@
           });
         }
       } else if (params.msg) {
-        // Backend sets msg and duplicates in redirect (e.g. ?msg=Uploaded%20file.csv%20(100%20rows)...)
-        var msgText = params.msg || '';
-        showCsvToast({
-          type: params.error ? 'error' : 'success',
-          title: params.error ? 'CSV Upload Error' : 'CSV Uploaded',
-          message: msgText,
-          duration: params.error ? 9000 : 7000
-        });
+        // improved message handling for admin actions (password/role/etc.)
+        var rawMsg = (params.msg || '');
+        var msgText = rawMsg;
+        var lower = rawMsg.toLowerCase();
+
+        // Prefer contextual titles for known admin actions
+        if (lower.indexOf('approved') !== -1 || lower.indexOf('rejected') !== -1 || lower.indexOf('removed') !== -1) {
+          var title = 'Notice';
+          if (lower.indexOf('approved') !== -1) title = 'Request approved';
+          else if (lower.indexOf('rejected') !== -1) title = 'Request rejected';
+          else if (lower.indexOf('removed') !== -1) title = 'User removed';
+
+          showCsvToast({
+            type: params.error ? 'error' : 'success',
+            title: title,
+            message: msgText || '',
+            duration: params.error ? 9000 : 6000
+          });
+
+        } else if (lower.indexOf('password') !== -1) {
+          // Password-specific message
+          showCsvToast({
+            type: params.error ? 'error' : 'success',
+            title: params.error ? 'Error updating password' : 'Password updated',
+            message: msgText || '',
+            duration: params.error ? 9000 : 6000
+          });
+
+        } else if (lower.indexOf('role updated') !== -1 || lower.indexOf('role') !== -1) {
+          // Role-specific message
+          showCsvToast({
+            type: params.error ? 'error' : 'success',
+            title: params.error ? 'Error updating role' : 'Role updated',
+            message: msgText || '',
+            duration: params.error ? 9000 : 6000
+          });
+
+        } else {
+          // Generic non-CSV message: show as notice (avoid "CSV Uploaded" fallback)
+          showCsvToast({
+            type: params.error ? 'error' : 'success',
+            title: params.error ? 'Error' : 'Notice',
+            message: msgText || '',
+            duration: params.error ? 9000 : 7000
+          });
+        }
+
       } else if (params.error) {
-        // fallback: show the error if only ?error= provided
-        var errText = params.error || 'CSV upload failed';
-        showCsvToast({
-          type: 'error',
-          title: 'CSV Upload Error',
-          message: errText,
-          duration: 9000
-        });
+        showCsvToast({ type: 'error', title: 'Error', message: params.error || 'Upload failed', duration: 9000 });
       }
 
-      // Prevent the toast from reappearing on refresh / back button by removing query params
+      // remove query params after reading so toast doesn't reappear
       if (params.msg || params.error || params.filename) {
         try {
           var clean = window.location.pathname + (window.location.hash || '');
           history.replaceState({}, '', clean);
-        } catch (e) {
-          // ignore if not allowed
-        }
+        } catch (e) {}
       }
     });
+
+    // expose closeConfirm only (openConfirm is used internally)
+    window.closeConfirm = closeConfirm;
+
   })();
   </script>
 
-  <!-- Original scripts preserved; only visual behaviour toggles were used above -->
   <script>
     function showLogsView(which) {
       const summary = document.getElementById('logs-summary');
@@ -462,10 +571,9 @@
         showLogsView(initial === 'events' ? 'events' : 'summary');
       }
 
-      // preserve tab state logic (unchanged)
       (function() {
         function setCookie(name, value, maxAgeSeconds) { document.cookie = name + "=" + encodeURIComponent(value) + "; path=/; max-age=" + (maxAgeSeconds || 86400); }
-        function getCookie(name) { const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\/+^])/g, '\$1') + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+        function getCookie(name) { const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\/+^])/g, '\\$1') + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
         function setURLTabParam(tab) { var url = new URL(window.location.href); url.searchParams.set("tab", tab); window.history.replaceState({}, "", url.toString()); }
         function activateTab(tab) { document.querySelectorAll("[data-tab]").forEach(function(el){ if (el.getAttribute("data-tab") === tab) el.classList.add("active"); else el.classList.remove("active"); }); }
 

@@ -34,7 +34,7 @@ def include_routers(app):
     app.include_router(alljobs.router, tags=["All Jobs"])
     app.include_router(clients_base.router, tags=["Clients"])
     app.include_router(clients_jobs.router, tags=["Client Jobs"])
-    app.include_router(clients_vendors.router, prefix="/clients/vendors", tags=["Client Vendors"])
+    app.include_router(clients_vendors.router, tags=["Client Vendors"])
 
     # Candidates
     app.include_router(cand_search.router, tags=["Candidates Search"])

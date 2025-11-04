@@ -591,7 +591,7 @@ async function handleToggleLink(checkbox) {
       try { checkbox.checked = !checkbox.checked; } catch(e){}
       return;
     }
-    const linked = !!checkbox.checked;
+    const linked = !(checkbox.closest('tr.candidate-row')?.dataset.linked === 'true');
     const row = checkbox.closest('tr.candidate-row');
 
     // Prefer mapping_display attribute if present
@@ -782,6 +782,17 @@ if (isLinkingToDifferent) {
 
 // actual network + UI update logic (extracted from original code so behavior is preserved)
 async function _nxg_perform_toggle({ checkbox, candidateId, jobId, linked, row }) {
+  // --- normalize row + checkbox state before proceeding ---
+if (row) {
+  const currentLinked = row.dataset.linked === 'true';
+  // If checkbox and dataset disagree, trust dataset (server-side state)
+  if (currentLinked && !checkbox.checked) {
+    linked = false; // unlink intention
+  } else if (!currentLinked && checkbox.checked) {
+    linked = true; // link intention
+  }
+}
+
   // NOTE: relaxed guard — perform the server call if we have identifiers even if DOM refs are missing.
   if (!candidateId || !jobId) return;
   try {
