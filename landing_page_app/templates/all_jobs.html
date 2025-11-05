@@ -92,8 +92,9 @@
       </div>
     </div>
 
-    <!-- Table Container -->
+    <!-- Table Container (ADDED .table-wrap to provide vertical scrollbar like All Managers) -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="overflow-x-auto table-wrap">
         <table class="w-full">
           <thead class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
             <tr>
@@ -112,24 +113,24 @@
           </tbody>
         </table>
       </div>
+    </div>
       
-      <!-- Loading State -->
-      <div id="loadingState" class="hidden p-8 text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-        <p class="mt-4 text-gray-600">Loading jobs...</p>
-      </div>
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden p-8 text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+      <p class="mt-4 text-gray-600">Loading jobs...</p>
+    </div>
 
-      <!-- Empty State -->
-      <div id="emptyState" class="hidden p-8 text-center">
-        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
-        <p class="text-gray-600 mb-4">Try adjusting your filters to see more results.</p>
-        <button id="clearFiltersEmpty" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200">
-          Clear Filters
-        </button>
-      </div>
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden p-8 text-center">
+      <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
+      <p class="text-gray-600 mb-4">Try adjusting your filters to see more results.</p>
+      <button id="clearFiltersEmpty" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200">
+        Clear Filters
+      </button>
     </div>
   </div>
 </div>
@@ -469,9 +470,7 @@ async function loadJobs() {
       // Prefer explicit job_page_link from backend if present
       let jobPageLink = job.job_page_link || null;
 
-// If backend didn't provide explicit link, resolve manager id if available
       if (!jobPageLink) {
-  // try numeric manager id first (backend now returns manager_id)
         if (job.manager_id) {
           jobPageLink = `/managers/jobs/${job.manager_id}?focus_job=${job.job_id}`;
         } else if (job.managerId) {
@@ -479,7 +478,6 @@ async function loadJobs() {
         }
       }
 
-// Final fallback: if no manager info, open the job's candidate shortlist (safe)
       if (!jobPageLink) {
         jobPageLink = job.link || `/candidates/jd-candidates/${job.job_id}`;
       }
@@ -520,7 +518,6 @@ async function loadJobs() {
 
       // Row click navigates to job page (except when inner clickable elements are used)
       row.addEventListener('click', (e) => {
-        // ignore clicks that were prevented by inner elements; row-level click should navigate
         const targetLink = row.getAttribute('data-job-page');
         if (targetLink) {
           window.location.href = targetLink;
@@ -536,7 +533,6 @@ async function loadJobs() {
             window.location.href = targetLink;
           }
         } else if (e.key === 'Escape') {
-          // keep Escape behavior consistent with dropdown code
           document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
           document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
         }
@@ -561,14 +557,9 @@ async function loadJobs() {
 
 /* ---------------------------
    NEW: Robust dropdown behavior
-   ---------------------------
-   - Move the actual `.dropdown-menu` element to document.body when opening,
-     position it with fixed coordinates to never be clipped by table overflow.
-   - Handles viewport edges and places above button if needed.
-   - Keeps same edit/delete event handlers (no backend changes).
+   --------------------------- (unchanged from before)
 */
 function attachRowActionListeners() {
-  // helper to close all dropdowns
   function closeAllDropdowns() {
     document.querySelectorAll('.dropdown-menu').forEach(m => {
       if (!m.classList.contains('hidden')) {
@@ -582,34 +573,25 @@ function attachRowActionListeners() {
     document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
 
-  // Attach toggles
   document.querySelectorAll('.dropdown-toggle').forEach(btn => {
-    // get the menu element (sibling inside same container)
     const menu = btn.parentElement.querySelector('.dropdown-menu');
-
-    // set some base styles for measurement & z stacking
     menu.style.zIndex = 9999;
     menu.style.boxSizing = 'border-box';
 
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-
       const expanded = btn.getAttribute('aria-expanded') === 'true';
       closeAllDropdowns();
-      if (expanded) return; // it was open -> we've closed it, so just return
+      if (expanded) return;
 
-      // show menu and move to body so it's not clipped by overflow
       menu.classList.remove('hidden');
-      menu.style.visibility = 'hidden'; // hide while measuring
-
-      // append to body — moving the real element preserves event listeners
+      menu.style.visibility = 'hidden';
       if (!document.body.contains(menu)) {
         document.body.appendChild(menu);
       } else {
         document.body.appendChild(menu);
       }
 
-      // make it fixed and measure
       menu.style.position = 'fixed';
       menu.style.top = '0px';
       menu.style.left = '0px';
@@ -618,14 +600,9 @@ function attachRowActionListeners() {
       const menuRect = menu.getBoundingClientRect();
       const btnRect = btn.getBoundingClientRect();
 
-      // basic positioning: align right edge of menu with right edge of button
-      let top = btnRect.bottom + 6; // below button with small margin
+      let top = btnRect.bottom + 6;
       let left = btnRect.right - menuRect.width;
-
-      // clamp left to viewport
       if (left < 6) left = 6;
-
-      // if not enough space below, place above
       const spaceBelow = window.innerHeight - btnRect.bottom;
       if (spaceBelow < menuRect.height + 10) {
         top = btnRect.top - menuRect.height - 6;
@@ -637,57 +614,44 @@ function attachRowActionListeners() {
       menu.style.visibility = 'visible';
       btn.setAttribute('aria-expanded', 'true');
 
-      // prevent clicks inside the menu from closing it immediately
       menu.addEventListener('click', (ev) => ev.stopPropagation());
     });
   });
 
-  // Edit handlers (unchanged endpoints)
   document.querySelectorAll('.edit-action').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       const jobId = el.getAttribute('data-job-id');
-
-      // hide dropdowns before opening modal
       document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
       document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
-
       openEditModal(jobId);
     });
   });
 
-  // Delete handlers (unchanged endpoints)
   document.querySelectorAll('.delete-action').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       const jobId = el.getAttribute('data-job-id');
-
-      // hide dropdowns before opening modal
       document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
       document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
-
       openDeleteModal(jobId);
     });
   });
 
-  // Close all on Escape
   window.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') {
       closeAllDropdowns();
     }
   });
 
-  // Clicking outside closes dropdowns
   window.addEventListener('click', () => {
     closeAllDropdowns();
   });
 }
 
-/* END of dropdown fix */
-
-/* The rest of your modal helpers and event wiring remain unchanged. */
+/* Modal helpers and delete handlers (unchanged) */
 function openEditModal(jobId) {
   const job = jobsCache[jobId];
   if (!job) {
@@ -699,7 +663,6 @@ function openEditModal(jobId) {
   modalJobTitle.value = job.job_title || '';
   modalJobDescription.value = (job.job_description && job.job_description !== '-') ? job.job_description : '';
 
-  // Set modal client select by name match (client_name comes from backend JSON)
   modalClientSelect.value = '';
   for (const opt of modalClientSelect.options) {
     if (opt.text.trim() === (job.client_name || '').trim()) {
@@ -708,17 +671,14 @@ function openEditModal(jobId) {
     }
   }
 
-  // Populate modal manager select (clone options from page-level managerFilter)
   modalManagerSelect.innerHTML = '<option value="">-- Keep existing --</option>';
   managerFilter.querySelectorAll('option').forEach(opt => {
     const cloned = opt.cloneNode(true);
     modalManagerSelect.appendChild(cloned);
   });
 
-  // Filter modal managers by selected client
   filterModalManagersByClient();
 
-  // select manager by name match
   let selected = false;
   for (const o of modalManagerSelect.options) {
     if (o.text.trim() === (job.manager_name || '').trim()) {
@@ -729,10 +689,8 @@ function openEditModal(jobId) {
   }
   if (!selected) modalManagerSelect.value = '';
 
-  // status
   modalStatusSelect.value = job.status && job.status.toLowerCase() === 'active' ? 'Active' : 'Inactive';
 
-  // form action (no backend wiring changes)
   editJobForm.action = `/clients/all_jobs/edit/${jobId}`;
 
   editModal.classList.remove('hidden');
@@ -859,7 +817,7 @@ window.addEventListener('resize', () => {
 </script>
 
 <style>
-/* Custom scrollbar for table */
+/* Custom scrollbar for table (existing) */
 .overflow-x-auto::-webkit-scrollbar {
   height: 8px;
 }
@@ -876,6 +834,26 @@ window.addEventListener('resize', () => {
 
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: #a5b4fc;
+}
+
+/* Slim vertical scrollbar for table content (ADDED - matches All Managers) */
+.table-wrap::-webkit-scrollbar {
+  width: 6px;           /* thinner vertical scrollbar */
+  height: 6px;          /* for horizontal scrollbar */
+}
+
+.table-wrap::-webkit-scrollbar-track {
+  background: #f8fafc;  /* light track */
+  border-radius: 4px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+  background-color: #c7d2fe; /* soft indigo tone */
+  border-radius: 4px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+  background-color: #a5b4fc; /* slightly darker on hover */
 }
 
 /* Smooth transitions */

@@ -92,6 +92,7 @@ def add_new_client(
         # Create client
         client = Client(client_name=client_name, created_at=datetime.now(IST), status="active")
         db.add(client)
+        client.created_by = user.id
         db.commit()
         db.refresh(client)
         message_parts.append(f"Client '{client_name}' added successfully!")
@@ -116,6 +117,7 @@ def add_new_client(
             manager = existing_manager
         else:
             manager = Manager(client_id=client.client_id, manager_name=manager_name, created_at=datetime.now(IST))
+            manager.created_by = user.id
             db.add(manager)
             db.commit()
             db.refresh(manager)
@@ -142,6 +144,7 @@ def add_new_client(
                     created_at=datetime.now(IST),
                     status="active"
                 )
+                job.created_by = user.id
                 db.add(job)
                 db.commit()
                 message_parts.append(f"Job '{job_title}' added successfully!")
@@ -292,6 +295,7 @@ def edit_client(
     old_name = client.client_name
     client.client_name = new_name
     client.updated_at = datetime.now(IST)
+    client.updated_by = user.id
     db.commit()
     db.refresh(client)
 
@@ -308,3 +312,38 @@ def edit_client(
             pass
 
     return {"message": f"Client '{new_name}' updated successfully!"}
+# ------------------------------
+# 8. Client quick details (for popup modal)
+# ------------------------------
+@router.get("/details/{client_id}")
+def get_client_details(
+    client_id: int,
+    db: Session = Depends(get_db),
+):
+    # join to get full name of created_by & updated_by
+    from landing_page_app.models.user import User
+
+    client = db.query(Client).filter(Client.client_id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # fetch created_by / updated_by usernames if present
+    created_by_name = None
+    if client.created_by:
+        created_user = db.query(User).filter(User.id == client.created_by).first()
+        if created_user:
+            created_by_name = created_user.full_name
+
+    updated_by_name = None
+    if client.updated_by:
+        updated_user = db.query(User).filter(User.id == client.updated_by).first()
+        if updated_user:
+            updated_by_name = updated_user.full_name
+
+    return {
+        "client_name": client.client_name,
+        "created_by": created_by_name,
+        "created_at": client.created_at.strftime("%Y-%m-%d %H:%M:%S") if client.created_at else None,
+        "updated_by": updated_by_name,
+        "updated_at": client.updated_at.strftime("%Y-%m-%d %H:%M:%S") if client.updated_at else None,
+    }

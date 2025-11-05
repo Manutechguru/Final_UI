@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="{{ url_for('static', path='css/new_arrivals.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<div class="page-wrapper flex min-h-screen" id="clientsPageContainer">
+<div class="page-wrapper flex min-h-screen min-w-0" id="clientsPageContainer">
   <!-- Filters Sidebar -->
   <aside id="filterSidebar" class="w-64 bg-white border-r border-gray-200 shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-300 fixed lg:static h-screen lg:h-auto z-40">
     <div class="p-4">
@@ -51,8 +51,8 @@
   <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden"></div>
 
   <!-- Main Content -->
-  <div class="flex-1 p-6 lg:p-8 main-content">
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+  <div class="flex-1 p-6 lg:p-8 main-content min-w-0">
+   <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
       <div class="flex items-center mb-4 lg:mb-0">
         <button id="filterToggle" class="mr-3 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200" aria-pressed="false" title="Toggle filters">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"/></svg>
@@ -70,23 +70,20 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full">
+      <div class="table-wrap overflow-x-auto">
+        <table class="min-w-full table-auto border-collapse">
           <thead class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
             <tr>
               <th class="px-6 py-4 text-left font-semibold">Client Name</th>
-              <th class="px-6 py-4 text-left font-semibold">ID</th>
-              <th class="px-6 py-4 text-left font-semibold">Status</th>
-              <th class="px-6 py-4 text-left font-semibold">Created At</th>
-              <th class="px-6 py-4 text-left font-semibold">Action</th>
+              <th class="px-6 py-4 text-center font-semibold">Status</th>
+              <th class="px-6 py-4 text-center font-semibold">Action</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200" id="clientsTableBody">
             {% for client in clients %}
             <tr class="hover:bg-gray-50 transition-colors duration-200" data-client-id="{{ client.client_id }}" data-status="{{ client.status or '' }}" data-created="{{ client.created_at.strftime('%Y-%m-%d %H:%M:%S') if client.created_at else '' }}">
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ client.client_name }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ client.client_id }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                 <!-- toggle -->
                 <label class="switch inline-flex items-center gap-2">
                   <input type="checkbox" onchange="toggleActive('{{ client.client_id }}', this)" {% if client.status == 'active' %}checked{% endif %}>
@@ -95,21 +92,25 @@
                   </span>
                 </label>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{% if client.created_at %}{{ client.created_at.strftime("%Y-%m-%d %H:%M:%S") }}{% else %}-{% endif %}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                 <div class="flex items-center gap-2">
                   <a href="{{ url_for('list_managers', client_id=client.client_id) }}" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">View Managers</a>
 
-                  <!-- Three dots dropdown -->
+                  <!-- Three dots vertical dropdown -->
                   <div class="relative inline-block">
                     <button class="dropdown-toggle focus:outline-none p-2 rounded-full border hover:bg-gray-100" data-client-id="{{ client.client_id }}" aria-expanded="false" title="More actions">
                       <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <path fill-rule="evenodd" d="M10 3.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
                       </svg>
-                    </button>
+                      </button>
                     <div class="dropdown-menu origin-top-right absolute right-0 mt-2 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                      <button class="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100 view-details-action" 
+                              data-client-id="{{ client.client_id }}" 
+                              data-created="{{ client.created_at.strftime('%Y-%m-%d %H:%M:%S') if client.created_at else '' }}">
+                        View Details
+                      </button>
                       <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 edit-action" data-client-id="{{ client.client_id }}">Edit</a>
-                      <button class="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100 delete-action" data-client-id="{{ client.client_id }}">Delete</button>
+                      <button class="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 delete-action" data-client-id="{{ client.client_id }}">Delete</button>
                     </div>
                   </div>
                 </div>
@@ -165,11 +166,11 @@
           <div class="job-item grid grid-cols-1 gap-2">
             <div>
               <label class="block text-sm font-medium text-gray-700">Job Title *</label>
-              <input type="text" name="job_titles" class="mt-1 block w-full border rounded px-3 py-2" required />
+              <input type="text" name="job_title" class="mt-1 block w-full border rounded px-3 py-2" required />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Job Description</label>
-              <textarea name="job_descriptions" rows="3" class="mt-1 block w-full border rounded px-3 py-2"></textarea>
+              <textarea name="job_description" rows="3" class="mt-1 block w-full border rounded px-3 py-2"></textarea>
             </div>
           </div>
         </div>
@@ -245,6 +246,51 @@
     <div class="p-4 border-t flex items-center justify-end gap-3">
       <button id="cancelDelete" class="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">Cancel</button>
       <button id="confirmDelete" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete Client</button>
+    </div>
+  </div>
+</div>
+<!-- View Details Modal -->
+<div id="viewDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black opacity-40"></div>
+  <div class="relative bg-white max-w-md w-full mx-4 rounded-lg shadow-lg z-10 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold">Client Details</h3>
+      <button id="closeViewDetailsModal" class="p-2 rounded hover:bg-gray-100" title="Close">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="space-y-4 text-sm">
+        <div>
+          <div class="font-medium text-gray-600">Name</div>
+          <div id="vdName" class="text-gray-900"></div>
+        </div>
+
+        <div>
+          <div class="font-medium text-gray-600">Created By</div>
+          <div id="vdCreatedBy" class="text-gray-900"></div>
+        </div>
+
+        <div>
+          <div class="font-medium text-gray-600">Created At</div>
+          <div id="vdCreatedAt" class="text-gray-900"></div>
+        </div>
+
+        <div>
+          <div class="font-medium text-gray-600">Updated By</div>
+          <div id="vdUpdatedBy" class="text-gray-900"></div>
+        </div>
+
+        <div>
+          <div class="font-medium text-gray-600">Updated At</div>
+          <div id="vdUpdatedAt" class="text-gray-900"></div>
+        </div>
+    </div>
+
+    <div class="mt-6 flex justify-end">
+      <button id="closeViewDetailsBtn" class="text-gray-600 hover:underline">Close</button>
     </div>
   </div>
 </div>

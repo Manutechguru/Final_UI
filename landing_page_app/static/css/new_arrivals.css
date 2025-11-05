@@ -9,53 +9,74 @@
   --green-dark: #059669; /* darker green for toggles */
   --header-gap: 72px;   /* distance from top so sidebar won't overlap header — adjust if header height differs */
   --footer-gap: 72px;   /* distance from bottom so sidebar won't overlap footer — adjust if footer height differs */
+  --sidebar-width: 240px; /* consistent single source */
+  --page-gutter: 24px;    /* horizontal gutter inside main content */
+  --content-max-width: 1100px;
 }
 
 /* Base */
-body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
 
 /* Layout */
-.page-wrapper { display:flex; gap:24px; align-items:flex-start; padding-top:12px; }
-
-/* Sidebar: fixed but constrained between header and footer
-   NOTE: to allow footer to overlay the sidebar (sidebar goes *inside* footer), the sidebar z-index is intentionally low.
-   This preserves the sidebar visual/size but ensures the footer sits visually on top when you scroll to bottom. */
-#filterSidebar {
-  width:260px;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:10px;
-  box-shadow: 0 18px 50px rgba(12,24,40,0.06);
-  position:fixed;
-  left:24px;
-  top:var(--header-gap);
-  /* extend to bottom of viewport so sidebar content flows into footer area;
-     footer will appear above the sidebar because of z-index ordering */
-  bottom:0;
-  padding:16px;
-  overflow:auto;
-  z-index: 0; /* <-- intentionally low so footer (which typically has higher stacking) appears above it */
-  transition: transform .28s ease;
+/* keep wrapper but remove wide horizontal gap so sidebar and main content can align exactly */
+.page-wrapper {
+  display: flex;
+  gap: 0;
+  align-items: stretch; /* important so sidebar fills vertically with the content area */
+  padding-top: 12px;
+  min-height: calc(100vh - var(--header-gap) - var(--footer-gap)); /* ensures at least viewport height minus header/footer */
   box-sizing: border-box;
 }
-
-/* On smaller screens keep off-canvas behavior */
-@media (max-width:1023px){
-  #filterSidebar { transform: translateX(-120%); left:12px; width:88%; top:12px; bottom:auto; height:auto; padding:14px; position:fixed; z-index:60; }
-  #filterSidebar.show { transform: translateX(0); }
+/* Sidebar: fixed and constrained between header and footer.
+   This makes the sidebar visually span top->bottom while still scrolling the main content. */
+#filterSidebar {
+  position: relative;
+  top: auto;
+  bottom: auto;
+  height: calc(100vh - var(--header-gap) - var(--footer-gap));
+  min-height: calc(100vh - var(--header-gap) - var(--footer-gap));
+  width: 280px; /* match Managers page width */
+  background: var(--card-bg);
+  border-radius: 0 12px 12px 0;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  overflow-y: auto;
+  box-sizing: border-box;
+  align-self: stretch;
 }
+
+
+/* On smaller screens keep off-canvas behavior (unchanged) */
+@media (max-width: 1023px) {
+  #filterSidebar {
+    transform: translateX(-120%);
+    left: 12px;
+    width: 88%;
+    top: 12px;
+    bottom: auto;
+    height: auto;
+    position: fixed;
+    z-index: 60;
+    border-radius: 12px;
+    padding: 14px;
+    min-height: unset;
+  }
+  #filterSidebar.show { transform: translateX(0); }
 
 /* Form controls in sidebar */
 #filterSidebar input, #filterSidebar select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(15,27,43,0.06); background:#fff; font-size:14px; }
 
-/* Main content */
-.main-content { flex:1; margin-left:320px; padding:12px 24px 36px 24px; }
+/* Main content: margin-left must match sidebar width exactly so the table sits flush to the sidebar */
+.main-content { margin-left: 0; padding: 16px; width: 100%; }
+}
 @media (max-width:1023px){ .main-content { margin-left:0; padding:16px; } }
 
 /* Table / card */
 .table-container { margin-top:20px; background:var(--card-bg); border-radius:12px; box-shadow: 0 18px 50px rgba(12,24,40,0.06); border:1px solid var(--border); overflow:hidden; }
 .table-container thead th { background: linear-gradient(90deg,var(--accent-indigo),var(--accent-indigo-2)); color:#fff; padding:16px 18px; font-weight:700; text-align:left; }
-.table-container table { width:100%; border-collapse:collapse; min-width:760px; }
+.table-container table { width:100%; border-collapse:collapse; min-width:760px;}
 .table-container tbody td { padding:16px 18px; border-bottom:1px solid rgba(15,27,43,0.04); color:var(--text-1); font-size:.95rem; }
 .table-container tbody tr:hover { background: linear-gradient(90deg, rgba(243,248,255,0.95), rgba(245,247,250,0.95)); }
 
@@ -87,23 +108,14 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
 /* Misc */
 .status-text { font-weight:700; margin-left:8px; }
 
-/* Make main content expand when sidebar toggled */
+/* Show / hide behavior helper classes (unchanged) */
 .main-content {
   transition: margin-left 0.28s ease, width 0.28s ease;
-  width: calc(100% - 16rem); /* when sidebar visible (example: 16rem sidebar width) */
-  margin-left: 16rem; /* match sidebar width on desktop */
 }
 
-/* When sidebar hidden on desktop, make main content full width */
-.main-content.expanded-by-sidebar {
-  width: 100% !important;
-  margin-left: 0 !important;
-}
-
-/* When sidebar is visible on desktop, ensure .hidden-desktop hides it */
-#filterSidebar.hidden-desktop {
-  display: none !important;
-}
+/* When sidebar is hidden on desktop, make main content full width */
+.main-content.expanded-by-sidebar { width: 100% !important; margin-left: 0 !important; }
+#filterSidebar.hidden-desktop { display: none !important; }
 
 /* Make sure overflow and table wrapper responds */
 .bg-white.rounded-xl.shadow-sm.border.overflow-hidden, /* your wrapper selectors */
@@ -119,8 +131,6 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
 /* Final: ensure sidebar content doesn't get clipped and behaves consistently */
 #filterSidebar {
   box-sizing: border-box;
-  /* We intentionally keep bottom:0 above so the sidebar visually flows into footer area.
-     Footer is expected to sit above the sidebar (z-index of footer > 0). */
 }
 
 /* Hide scrollbar for cleaner UI (kept as you had) */
@@ -132,13 +142,233 @@ body { background: var(--bg-2); color: var(--text-1); font-family: Inter, system
   scrollbar-width: none;
 }
 
-/* Main content shifts correctly when sidebar shown */
-.main-content {
-  margin-left: 16rem; /* match sidebar width */
-  transition: margin-left 0.3s ease;
+/* Force equal width columns for Clients table */
+#clientsTableBody tr td,
+#clientsTableBody tr th {
+  width: 33.33%;
 }
 
-.main-content.expanded-by-sidebar {
-  margin-left: 0;
-  width: 100%;
+/* Improve layout so equal spacing actually applies */
+.bg-white.rounded-xl.shadow-sm.border.border-gray-100 table {
+  table-layout: fixed;
 }
+/* Force table layout fixed so equal width works */
+.clients-page .bg-white.rounded-xl.shadow-sm.border table {
+  table-layout: fixed !important;
+}
+
+/* make each column take equal width */
+.clients-page .table-container thead th,
+.clients-page .table-container tbody td {
+  width: calc(100% / 3);
+}
+/* Force equal column widths for clients table */
+.bg-white.rounded-xl.shadow-sm.border.border-gray-100.overflow-hidden table {
+  table-layout: fixed !important;
+}
+
+/* Each column = 1/3rd */
+#clientsTableBody td,
+#clientsTableBody th {
+  width: 33.33% !important;
+}
+
+/* --- Fix small top & bottom gaps between filter block and header/footer --- */
+#filterSidebar {
+  margin-top: -12px; /* pull sidebar up slightly under the header */
+  margin-bottom: -12px; /* extend sidebar slightly under footer */
+  padding-top: 24px;  /* keep inner content breathing */
+  padding-bottom: 24px;
+  border-top-left-radius: 0; /* ensures clean flush alignment */
+  border-bottom-left-radius: 0;
+}
+
+
+/* ensure main content lines up beside it (no extra gap) *
+
+/* --- Precise visual stretch for filter block --- */
+#filterSidebar {
+  position: relative;
+  height: calc(100vh + 40px); /* stretch a bit more than viewport height */
+  margin-top: -20px;          /* tuck under the header */
+  margin-bottom: -20px;       /* tuck behind footer */
+  padding-top: 20px;
+  padding-bottom: 20px;
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+/* keep everything else untouched */
+.page-wrapper {
+  align-items: stretch;
+}
+
+/* === Make Create Client button match Add Manager purple gradient style === */
+#createClientBtn {
+  /* gradient matching the purple used elsewhere */
+  background: linear-gradient(90deg, #6200ff 0%, #8b5cf6 100%) !important;
+  color: #fff !important;
+  
+  /* pill shape and spacing */
+  border-radius: 12px !important;
+  padding: 10px 16px !important;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  /* subtle elevation */
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12);
+  border: 0 !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+/* hover / active / focus */
+#createClientBtn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.14);
+}
+#createClientBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.10);
+}
+#createClientBtn:focus {
+  outline: 3px solid rgba(139, 92, 246, 0.18);
+  outline-offset: 2px;
+}
+
+/* make sure the plus icon inside inherits white color */
+#createClientBtn i,
+#createClientBtn svg {
+  color: #fff !important;
+}
+
+/* === 1) Let dropdowns escape the table/card and sit above everything === */
+/* Allow the table/card to show overflow (so dropdowns are not clipped) */
+.table-container,
+.table-wrap,
+.bg-white.rounded-xl.shadow-sm.border {
+  overflow: visible !important;
+}
+
+/* Ensure the dropdown menu sits above everything and is positioned well */
+.dropdown-menu {
+  position: absolute !important;   /* keep absolute positioning (relative to nearest positioned ancestor) */
+  z-index: 99999 !important;       /* very high so it appears on top of table/footer/header */
+  box-shadow: 0 18px 40px rgba(12,24,40,0.12) !important;
+  transform-origin: top right;
+  margin-top: 6px !important;
+}
+
+/* If the dropdown is being clipped by a parent with transform, fallback to fixed positioning */
+.table-container td .dropdown-menu.is-fixed {
+  position: fixed !important;
+}
+
+/* === 2) Remove inner scroll bar inside the table card (show full dropdown) === */
+/* Avoid showing an inner vertical scrollbar on the card itself */
+.table-container {
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+/* If a wrapper (.table-wrap) added scroll, unset it so card won't show inner scroll */
+.table-wrap {
+  overflow: visible !important;
+}
+
+/* === 3) Small positioning helpers so dropdown isn't cut off on small screens === */
+/* If a dropdown would overflow the viewport, flip it up */
+.dropdown-menu[data-flip="true"] {
+  transform-origin: bottom right;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+}
+
+/* === 4) Minor polish === */
+.dropdown-menu { border-radius: 10px; }
+.dropdown-menu.show { display: block !important; }
+
+/* Optional: if your dropdown still sits under the table header, bump it a bit */
+.table-container td .dropdown-menu { top: calc(100% + 8px) !important; }
+/* force all dropdown items same style */
+.dropdown-menu button,
+.dropdown-menu a {
+  width: 100%;
+  text-align: left;
+  display: block;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #071226 !important;
+  text-decoration: none !important;
+}
+
+.dropdown-menu button:hover,
+.dropdown-menu a:hover {
+  background: #f3f4f6 !important;
+  color: #071226 !important;
+}
+/* === Robust: sidebar grows with page content, stays at least viewport height, and tucks under header/footer cleanly === */
+#filterSidebar {
+  position: relative;                         
+  height: auto !important;                    
+  min-height: calc(100vh - var(--header-gap) - var(--footer-gap)); 
+  width: var(--sidebar-width);                
+  max-width: var(--sidebar-width);
+  box-sizing: border-box;
+  overflow-y: auto;                           
+  margin-top: calc(-1 * var(--header-gap));   /* visually tuck under header */
+  margin-bottom: calc(-1 * var(--footer-gap));/* tuck under footer */
+  padding-top: calc(var(--header-gap) + 10px);/* push internal text down so it doesn't overlap header */
+  padding-bottom: calc(var(--footer-gap) + 10px); /* keep consistent breathing space above footer */
+  padding-left: 5px;
+  padding-right: 5px;
+  align-self: stretch;                        
+  z-index: 1;                                
+  border-top-left-radius: 0;                 
+  border-bottom-left-radius: 0;
+}
+/* Center align the buttons perfectly under Action column */
+td:nth-child(3) .flex {
+  justify-content: center;
+}
+/* ✅ Smooth rounded corners for the client table */
+.table-wrap {
+  border-radius: 16px; /* controls curve amount */
+  overflow: hidden; /* ensures corners apply to inner elements */
+}
+
+.table-wrap table {
+  border-collapse: separate; /* important for rounded corners */
+  border-spacing: 0;
+}
+
+.table-wrap thead tr:first-child th:first-child {
+  border-top-left-radius: 16px;
+}
+
+.table-wrap thead tr:first-child th:last-child {
+  border-top-right-radius: 16px;
+}
+
+.table-wrap tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 16px;
+}
+
+.table-wrap tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 16px;
+}
+/* Ensure only the Delete option in dropdown appears red */
+.dropdown-menu .delete-action,
+.dropdown-menu button.delete-action {
+  color: #dc2626 !important;          /* red */
+}
+
+/* Hover state: light red bg and darker red text */
+.dropdown-menu .delete-action:hover,
+.dropdown-menu button.delete-action:hover {
+  background-color: #fee2e2 !important; /* light red bg */
+  color: #b91c1c !important;            /* darker red on hover */
+}
+

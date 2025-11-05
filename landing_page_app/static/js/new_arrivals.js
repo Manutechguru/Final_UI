@@ -74,6 +74,34 @@
   }
 
   // ---------- Build cache from initial server-rendered rows ----------
+  // Robustly discover clientId for each row (handles cases where id moved into dropdown/menu)
+  function discoverClientIdFromRowElement(rowEl) {
+    // 1) dataset on the row itself
+    if (rowEl.dataset && rowEl.dataset.clientId) return rowEl.dataset.clientId.toString().trim();
+
+    // 2) second <td> (legacy layout)
+    const tds = rowEl.querySelectorAll('td');
+    if (tds && tds.length >= 2) {
+      const maybe = (tds[1].textContent || '').toString().trim();
+      if (maybe) return maybe;
+    }
+
+    // 3) try to find an element with class view-details-action and use its data-client-id
+    const vda = rowEl.querySelector('.view-details-action');
+    if (vda && vda.dataset && vda.dataset.clientId) return vda.dataset.clientId.toString().trim();
+
+    // 4) generic: find any element with data-client-id attribute
+    const anyWithData = rowEl.querySelector('[data-client-id]');
+    if (anyWithData && anyWithData.dataset && anyWithData.dataset.clientId) return anyWithData.dataset.clientId.toString().trim();
+
+    // 5) last resort: attempt to parse an "ID:" like pattern from text (very lenient)
+    const fullText = (rowEl.textContent || '').toString();
+    const match = fullText.match(/\bID[:#\s]*([A-Za-z0-9\-_]+)\b/i);
+    if (match && match[1]) return match[1].trim();
+
+    return '';
+  }
+
   function buildOriginalRowsCache() {
     originalRows = [];
     if (!clientsTableBody) return;
@@ -82,13 +110,14 @@
       const clone = tr.cloneNode(true);
       // ensure dataset entries exist
       if (!clone.dataset.clientId) {
-        const idCell = clone.querySelectorAll('td')[1];
-        if (idCell) clone.dataset.clientId = idCell.textContent.trim();
+        const discovered = discoverClientIdFromRowElement(clone);
+        if (discovered) clone.dataset.clientId = discovered;
       }
       if (!clone.dataset.status) {
         const st = clone.querySelector('.status-text');
         clone.dataset.status = st ? (st.textContent || '').trim().toLowerCase() : '';
       }
+      // keep existing created dataset if present (some templates set it on row)
       originalRows.push(clone);
     });
   }
@@ -173,15 +202,62 @@
       btn.onclick = null;
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
+
+        // find the menu related to this toggle
         const menu = btn.parentElement.querySelector('.dropdown-menu');
-        document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
-        document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
+
+        // ===== Reorder menu items here BEFORE showing the menu =====
+        if (menu) {
+          try {
+            // Desired order (case-insensitive match)
+            const ORDER = ['View Details', 'Edit', 'Delete'];
+
+            // find all actionable nodes in the menu (buttons and anchors)
+            const nodes = Array.from(menu.querySelectorAll('button, a')).filter(Boolean);
+
+            // map found label -> node (first match wins)
+            const found = {};
+            nodes.forEach(n => {
+              const txt = (n.textContent || '').trim().replace(/\s+/g, ' ');
+              ORDER.forEach(label => {
+                if (!found[label] && txt.toLowerCase().includes(label.toLowerCase())) {
+                  found[label] = n;
+                }
+              });
+            });
+
+            // append in desired order (moves nodes in DOM)
+            ORDER.forEach(label => {
+              if (found[label]) menu.appendChild(found[label]);
+            });
+
+            // append any remaining nodes preserving original order
+            nodes.forEach(n => {
+              if (!Object.values(found).includes(n)) menu.appendChild(n);
+            });
+          } catch (err) {
+            // nonfatal — we still proceed to show the menu
+            console.warn('Dropdown reorder failed', err);
+          }
+        }
+        // ===== end reorder =====
+
+        // hide other open menus
+        document.querySelectorAll('.dropdown-menu').forEach(m => {
+          if (m !== menu) m.classList.remove('show');
+        });
+        document.querySelectorAll('.dropdown-toggle').forEach(b => {
+          if (b !== btn) b.setAttribute('aria-expanded', 'false');
+        });
+
+        // toggle this menu
         if (menu) {
           const isShown = menu.classList.contains('show');
           if (!isShown) { menu.classList.add('show'); btn.setAttribute('aria-expanded', 'true'); }
           else { menu.classList.remove('show'); btn.setAttribute('aria-expanded', 'false'); }
         }
       });
+
     });
 
     window.addEventListener('click', () => {
@@ -215,6 +291,70 @@
       });
     });
 
+    // view details actions
+    document.querySelectorAll('.view-details-action').forEach(el => {
+      el.onclick = null;
+      el.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+         // close all menus before opening modal
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+    document.querySelectorAll('.dropdown-toggle').forEach(b => b.setAttribute('aria-expanded', 'false'));
+
+        // robust client id lookup: element dataset or fallback to closest row
+        let id = (el.dataset && el.dataset.clientId) ? el.dataset.clientId : '';
+        if (!id) {
+          const row = el.closest('tr');
+          if (row) id = discoverClientIdFromRowElement(row);
+        }
+        id = id || '';
+
+        // if still empty, abort gracefully
+        if (!id) {
+          console.warn('view-details-action: no client id found for clicked element', el);
+          alert('Client identifier not found for this row. See console for details.');
+          return;
+        }
+
+        // call backend
+        try {
+          const resp = await fetch(`/clients/details/${encodeURIComponent(id)}`);
+          if (!resp.ok) {
+            const text = await safeText(resp);
+            console.warn('Details fetch failed', resp.status, text);
+            alert('Could not fetch client details. See console for details.');
+            return;
+          }
+          const data = await resp.json();
+
+          // fill modal fields
+          const vdNameEl = document.getElementById("vdName");
+          const vdCreatedByEl = document.getElementById("vdCreatedBy");
+          const vdCreatedAtEl = document.getElementById("vdCreatedAt");
+          const vdUpdatedByEl = document.getElementById("vdUpdatedBy");
+          const vdUpdatedAtEl = document.getElementById("vdUpdatedAt");
+          const vdClientIdEl = document.getElementById("vdClientId");
+
+          if (vdNameEl) vdNameEl.textContent = data.client_name || "N/A";
+          if (vdCreatedByEl) vdCreatedByEl.textContent = data.created_by || "N/A";
+          if (vdCreatedAtEl) vdCreatedAtEl.textContent = data.created_at || "N/A";
+          if (vdUpdatedByEl) vdUpdatedByEl.textContent = data.updated_by || "N/A";
+          if (vdUpdatedAtEl) vdUpdatedAtEl.textContent = data.updated_at || "N/A";
+
+          // set client id into modal if there is a placeholder for it (helps show moved ID)
+          if (vdClientIdEl) vdClientIdEl.textContent = data.client_id || id || "N/A";
+
+          // show modal
+          const vModal = document.getElementById("viewDetailsModal");
+          if (vModal) vModal.classList.remove("hidden");
+        } catch (err) {
+          console.warn('Error fetching client details', err);
+          alert('Error fetching client details. See console for details.');
+        }
+      });
+    });
+
     // status toggles: note - template uses inline onchange="toggleActive('{id}', this)" so we don't rely on data attr
     // but we still ensure any dynamically-rendered checkboxes behave if they were added without inline handler.
     document.querySelectorAll('input[type="checkbox"]').forEach(chk => {
@@ -232,7 +372,7 @@
           } else {
             // try to retrieve id from row data
             const row = chk.closest('tr');
-            const idFromRow = row ? (row.dataset.clientId || (row.querySelectorAll('td')[1] || {}).textContent || '').toString().trim() : '';
+            const idFromRow = row ? (row.dataset.clientId || discoverClientIdFromRowElement(row)) : '';
             if (idFromRow) window.toggleActive(idFromRow, chk);
           }
         });
@@ -322,7 +462,7 @@
   function updateClientNameInCache(clientId, newName) {
     for (let i = 0; i < originalRows.length; i++) {
       const or = originalRows[i];
-      const cid = (or.dataset.clientId || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
+      const cid = (or.dataset.clientId || discoverClientIdFromRowElement(or) || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
       if (cid == clientId) {
         const firstTd = or.querySelectorAll('td')[0];
         if (firstTd) firstTd.textContent = newName;
@@ -343,7 +483,7 @@
       if (res.ok) {
         deleteModal && deleteModal.classList.add('hidden');
         originalRows = originalRows.filter(or => {
-          const cid = (or.dataset.clientId || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
+          const cid = (or.dataset.clientId || discoverClientIdFromRowElement(or) || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
           return cid !== pending;
         });
         applyFilters();
@@ -374,7 +514,7 @@
     if (result.ok) {
       deleteModal && deleteModal.classList.add('hidden');
       originalRows = originalRows.filter(or => {
-        const cid = (or.dataset.clientId || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
+        const cid = (or.dataset.clientId || discoverClientIdFromRowElement(or) || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
         return cid !== pending;
       });
       applyFilters();
@@ -406,7 +546,7 @@
 
     // *** Update the cached originalRows FULLY (dataset + internal checkbox + status text)
     originalRows.forEach(or => {
-      const cid = (or.dataset.clientId || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
+      const cid = (or.dataset.clientId || discoverClientIdFromRowElement(or) || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
       if (cid == clientId) {
         // update dataset status
         or.dataset.status = newChecked ? 'active' : 'inactive';
@@ -466,17 +606,48 @@
 
   // ---------- Create modal and add-job dynamic fields ----------
   createClientBtn?.addEventListener('click', () => createModal && createModal.classList.remove('hidden'));
-  // ---------- Edit modal close handlers ----------
-const closeEditModal = document.getElementById('closeEditModal');
-const cancelEdit = document.getElementById('cancelEdit');
-closeEditModal?.addEventListener('click', () => editModal && editModal.classList.add('hidden'));
-cancelEdit?.addEventListener('click', () => editModal && editModal.classList.add('hidden'));
+  // ---------- Create modal close handlers ----------
+closeCreateModal?.addEventListener('click', () => {
+  createModal && createModal.classList.add('hidden');
+});
 
-// ---------- Delete modal close handlers ----------
-const closeDeleteModal = document.getElementById('closeDeleteModal');
-const cancelDelete = document.getElementById('cancelDelete');
-closeDeleteModal?.addEventListener('click', () => deleteModal && deleteModal.classList.add('hidden'));
-cancelDelete?.addEventListener('click', () => deleteModal && deleteModal.classList.add('hidden'));
+cancelCreate?.addEventListener('click', () => {
+  createModal && createModal.classList.add('hidden');
+});
+
+// close when clicking OUTSIDE modal box (optional safety)
+createModal?.addEventListener('click', (e) => {
+  if (e.target.id === 'createModal') {
+    createModal.classList.add('hidden');
+  }
+});
+
+  // ---------- Edit modal close handlers ----------
+  const closeEditModal = document.getElementById('closeEditModal');
+  const cancelEdit = document.getElementById('cancelEdit');
+  closeEditModal?.addEventListener('click', () => editModal && editModal.classList.add('hidden'));
+  cancelEdit?.addEventListener('click', () => editModal && editModal.classList.add('hidden'));
+
+  // ---------- Delete modal close handlers ----------
+  const closeDeleteModal = document.getElementById('closeDeleteModal');
+  const cancelDelete = document.getElementById('cancelDelete');
+  closeDeleteModal?.addEventListener('click', () => deleteModal && deleteModal.classList.add('hidden'));
+  cancelDelete?.addEventListener('click', () => deleteModal && deleteModal.classList.add('hidden'));
+
+  // ---------- View Details modal close handlers ----------
+const closeViewDetailsModal = document.getElementById('closeViewDetailsModal'); // X icon top right
+const closeViewDetailsBtn = document.getElementById('closeViewDetailsBtn');     // bottom big close btn
+const viewDetailsModal = document.getElementById('viewDetailsModal');
+
+closeViewDetailsModal?.addEventListener('click', () => viewDetailsModal?.classList.add('hidden'));
+closeViewDetailsBtn?.addEventListener('click', () => viewDetailsModal?.classList.add('hidden'));
+
+// close when clicking OUTSIDE modal box
+viewDetailsModal?.addEventListener('click', (e) => {
+  if (e.target.id === 'viewDetailsModal') {
+    viewDetailsModal.classList.add('hidden');
+  }
+});
 
 
   addJobFieldBtn?.addEventListener('click', () => {
@@ -569,5 +740,5 @@ cancelDelete?.addEventListener('click', () => deleteModal && deleteModal.classLi
 
   // allow external call to rebuild cache
   window.__rebuildClientsCache = function () { buildOriginalRowsCache(); applyFilters(); };
-
+  
 })();
