@@ -74,5 +74,5 @@ alembic
 psycopg2
 pdf2image-1.17.0
 PyMuPDF
-pytesseract-0.3.13
+pytesseract==0.3.13
 textract==1.6.5
