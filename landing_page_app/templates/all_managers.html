@@ -342,7 +342,7 @@ async function loadManagers() {
       });
     }
 
-    rows.forEach(m => {
+    rows.forEach((m, index) => {
       managersCache[m.manager_id] = m;
       const isActive = m.status && m.status.toLowerCase() === 'active';
       const statusBadge = isActive ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>' : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactive</span>';
@@ -365,7 +365,7 @@ async function loadManagers() {
       tr.setAttribute('data-manager-page', managerPageLink);
 
       tr.innerHTML = `
-        <td class="px-4 py-3 text-sm font-medium text-gray-900">${m.manager_id}</td>
+        <td class="px-4 py-3 text-sm font-medium text-gray-900">${index + 1}</td>
         <td class="px-4 py-3 text-sm text-gray-900">${m.manager_name}</td>
         <td class="px-4 py-3 text-sm text-gray-900">${m.client_name || '-'}</td>
         <td class="px-4 py-3 text-sm">${statusBadge}</td>

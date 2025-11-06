@@ -528,21 +528,10 @@ def remove_user(user_id: int, db: Session = Depends(get_db), user_email: str | N
         return RedirectResponse(url="/admin?tab=allusers&error=User%20not%20found", status_code=302)
 
     try:
-        # 🧩 Step 1: Delete any impersonation records pointing to this user.
-        # Your table only has "target_user_id", so we delete by that column only.
-        db.execute(
-            text("DELETE FROM impersonations WHERE target_user_id = :uid"),
-            {"uid": target.id}
-        )
-
-        # 🧩 Step 2: Flush to apply dependent deletions before removing the user.
-        db.flush()
-
-        # 🧩 Step 3: Delete the user and log the admin action.
+        # 🧩 Directly delete the user and log the admin action.
         db.delete(target)
         db.add(UserLog(user_id=admin.id, action=f"REMOVED {target.email}"))
 
-        # 🧩 Step 4: Commit everything.
         db.commit()
 
         return RedirectResponse(url="/admin?tab=allusers&msg=User%20removed", status_code=302)
@@ -567,7 +556,6 @@ def remove_user(user_id: int, db: Session = Depends(get_db), user_email: str | N
 
 
 
-# ------------------------------ CSV upload ------------------------------
 # ------------------------------ CSV upload ------------------------------
 @router.post("/upload-csv")
 def upload_csv(
