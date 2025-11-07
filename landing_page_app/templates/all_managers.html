@@ -80,7 +80,6 @@
             <tr>
               <th class="px-4 py-3 text-left font-semibold text-sm">ID</th>
               <th class="px-4 py-3 text-left font-semibold text-sm">Manager Name</th>
-              <!-- Email column removed as requested -->
               <th class="px-4 py-3 text-left font-semibold text-sm">Client</th>
               <th class="px-4 py-3 text-left font-semibold text-sm">Status</th>
               <th class="px-4 py-3 text-left font-semibold text-sm">Created At</th>
@@ -124,10 +123,6 @@
         <div>
           <label class="block text-sm font-medium text-gray-700">Manager Name</label>
           <input id="modalManagerName" name="manager_name" type="text" class="mt-1 block w-full border rounded px-3 py-2" required />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Email</label>
-          <input id="modalManagerEmail" name="manager_email" type="email" class="mt-1 block w-full border rounded px-3 py-2" />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700">Client</label>
@@ -258,7 +253,6 @@ const cancelEditManager = document.getElementById('cancelEditManager');
 const editManagerForm = document.getElementById('editManagerForm');
 const modalManagerId = document.getElementById('modalManagerId');
 const modalManagerName = document.getElementById('modalManagerName');
-const modalManagerEmail = document.getElementById('modalManagerEmail');
 const modalClientSelect = document.getElementById('modalClientSelect');
 const modalManagerStatus = document.getElementById('modalManagerStatus');
 
@@ -535,7 +529,6 @@ function openEditManagerModal(id) {
   if (!m) { alert('Manager data not available'); return; }
   modalManagerId.value = id;
   modalManagerName.value = m.manager_name || '';
-  modalManagerEmail.value = m.manager_email && m.manager_email !== '-' ? m.manager_email : '';
   modalClientSelect.value = m.client_id || '';
   modalManagerStatus.value = m.status && m.status.toLowerCase() === 'active' ? 'Active' : 'Inactive';
   editManagerForm.action = `/clients/all_managers/edit/${id}`;

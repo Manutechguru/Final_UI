@@ -23,7 +23,19 @@ body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-
 .header-actions { display:flex; gap:16px; align-items:center; }
 
 .manager-info { display:flex; gap:12px; align-items:center; background:white; padding:12px 16px; border-radius:var(--radius); box-shadow:var(--shadow); }
-.manager-avatar{ width:40px; height:40px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-weight:600; }
+.manager-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(to right, #4f46e5, #8b5cf6); /* purple gradient */
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
 .manager-details h3 { margin:0; font-size:16px; font-weight:600; }
 .manager-details p { margin:4px 0 0; color:var(--gray-500); font-size:14px; }
 
@@ -1106,8 +1118,8 @@ body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-
                   <td class="px-6 py-4 align-middle action-cell">
                     <div class="action-buttons-container">
                       <!-- View Candidates Button -->
-                      <a href="/managers/jobs/{{ job.job_id }}/candidates" class="view-candidates-btn" title="View Candidates">
-                        View Candidates
+                      <a href="/managers/jobs/{{ job.job_id }}/candidates" class="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-medium">
+                      View Candidates
                       </a>
 
                       <!-- UPDATED: 3-dots dropdown menu from managers code -->
