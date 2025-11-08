@@ -133,25 +133,50 @@ def shortlist_redirect(
 def update_candidate_stage(
     candidate_id: int,
     payload: dict = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)  # ✅ to identify who changed stage
 ):
+    from landing_page_app.models.log import UserLog
+    from landing_page_app.models.candidates import Candidate
+    from landing_page_app.models.jobs import Job  # <-- if job model is named Job
+
     stage = payload.get("stage")
     jd_id = payload.get("jd_id")
+
     if not stage or not jd_id:
         raise HTTPException(status_code=400, detail="Stage and JD ID required")
-    
+
+    # find candidate mapping
     mapping = db.query(CandidateJDMapping).filter(
         CandidateJDMapping.jd_id == jd_id,
         CandidateJDMapping.candidate_id == candidate_id
     ).first()
-    
+
     if not mapping:
         raise HTTPException(status_code=404, detail="Candidate mapping not found.")
-    
+
+    old_stage = mapping.stage
     mapping.stage = stage
     mapping.updated_at = datetime.utcnow()
+
+    # ✅ fetch candidate and job names for log message
+    candidate = db.query(Candidate).filter(Candidate.candidates_id == candidate_id).first()
+    job = db.query(Job).filter(Job.job_id == jd_id).first()
+
+    candidate_name = candidate.candidate_name if candidate else f"ID {candidate_id}"
+    job_title = job.job_title if job else f"JD ID {jd_id}"
+
+    # ✅ build log text same as other entries
+    log_text = (
+        f"{user.full_name} changed stage of candidate {candidate_name} "
+        f"from {old_stage or 'N/A'} to {stage} under job {job_title}"
+    )
+
+    db.add(UserLog(user_id=user.id, action=log_text))
+
     db.commit()
     return JSONResponse({"message": f"Updated stage to {stage}"})
+
 
 # -----------------------------
 # UPDATE RECRUITER NOTES
