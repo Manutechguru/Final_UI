@@ -267,9 +267,84 @@ body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-
 .btn-secondary { padding:8px 12px; border-radius:6px; background:var(--gray-100); border:none; cursor:pointer; color:var(--gray-700); }
 .btn-danger { padding:10px 16px; border-radius:6px; background:var(--danger); color:white; border:none; cursor:pointer; }
 
-/* toast */
-#toastContainer { position:fixed; bottom:20px; right:20px; z-index:12000; display:flex; flex-direction:column; gap:10px; }
-.toast { background:var(--success); color:#fff; padding:12px 16px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12); display:flex; align-items:center; justify-content:space-between; min-width:220px; }
+/* -------------------- Modern Toast Style (jobs page) -------------------- */
+#toastContainer {
+  position: fixed;
+  right: 24px;
+  bottom: 80px;               /* moved up from bottom */
+  z-index: 12000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toast {
+  background: #ffffff;
+  border-left: 4px solid #4f46e5; /* indigo accent */
+  border-radius: 12px;
+  box-shadow: 0 6px 30px rgba(2,6,23,0.12);
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 14px;
+  min-width: 300px;
+  max-width: 360px;
+  color: #111827;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  position: relative;
+  animation: toast-slide-in 0.28s ease;
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.toast .toast-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #eef2ff;    /* light indigo */
+  color: #4f46e5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 12px;
+  margin-top: 2px;
+}
+
+.toast .toast-body {
+  flex: 1 1 auto;
+}
+
+.toast .toast-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+  color: #111827;
+}
+
+.toast .toast-msg {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.3;
+}
+
+.toast .toast-close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+.toast .toast-close:hover { color: #6b7280; }
+
+/* Responsive */
+@media (max-width: 420px) {
+  #toastContainer { right: 12px; left: 12px; bottom: 72px; align-items: center; }
+  .toast { width: 100%; max-width: none; }
+}
 
 /* Google Drive style icons */
 .icon { display: inline-block; width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; background-position: center; }
@@ -2154,33 +2229,61 @@ function formatLocalYMDHMS(d){
 }
 
 // FIXED: Improved toast function with proper message types
-function showToast(message, type = 'success', duration = 3000) {
-  const c = document.getElementById('toastContainer');
+// Modern toast for jobs page (use same call signature as before)
+function showToast(message, type = 'success', duration = 3500, opts = {}) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return console.warn('No toast container found');
+
+  // Build toast element
   const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  
-  // Set background color based on type
-  switch(type) {
-    case 'success':
-      el.style.background = 'var(--success)';
-      break;
-    case 'error':
-      el.style.background = 'var(--danger)';
-      break;
-    case 'warning':
-      el.style.background = '#f59e0b';
-      break;
-    case 'info':
-      el.style.background = 'var(--primary)';
-      break;
-    default:
-      el.style.background = 'var(--success)';
+  el.className = 'toast';
+
+  // Title mapping by type (you can override by passing opts.title)
+  const titleMap = { success: 'Success', error: 'Error', warning: 'Notice', info: 'Info' };
+  const title = opts.title || titleMap[type] || 'Notice';
+
+  // Icon (checkmark for success, exclamation for warning/error, info for info)
+  let iconSvg = '';
+  if (type === 'success') {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"></path></svg>`;
+  } else if (type === 'error') {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>`;
+  } else if (type === 'warning') {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>`;
+  } else {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`;
   }
-  
-  el.innerHTML = `<span>${message}</span><button aria-label="Close" onclick="this.parentElement.remove()">×</button>`;
-  c.appendChild(el);
-  setTimeout(() => { if(el.parentElement) el.remove(); }, duration);
+
+  el.innerHTML = `
+    <div class="toast-icon">${iconSvg}</div>
+    <div class="toast-body">
+      <div class="toast-title">${escapeHtml(title)}</div>
+      <div class="toast-msg">${escapeHtml(message)}</div>
+    </div>
+    <button class="toast-close" aria-label="Close">&times;</button>
+  `;
+
+  // Close handler
+  const closeBtn = el.querySelector('.toast-close');
+  function removeToast() {
+    if (!el.parentElement) return;
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(18px)';
+    setTimeout(() => { if (el.parentElement) el.remove(); }, 220);
+  }
+  closeBtn.addEventListener('click', removeToast);
+
+  // Append and auto-dismiss
+  container.appendChild(el);
+  setTimeout(removeToast, duration);
 }
+
+// small helper: safe-escape inner text (protect against accidental HTML)
+function escapeHtml(str) {
+  if (typeof str !== 'string') return String(str);
+  return str.replace(/[&<>"'`=\/]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'})[s]; });
+}
+
 
 // Update job status in UI
 function updateJobStatusInUI(jobId, newStatus, updatedAtStr, updatedBy) {
