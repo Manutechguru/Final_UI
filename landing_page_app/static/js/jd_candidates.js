@@ -558,14 +558,59 @@ function handleDownloadXlsx() {
   }
 }
 // Toast + dialogs
-function showToast(msg, type='default', time=3000) {
-  const c = document.getElementById('toastContainer'); if (!c) return;
-  const el = document.createElement('div'); el.className = `toast ${type !== 'default' ? 'toast-'+type : ''}`;
-  el.innerHTML = `<span>${msg}</span><button class="toast-close">&times;</button>`;
-  el.querySelector('.toast-close').onclick = () => el.remove();
+// Modern white-card toast implementation (shortlisted / JD candidates)
+function showToast(msg, type = 'success', time = 3000) {
+  const c = document.getElementById('toastContainer');
+  if (!c) return;
+
+  // Build container piece
+  const el = document.createElement('div');
+  el.className = 'toast';
+  // Map type to title (optional)
+  const titleMap = { success: 'Success', error: 'Error', warning: 'Notice', info: 'Info', default: '' };
+  const title = titleMap[type] || titleMap['default'];
+
+  // icon selection
+  let iconSvg = '';
+  if (type === 'success') {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"></path></svg>`;
+  } else if (type === 'error') {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>`;
+  } else if (type === 'warning') {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>`;
+  } else {
+    iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`;
+  }
+
+  // Escape function to prevent accidental HTML injection
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return String(str);
+    return str.replace(/[&<>"'`=\/]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'})[s]; });
+  }
+
+  el.innerHTML = `
+    <div class="toast-icon">${iconSvg}</div>
+    <div class="toast-body">
+      ${ title ? `<div class="toast-title">${escapeHtml(title)}</div>` : '' }
+      <div class="toast-msg">${escapeHtml(msg)}</div>
+    </div>
+    <button class="toast-close" aria-label="Close">&times;</button>
+  `;
+
+  // close handler
+  const closeBtn = el.querySelector('.toast-close');
+  const remove = () => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(18px)';
+    setTimeout(() => { try { el.remove(); } catch(e){} }, 220);
+  };
+  closeBtn && closeBtn.addEventListener('click', remove);
+
   c.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, time);
+  // auto dismiss
+  setTimeout(remove, time);
 }
+
 let confirmCallback=null;
 function showConfirmation(title,msg,cb){document.getElementById('confirmationTitle').textContent=title;document.getElementById('confirmationMessage').textContent=msg;confirmCallback=cb;document.getElementById('confirmationDialog').classList.add('open');}
 function closeConfirmationDialog(){document.getElementById('confirmationDialog').classList.remove('open');confirmCallback=null;}
