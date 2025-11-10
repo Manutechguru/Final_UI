@@ -296,4 +296,10 @@
 </div>
 
 <script src="{{ url_for('static', path='js/new_arrivals.js') }}"></script>
+<script>
+  // If backend passed a combined message via the ?message= query (base.py does this),
+  // expose it to the JS toast system. JS will read this value during DOMContentLoaded.
+  window.__SERVER_TOAST_MESSAGE = {{ message|tojson or '""' }};
+  // nothing else here — the JS handles showing the toast
+</script>
 {% endblock %}

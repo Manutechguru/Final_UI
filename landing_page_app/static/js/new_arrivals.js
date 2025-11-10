@@ -5,6 +5,74 @@
 (function () {
   'use strict';
 
+  // ---------- Simple toast/notification system ----------
+  // A11y + small non-blocking toasts shown in bottom-right corner.
+  const TOAST_CONTAINER_ID = 'appToastContainer';
+
+  function ensureToastContainer() {
+    let c = document.getElementById(TOAST_CONTAINER_ID);
+    if (!c) {
+      c = document.createElement('div');
+      c.id = TOAST_CONTAINER_ID;
+      c.setAttribute('aria-live', 'polite');
+      c.setAttribute('aria-atomic', 'false');
+      c.style.position = 'fixed';
+      c.style.right = '20px';
+      c.style.bottom = '20px';
+      c.style.zIndex = '100000';
+      c.style.display = 'flex';
+      c.style.flexDirection = 'column';
+      c.style.gap = '10px';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+
+  // showToast(message, { type: 'success'|'error'|'info', duration: ms })
+  function showToast(message, opts = {}) {
+  const title = opts.title || "Success";
+  const duration = typeof opts.duration === "number" ? opts.duration : 4000;
+
+  const container = ensureToastContainer();
+
+  const toast = document.createElement("div");
+  toast.className = "app-toast";
+
+  toast.innerHTML = `
+    <div class="app-toast__icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 9l3 3L13 7"></path>
+      </svg>
+    </div>
+    <div class="app-toast__content">
+      <div class="app-toast__title">${title}</div>
+      <div class="app-toast__message">${message}</div>
+    </div>
+    <button class="app-toast__close" aria-label="Close">&times;</button>
+  `;
+
+  const closeBtn = toast.querySelector(".app-toast__close");
+  const dismiss = () => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(20px)";
+    setTimeout(() => toast.remove(), 200);
+  };
+  closeBtn.addEventListener("click", dismiss);
+
+  container.appendChild(toast);
+  setTimeout(dismiss, duration);
+}
+
+  window.showServerMessage = function (message) {
+    if (!message) return;
+    // message may contain pipe separators if backend combined messages
+    const parts = message.split('|').map(p => p.trim()).filter(Boolean);
+    parts.forEach(p => {
+      // If backend message already includes "Client 'name' ..." we show as-is.
+      showToast(p, { type: 'success' });
+    });
+  };
+
   // ---------- DOM Elements ----------
   const filterSidebar = document.getElementById('filterSidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -355,29 +423,15 @@
       });
     });
 
-    // status toggles: note - template uses inline onchange="toggleActive('{id}', this)" so we don't rely on data attr
-    // but we still ensure any dynamically-rendered checkboxes behave if they were added without inline handler.
+    // status toggles — no need to rebind, HTML already calls toggleActive() inline
+    // just ensure the checkboxes have correct dataset attributes if needed
     document.querySelectorAll('input[type="checkbox"]').forEach(chk => {
-      // only attach if checkbox appears to be a status toggle (has a .status-text sibling) to avoid interfering with other checkboxes
-      const statusText = chk.closest('td')?.querySelector('.status-text');
-      if (!statusText) return;
-      // ensure an onchange exists
-      if (!chk.getAttribute('data-toggle-bound')) {
-        chk.setAttribute('data-toggle-bound', '1');
-        chk.addEventListener('change', function () {
-          // prefer inline handler if present, otherwise call our toggle
-          const clientIdInline = chk.getAttribute('data-toggle-client-id');
-          if (clientIdInline) {
-            window.toggleActive(clientIdInline, chk);
-          } else {
-            // try to retrieve id from row data
-            const row = chk.closest('tr');
-            const idFromRow = row ? (row.dataset.clientId || discoverClientIdFromRowElement(row)) : '';
-            if (idFromRow) window.toggleActive(idFromRow, chk);
-          }
-        });
-      }
-    });
+      if (chk.closest('td')?.querySelector('.status-text')) {
+      // mark as handled so we don't double attach later
+      chk.setAttribute('data-toggle-bound', '1');
+    }
+  });
+
   }
 
   // ---------- Edit (match backend: POST /clients/edit/{id} with form field new_name) ----------
@@ -400,7 +454,8 @@
           editModal && editModal.classList.add('hidden');
           updateClientNameInCache(id, newName);
           applyFilters();
-          // alert('Client updated successfully.');
+          // show toast instead of alert
+          showToast(`Client '${newName}' edited successfully.`);
           return;
         } else {
           const text = await safeText(res);
@@ -445,7 +500,7 @@
         editModal && editModal.classList.add('hidden');
         updateClientNameInCache(id, newName);
         applyFilters();
-        alert('Client updated successfully (via fallback).');
+        showToast(`Client '${newName}' edited successfully (via fallback).`);
       } else {
         const le = result.lastError || {};
         let msg = '';
@@ -482,12 +537,22 @@
       const res = await fetch(primary, { method: 'POST' });
       if (res.ok) {
         deleteModal && deleteModal.classList.add('hidden');
+        // derive client name for toast (try to find from cache)
+        let clientName = pending;
+        for (let i = 0; i < originalRows.length; i++) {
+          const or = originalRows[i];
+          const cid = (or.dataset.clientId || discoverClientIdFromRowElement(or) || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
+          if (cid === pending) {
+            clientName = (or.querySelector('td')?.textContent || pending);
+            break;
+          }
+        }
         originalRows = originalRows.filter(or => {
           const cid = (or.dataset.clientId || discoverClientIdFromRowElement(or) || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
           return cid !== pending;
         });
         applyFilters();
-        //alert('Client deleted successfully.');
+        showToast(`Client '${clientName}' deleted successfully.`);
         this.disabled = false;
         this.textContent = 'Delete';
         return;
@@ -513,12 +578,22 @@
 
     if (result.ok) {
       deleteModal && deleteModal.classList.add('hidden');
-      originalRows = originalRows.filter(or => {
+      // try to find name
+      let clientName = pending;
+      for (let i = 0; i < originalRows.length; i++) {
+        const or = originalRows[i];
         const cid = (or.dataset.clientId || discoverClientIdFromRowElement(or) || (or.querySelectorAll('td')[1] || {}).textContent || '').toString().trim();
+        if (cid === pending) {
+          clientName = (or.querySelector('td')?.textContent || pending);
+          break;
+        }
+      }
+      originalRows = originalRows.filter(or => {
+        const cid = (or.dataset.clientId || discoverClientIdFromElement(or) || discoverClientIdFromRowElement(or) || '').toString().trim();
         return cid !== pending;
       });
       applyFilters();
-      alert('Client deleted successfully (via fallback).');
+      showToast(`Client '${clientName}' deleted successfully (via fallback).`);
     } else {
       const le = result.lastError || {};
       let msg = '';
@@ -572,6 +647,12 @@
     try {
       const res = await fetch(primary, { method: 'POST' });
       if (res && res.ok) {
+        // show toast for activation/deactivation
+        // attempt to find client name
+        let clientName = clientId;
+        const row = checkboxEl.closest('tr');
+        if (row) clientName = (row.querySelector('td')?.textContent || clientId);
+        showToast(`Client '${clientName}' ${newChecked ? 'activated' : 'inactivated'} successfully.`);
         checkboxEl.disabled = false;
         return;
       }
@@ -584,6 +665,10 @@
     const body = JSON.stringify({ status: newChecked ? 'active' : 'inactive' });
     const res2 = await tryEndpointsSequentially(fallbackUrls, (url) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body }));
     if (res2.ok) {
+      let clientName = clientId;
+      const row = checkboxEl.closest('tr');
+      if (row) clientName = (row.querySelector('td')?.textContent || clientId);
+      showToast(`Client '${clientName}' ${newChecked ? 'activated' : 'inactivated'} successfully.`);
       checkboxEl.disabled = false;
       return;
     }
@@ -591,6 +676,10 @@
     // second fallback: PATCH attempts
     const res3 = await tryEndpointsSequentially(fallbackUrls, (url) => ({ method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body }));
     if (res3.ok) {
+      let clientName = clientId;
+      const row = checkboxEl.closest('tr');
+      if (row) clientName = (row.querySelector('td')?.textContent || clientId);
+      showToast(`Client '${clientName}' ${newChecked ? 'activated' : 'inactivated'} successfully.`);
       checkboxEl.disabled = false;
       return;
     }
@@ -726,6 +815,15 @@ viewDetailsModal?.addEventListener('click', (e) => {
       filterSidebar && filterSidebar.classList.add('-translate-x-full');
       sidebarOverlay && sidebarOverlay.classList.add('hidden');
     }
+
+    // If server injected a message via global variable (set by template), show it.
+    if (window.__SERVER_TOAST_MESSAGE) {
+      try {
+        window.showServerMessage(window.__SERVER_TOAST_MESSAGE);
+        // clear it so repeated DOMContentLoaded won't re-show
+        window.__SERVER_TOAST_MESSAGE = '';
+      } catch (e) { /* ignore */ }
+    }
   });
 
   window.addEventListener('resize', () => {
@@ -740,5 +838,11 @@ viewDetailsModal?.addEventListener('click', (e) => {
 
   // allow external call to rebuild cache
   window.__rebuildClientsCache = function () { buildOriginalRowsCache(); applyFilters(); };
-  
+
+  // helper (small safe alias used above)
+  function discoverClientIdFromElement(el) {
+    const row = el.closest && el.closest('tr');
+    return row ? discoverClientIdFromRowElement(row) : '';
+  }
+
 })();
