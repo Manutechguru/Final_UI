@@ -101,17 +101,74 @@ document.addEventListener('DOMContentLoaded', function () {
     ta.innerHTML = str;
     return ta.value;
   }
-function showToast(msg, type='default', time=3200) {
-    try {
-      const c = document.getElementById('richToastContainer') || document.body;
-      const el = document.createElement('div');
-      el.className = 'rich-toast' + (type==='success' ? ' success' : '');
-      el.innerHTML = `<div class="rt-left">${type==='success' ? '✔' : ''}</div><div style="flex:1;"><div class="rt-main">${escapeHtml(msg)}</div></div><button class="rt-close" aria-label="Close">&times;</button>`;
-      c.appendChild(el);
-      el.querySelector('.rt-close').addEventListener('click', ()=>el.remove());
-      setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, time);
-    } catch(e){}
+// Modern white-card toast (search page)
+function showToast(msg, type = 'default', time = 3200) {
+  try {
+    // ensure container exists
+    let container = document.getElementById('richToastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'richToastContainer';
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('aria-atomic', 'true');
+      document.body.appendChild(container);
+    }
+
+    // Build toast node
+    const el = document.createElement('div');
+    el.className = 'rich-toast';
+    el.dataset.type = type || 'default';
+
+    // pick icon (simple characters / SVG) based on type
+    const icons = {
+      success: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"></path></svg>',
+      error:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>',
+      info:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>',
+      default: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path></svg>'
+    };
+    const iconHtml = icons[type] || icons['default'];
+
+    // Title mapping (optional)
+    const titleMap = { success: 'Success', error: 'Error', warning: 'Notice', info: 'Info', default: '' };
+    const titleText = titleMap[type] || '';
+
+    // escape message
+    const escapeHtml = function (s) {
+      if (s === null || s === undefined) return '';
+      return String(s).replace(/[&<>"']/g, function (m) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]);
+      });
+    };
+
+    // create inner structure
+    el.innerHTML = `
+      <div class="rt-left">${iconHtml}</div>
+      <div class="rt-body">
+        ${ titleText ? `<div class="rt-title">${escapeHtml(titleText)}</div>` : '' }
+        <div class="rt-msg">${escapeHtml(msg)}</div>
+      </div>
+      <button class="rt-close" aria-label="Close">&times;</button>
+    `;
+
+    // close behavior
+    const closeBtn = el.querySelector('.rt-close');
+    closeBtn && closeBtn.addEventListener('click', () => {
+      try { el.style.opacity = '0'; el.style.transform = 'translateX(12px)'; setTimeout(()=>el.remove(), 220); } catch(e){}
+    });
+
+    // append
+    container.appendChild(el);
+
+    // auto-dismiss
+    setTimeout(() => {
+      try { el.style.opacity = '0'; el.style.transform = 'translateX(12px)'; setTimeout(()=>el.remove(), 220); } catch(e){}
+    }, typeof time === 'number' ? time : 3200);
+  } catch (err) {
+    // fallback: simple alert if toast fails
+    try { console.warn('showToast failed', err); } catch(e){}
   }
+}
+
 
   // --- dropdown persistence ---
   function saveDropdownState() {
