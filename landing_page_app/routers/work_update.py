@@ -21,6 +21,7 @@ from fastapi import APIRouter, Request, Depends, Form, status, HTTPException, Up
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
+
 # Signing utility
 try:
     from itsdangerous import URLSafeSerializer, BadSignature
@@ -72,6 +73,12 @@ if get_current_user is None:
         get_current_user = None
 
 router = APIRouter(tags=["Work Update"])
+
+# --- SAFE optional auth wrapper ---
+def get_current_user_optional(
+    current_user=Depends(lambda: None) if get_current_user is None else Depends(get_current_user),
+):
+    return current_user
 
 # -------------------------
 # Minimal DB model for storing Google OAuth tokens (separate table)
@@ -606,132 +613,46 @@ def work_update_oauth2callback(request: Request, db: Session = Depends(get_db)):
             "manager_email": os.getenv("DEFAULT_MANAGER_EMAIL", "")
         }, status_code=500)
 
-    # Success landing page (shows confirmation) and sets helper signed cookie
-    landing_html = """
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Authorization successful</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    body { font-family: Inter, Arial, sans-serif; background:#f8fafc; color:#0f172a; margin:0; display:flex; align-items:center; justify-content:center; height:100vh; }
-    .card { background:#fff; padding:26px; border-radius:12px; box-shadow:0 10px 30px rgba(2,6,23,0.08); max-width:640px; text-align:center; }
-    h1 { margin:6px 0 8px; font-size:20px; }
-    p { color:#475569; margin:8px 0 16px; }
-    .btn { display:inline-block; padding:10px 16px; border-radius:8px; text-decoration:none; font-weight:700; }
-    .btn-primary { background:#0ea5a4; color:#fff; border:none; }
-    .btn-plain { background:#fff; border:1px solid #e2e8f0; color:#0f172a; margin-left:8px; }
-    .note { margin-top:14px; color:#94a3b8; font-size:13px; }
-    .status { margin-top:12px; color:#64748b; font-size:14px; }
-  </style>
-</head>
-<body>
-  <div class="card" role="dialog" aria-modal="true">
-    <div style="font-size:48px;color:#10b981;">✔</div>
-    <h1>Google authorized ✔</h1>
-    <p>Your Google account was connected successfully. Click Continue to go to Work Update or wait — we'll take you there automatically.</p>
+    # ✅ FINAL: redirect directly to work-update after OAuth
+    resp = RedirectResponse(
+        url="/work-update?authorized=1",
+        status_code=303
+    )
 
-    <div>
-      <a id="continueBtn" class="btn btn-primary" href="/work-update?authorized=1">Continue to Work Update</a>
-      <a id="homeBtn" class="btn btn-plain" href="/templates">Go to Home</a>
-    </div>
-
-    <div class="status" id="status">Checking app session…</div>
-    <div class="note">If you are not signed in, please sign in and then click Continue.</div>
-  </div>
-
-  <script>
-    (function(){
-      const maxRetries = 10;
-      const retryDelay = 900; // ms
-      let attempts = 0;
-      const statusEl = document.getElementById('status');
-
-      function tryPoll() {
-        attempts++;
-        statusEl.textContent = 'Checking app session… (attempt ' + attempts + ' of ' + maxRetries + ')';
-        fetch('/work-update/poll', { method: 'GET', credentials: 'include', redirect: 'manual' })
-          .then(resp => {
-            if (resp.status === 200) {
-              window.location.href = '/work-update?authorized=1';
-            } else if (resp.status === 401) {
-              if (attempts < maxRetries) {
-                setTimeout(tryPoll, retryDelay);
-              } else {
-                statusEl.textContent = 'Still not authenticated. Click Continue to retry after login, or use "Go to Home" to return.';
-              }
-            } else {
-              if (attempts < maxRetries) {
-                setTimeout(tryPoll, retryDelay);
-              } else {
-                statusEl.textContent = 'Could not confirm session. Use Continue to try or log in and then return.';
-              }
-            }
-          })
-          .catch(err => {
-            if (attempts < maxRetries) {
-              setTimeout(tryPoll, retryDelay);
-            } else {
-              statusEl.textContent = 'Network error while checking session. Click Continue to try again.';
-            }
-          });
-      }
-
-      setTimeout(tryPoll, 350);
-
-      document.getElementById('continueBtn').addEventListener('click', function(e){
-        e.preventDefault();
-        attempts = 0;
-        statusEl.textContent = 'Retrying…';
-        tryPoll();
-      });
-    })();
-  </script>
-</body>
-</html>
-"""
-    resp = HTMLResponse(content=landing_html, status_code=200)
-
-    # helper cookie so frontend can show authorized toast if needed
-    resp.set_cookie("has_google_token", "1", path="/", max_age=120, httponly=False, samesite="lax")
-
-    # set signed helper cookie with uid so /work-update/poll can detect token present
-    try:
-        signed = sign_uid(user_id)
-        if signed:
-            resp.set_cookie(
-                "oauth_uid", signed,
-                path="/",
-                max_age=120,
-                httponly=False,
-                samesite="None",   # allow cross-site
-                secure=False        # useful for localhost (set True in prod)
-            )
-
-    except Exception:
-        pass
+    # short-lived helper cookie (OAuth bridge)
+    signed = sign_uid(user_id)
+    if signed:
+        resp.set_cookie(
+            "oauth_uid",
+            signed,
+            path="/",
+            max_age=120,
+            httponly=False,
+            samesite="lax",
+            secure=False  # set True in production HTTPS
+        )
 
     return resp
 
+
 @router.get("/work-update/poll")
-def work_update_poll(request: Request, db: Session = Depends(get_db), current_user=Depends(lambda: None) if get_current_user is None else Depends(get_current_user)):
+def work_update_poll(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(lambda: None) if get_current_user is None else Depends(get_current_user),
+):
+    # ✅ Case 1: User session already exists
     if current_user:
         return JSONResponse({"authenticated": True}, status_code=200)
 
-    # check signed helper cookie
-    try:
-        signed = request.cookies.get("oauth_uid")
-        uid = None
-        if signed:
-            uid = unsign_uid(signed)
+    # ✅ Case 2: OAuth just completed — trust token existence
+    signed = request.cookies.get("oauth_uid")
+    if signed:
+        uid = unsign_uid(signed)
         if uid:
-            # ensure token row exists for this uid
-            row = get_user_token_row(db, uid)
-            if row:
-                return JSONResponse({"authenticated": True, "using": "oauth_uid"}, status_code=200)
-    except Exception:
-        pass
+            token = get_user_token_row(db, uid)
+            if token:
+                return JSONResponse({"authenticated": True}, status_code=200)
 
     return JSONResponse({"detail": "Not authenticated"}, status_code=401)
 
@@ -739,18 +660,43 @@ def work_update_poll(request: Request, db: Session = Depends(get_db), current_us
 def work_update_form(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(lambda: None) if get_current_user is None else Depends(get_current_user),
 ):
-    if current_user is None:
-        return RedirectResponse(url="/login?next=/work-update", status_code=302)
+    # -------------------------
+    # Auth resolution (OAuth-safe) — MUST BE FIRST
+    # -------------------------
+    current_user = getattr(request.state, "user", None)
 
+    # If no session yet, allow OAuth bridge
+    if current_user is None:
+        signed = request.cookies.get("oauth_uid")
+        if signed:
+            uid = unsign_uid(signed)
+            if uid:
+                # Minimal user stub (DB token check is authoritative)
+                current_user = type(
+                    "OAuthUser",
+                    (),
+                    {"id": uid, "email": "", "manager_email": ""}
+                )()
+            else:
+                return RedirectResponse("/login?next=/work-update", status_code=302)
+        else:
+            return RedirectResponse("/login?next=/work-update", status_code=302)
+
+    # -------------------------
+    # Existing logic (UNCHANGED)
+    # -------------------------
     _ensure_db_tables(db)
 
-    manager_email = getattr(current_user, "manager_email", None) or os.getenv("DEFAULT_MANAGER_EMAIL", "")
+    manager_email = getattr(current_user, "manager_email", None) or os.getenv(
+        "DEFAULT_MANAGER_EMAIL", ""
+    )
 
     has_google_token = False
     try:
-        has_google_token = check_user_token_in_db(db, getattr(current_user, "id", None))
+        has_google_token = check_user_token_in_db(
+            db, getattr(current_user, "id", None)
+        )
     except Exception:
         has_google_token = False
 
@@ -762,13 +708,6 @@ def work_update_form(
         "has_google_token": has_google_token,
     }
     return templates.TemplateResponse("base.html", context)
-
-# --- import add_user_log for activity logging (minimal change) ---
-try:
-    from landing_page_app.models.log import add_user_log
-except Exception:
-    def add_user_log(db: Session, user_id: int, action: str, commit: bool = False):
-        return None
 
 @router.post("/work-update/send")
 def work_update_send(

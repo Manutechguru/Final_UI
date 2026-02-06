@@ -350,9 +350,77 @@
   </div>
 </div>
 
+<!-- ================= PREBOARDING VERIFICATION MODAL ================= -->
+<div id="preboardingModal" class="custom-modal" aria-hidden="true" role="dialog">
+  <div class="custom-modal-content" style="max-width:900px; position:relative;">
+
+    <!-- ✅ REQUIRED CLOSE BUTTON (DO NOT CHANGE CLASS NAME) -->
+    <button
+      type="button"
+      class="custom-modal-close"
+      aria-label="Close Preboarding"
+      onclick="closePreboardingModal()">
+      &times;
+    </button>
+
+    <div class="custom-modal-header-strip">
+      <h3>Preboarding Verification</h3>
+    </div>
+
+    <div
+      id="preboardingModalContent"
+      class="custom-modal-body"
+      style="padding:16px; height:70vh; display:fledx; flex-direction:column; overflow-y:auto;">
+    </div>
+  </div>
+</div>
+
+<!-- ================= ONBOARDING MODAL ================= -->
+<div id="onboardingModal" class="custom-modal" aria-hidden="true" role="dialog">
+  <div class="custom-modal-content" style="max-width:900px; position:relative;">
+
+    <!-- Close Button -->
+    <button
+      type="button"
+      class="custom-modal-close"
+      aria-label="Close Onboarding"
+      onclick="closeOnboardingModal()">
+      &times;
+    </button>
+
+    <!-- Header -->
+    <div class="custom-modal-header-strip">
+      <h3>Onboarding Process</h3>
+    </div>
+
+    <!-- ✅ CHEVRON BAR (FIXED, NON-SCROLLING – SAME AS PREBOARDING) -->
+    <div id="onboardingChevronBar" class="chevron-bar"></div>
+
+    <!-- ✅ ONLY CONTENT SCROLLS -->
+    <div
+      id="onboardingModalContent"
+      class="custom-modal-body"
+      style="padding:16px; height:70vh; overflow-y:auto; overflow-x:hidden;">
+
+      <div id="onboardingStepContent"></div>
+
+    </div>
+
+  </div>
+</div>
+
 <!-- Toast container -->
 <div id="toastContainer" class="toast-container"></div>
+
+<!-- 🔐 Inject current user role BEFORE loading JS -->
+<script>
+  window.currentUserRole = "{{ user.role if user else '' }}";
+</script>
+
+
+<!-- JD Candidates Logic -->
 <script src="{{ request.url_for('static', path='js/jd_candidates.js') }}"></script>
+
 
 <script>
   // Initialize the page with data from the backend
@@ -364,7 +432,9 @@
     });
   });
 </script>
+
 <script>
   window.jdId = "{{ jd_id }}";
 </script>
+
 {% endblock %}

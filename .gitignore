@@ -1,100 +1,79 @@
-# =========================================
-# Python
-# =========================================
-__pycache__/
-*.py[cod]
-*$py.class
+# ===============================
+# ENV / SECRETS
+# ===============================
+.env
+.env.*
+gmail_tokens.json
+token.json
 
-# Virtual environment
+# ===============================
+# Python / Virtual Environments
+# ===============================
 .venv/
-env/
 venv/
-
-# Distribution / packaging
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Logs & cache
-*.log
-*.pot
+env/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# ===============================
+# Build / Distribution
+# ===============================
+build/
+dist/
+*.egg-info/
+
+# ===============================
+# Logs / Runtime Databases
+# ===============================
+*.log
 *.sqlite3
 *.db
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
+# ===============================
+# Docker / Database Dumps
+# ===============================
+*.sql
+*.dump
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# ===============================
+# User Runtime Data (YOUR APP)
+# ===============================
+uploads/
+uploaded_csv/
+invoices/
+landing_page_app/static/signatures/
 
-# VSCode / IDEs
+# ===============================
+# Temporary / Debug Files
+# ===============================
+debug_invoice.html
+tmp_invoice.html
+
+# ===============================
+# IDE / OS Garbage
+# ===============================
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
+*.lnk
 *.swp
 *.swo
 
-# =========================================
-# FastAPI / Uvicorn
-# =========================================
-# Uvicorn log files
-*.pid
+# ===============================
+# Alembic Cache ONLY (keep migrations)
+# ===============================
+alembic/**/__pycache__/
 
-# =========================================
-# Alembic (migrations)
-# =========================================
-alembic/versions/*.pyc
-alembic/versions/__pycache__/
-# (Keep .py migration files, ignore only compiled caches)
+# ===============================
+# Node (future-proof)
+# ===============================
+node_modules/
 
-# =========================================
-# Other ignores
-# =========================================
-.DS_Store
-Thumbs.db
-
-# Environment
-.env
-
-# Virtual environment
-.venv/
-venv/
-
-# Python cache
-__pycache__/
-*.pyc
-
-# OS files
-.DS_Store
-Thumbs.db
-
-#tokens
-.json
-.csv
+# ===============================
+# PDF / Exports
+# ===============================
+*.pdf
+exports/

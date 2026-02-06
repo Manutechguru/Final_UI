@@ -933,3 +933,387 @@ table.candidates td:nth-child(16) {
 .table-card .ellipsis[style*="color:var(--muted)"] {
   color: #6b7280 !important;  /* medium gray */
 }
+
+/* =========================================================
+   🔥 GLOBAL MODAL FIX (Preboarding Modal)
+   DO NOT TOUCH CandidateDetailsModal styles
+   ========================================================= */
+
+.custom-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 9999;
+}
+
+.custom-modal.open {
+  display: flex !important;
+}
+
+.custom-modal .custom-modal-content {
+  background: #ffffff;
+  border-radius: 10px;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative; 
+}
+
+/* =====================================
+   Preboarding Modal – Fixed Layout
+   ===================================== */
+
+#preboardingModal .custom-modal-content {
+  width: 100%;
+  max-width: 900px;     /* fixed width for all candidates */
+  height: 80vh;         /* fixed height */
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;     /* outer container never scrolls */
+}
+
+/* Header stays fixed at top */
+#preboardingModal .custom-modal-header-strip {
+  flex: 0 0 auto;
+  padding: 14px 18px;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+/* Only body scrolls */
+#preboardingModal #preboardingModalContent {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 18px 20px;
+  background: #ffffff;
+}
+
+#preboardingModal .custom-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+
+/* ===== PREBOARDING CLOSE BUTTON (FORCED VISIBLE) ===== */
+#preboardingCloseBtn {
+  position: fixed;              /* NOT absolute */
+  top: 18px;
+  right: 22px;
+
+  width: 44px;
+  height: 44px;
+
+  font-size: 32px;
+  line-height: 1;
+
+  background: #ffffff;
+  color: #111827;
+
+  border: none;
+  border-radius: 10px;
+
+  cursor: pointer;
+  z-index: 100000;              /* above everything */
+
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
+
+/* Hover feedback */
+#preboardingCloseBtn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+
+
+/* =====================================
+   Preboarding Content – Readability
+   ===================================== */
+
+#preboardingModalContent section,
+#preboardingModalContent .section {
+  margin-bottom: 18px;
+}
+
+#preboardingModalContent h4,
+#preboardingModalContent h5 {
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #1f2937;
+}
+
+#preboardingModalContent label {
+  font-weight: 700;
+  color: #374151;
+}
+
+#preboardingModalContent .value,
+#preboardingModalContent p {
+  color: #111827;
+  line-height: 1.5;
+}
+
+/* =========================================
+   ONBOARDING CHEVRON – FINAL POLISH
+   MATCHES PREBOARDING REFERENCE
+   ========================================= */
+
+.chevron-bar {
+  display: flex;
+  flex-wrap: nowrap;        /* ✅ force single line */
+  align-items: center;
+  gap: 6px;                 /* controlled spacing */
+  overflow: visible;         /* ✅ no scrollbar */
+  padding-bottom: 10px 0 14px 0;
+}
+
+/* Compact chevron */
+.chevron {
+  position: relative;
+  padding: 8px 26px 8px 30px;   /* 🔥 reduced size */
+  font-size: 0.78rem;           /* 🔥 smaller text */
+  font-weight: 700;
+  border: none;
+  background: #e6fbf2;
+  color: #065f46;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 1;               /* ✅ allow shrinking */
+
+  clip-path: polygon(
+    0 0,
+    calc(100% - 14px) 0,
+    100% 50%,
+    calc(100% - 14px) 100%,
+    0 100%,
+    14px 50%
+  );
+}
+
+/* First chevron */
+.chevron:first-child {
+  padding-left: 18px;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 14px) 0,
+    100% 50%,
+    calc(100% - 14px) 100%,
+    0 100%
+  );
+}
+
+.chevron:last-child {
+  margin-right: 18px;
+}
+
+/* STATES */
+.chevron.cleared {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.chevron.active {
+  background: #bbf7d0;
+  color: #065f46;
+}
+
+.chevron.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.chevron.locked {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.chevron:disabled {
+  pointer-events: none;
+}
+
+/* Subtle hover only */
+.chevron:not(.locked):hover {
+  filter: brightness(0.97);
+}
+
+.custom-modal-header-strip h3 {
+  font-weight: 800;        /* ✅ bold */
+  font-size: 1.05rem;
+  line-height: 1.3;
+  margin-top: 10px;
+  margin-bottom: 18px;     /* ✅ space below title */
+}
+
+#onboardingChevronBar {
+  margin-bottom: 22px;     /* ✅ space before main section */
+}
+
+#onboardingStepContent {
+  margin-top: 6px;
+}
+
+/* ===== ONBOARDING UI ===== */
+
+.onboarding-step {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px 22px;
+  border: 1px solid #e5e7eb;
+}
+
+.onboarding-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.onboarding-step-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.onboarding-status {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.onboarding-status.cleared {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.onboarding-status.in_progress {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.form-section {
+  margin-bottom: 22px;
+}
+
+.form-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 10px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 18px;
+}
+
+.form-grid.full {
+  grid-template-columns: 1fr;
+}
+
+.form-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* ===== PROFESSIONAL FORM SPACING (REQUIRED) ===== */
+
+.form-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field-block label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.form-field-block input,
+.form-field-block select,
+.form-field-block textarea {
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5f5;
+  background: #fff;
+}
+
+.form-field-inline {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.final-summary-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.final-summary-header h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.final-summary-header p {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.summary-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.summary-card h4 {
+  margin-bottom: 12px;
+  color: #0f172a;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 20px;
+}
+
+.summary-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.summary-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.final-summary-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+

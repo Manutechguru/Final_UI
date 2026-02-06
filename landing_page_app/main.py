@@ -8,9 +8,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 from typing import Generator
+from pathlib import Path
 from landing_page_app.routers import work_update
 from landing_page_app.routers import resume_extract
 from landing_page_app.routers.candidates import gmail
+from landing_page_app.routers import preboarding
+from landing_page_app.routers import onboarding
+from fastapi.staticfiles import StaticFiles
 from landing_page_app.routers.auth import get_current_user
 # ==============================
 # Load .env (if python-dotenv available)
@@ -61,10 +65,18 @@ app.mount(
     name="static"
 )
 
+
 # ---------------------------------------------------
-# Database init (dev only)
+# Uploads static mount (REQUIRED for file viewing)
 # ---------------------------------------------------
-database.Base.metadata.create_all(bind=database.engine)
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=UPLOAD_DIR),
+    name="uploads"
+)
 
 
 # ---------------------------------------------------
@@ -100,3 +112,5 @@ include_routers(app)
 app.include_router(work_update.router)
 app.include_router(resume_extract.router)
 app.include_router(gmail.router)
+app.include_router(preboarding.router)
+app.include_router(onboarding.router)

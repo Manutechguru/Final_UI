@@ -1,4 +1,3 @@
-# landing_page_app/models/__init__.py
 from .clients import Client
 from .jobs import Job
 from .candidates import Candidate
@@ -6,8 +5,23 @@ from .candidate_status_history import CandidateJDMapping
 from .log import UserLog
 from .user import User, UserRole
 from .managers import Manager
+from .preboarding import (
+    PreboardingCase,
+    PreboardingStep,
+    PreboardingDocument,
+)
+from .onboarding import (
+    OnboardingCase,
+    OnboardingStep,
+    OnboardingDocument,
+)
+from .invoice import (
+    Invoice,
+    InvoiceItem,
+    InvoiceFile,
+    InvoiceClient,
+)
 
-# Optional: group into __all__ for clean imports
 __all__ = [
     "Client",
     "Job",
@@ -16,5 +30,14 @@ __all__ = [
     "UserLog",
     "User",
     "UserRole",
-    "Manager"
+    "Manager",
+    "PreboardingCase",
+    "PreboardingStep",
+    "PreboardingDocument",
+    "OnboardingCase",
+    "OnboardingStep",
+    "OnboardingDocument",
+    "Invoice",
+    "InvoiceItem",
+    "InvoiceFile",
 ]
