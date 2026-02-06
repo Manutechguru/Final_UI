@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text
 from landing_page_app.database import Base
+from sqlalchemy.dialects.postgresql import ARRAY
+from pgvector.sqlalchemy import Vector
 
 class Candidate(Base):
     __tablename__ = "candidates"
@@ -22,3 +24,4 @@ class Candidate(Base):
     ai_score = Column(Integer, nullable=True)
     ai_explanation = Column(Text, nullable=True)
     ctc = Column(String(50), nullable=True)
+    embedding = Column(Vector(384), nullable=True)

@@ -18,6 +18,10 @@ from landing_page_app.models.candidate_status_history import CandidateJDMapping,
 from landing_page_app.models.clients import Client
 from landing_page_app.models.managers import Manager
 from landing_page_app.models.jobs import Job
+from landing_page_app.routers.utils.search_utils import shortlist_candidates_by_embedding
+from landing_page_app.routers.utils.search_utils import extract_text_from_jd_file
+from landing_page_app.services.llm_service import evaluate_candidates_batch
+
 
 # defensive import for helpers - if your search_utils provides these they'll be used
 try:
@@ -25,17 +29,10 @@ try:
         parse_experience_filter_input,
         parse_text_experience_to_months,
         extract_jd_features,
-        ai_match_jd_with_resumes,
-        fetch_text_from_url,
     )
-except Exception:
-    # minimal fallbacks so server doesn't crash while you iterate
-    def parse_experience_filter_input(x): return (None, None)
-    def extract_jd_features(x): return {"skills": "", "experience": "", "location": "", "summary": ""}
-    def ai_match_jd_with_resumes(jd_text, candidates): return []
-    def fetch_text_from_url(url): return url or ""
-    def parse_text_experience_to_months(x):
-        return 0
+except Exception as e:
+    raise RuntimeError("FAILED TO IMPORT extract_jd_features") from e
+
 
 from landing_page_app.models.user import User
 from landing_page_app.deps import get_current_user
@@ -190,6 +187,18 @@ def _candidate_to_row(cand: Candidate, mapping: Optional[CandidateJDMapping] = N
         "mapping_id": getattr(mapping, "id", None) or getattr(mapping, "mapping_id", None) if mapping else None,
         "mapping_jd_id": getattr(mapping, "jd_id", None) if mapping else None,
     }
+    
+def _candidate_to_resume_text(c: Candidate) -> str:
+    return " | ".join(filter(None, [
+        c.skillset,
+        c.location,
+        str(c.it_experience or ""),
+        str(c.relevant_experience or ""),
+        c.education,
+        c.company,
+        c.comment,
+    ]))
+
 
 # -------------------------
 # Strict token-level location & experience helpers (ADDED)
@@ -274,29 +283,23 @@ async def search(request: Request,
             "clients": clients,
             "user": user,
         })
+        
+        # Use skills + location + experience as JD-like text for embedding
+    jd_text = " ".join(filter(None, [skills, location, experience]))
 
-    # 1) Start from all candidates
-    q = db.query(Candidate)
+        # Vector shortlist
+    final_list = shortlist_candidates_by_embedding(db, jd_text)
 
-    # skills filter
-    if skills:
-        tokens = [t.strip() for t in skills.split(",") if t.strip()]
-        if tokens:
-            filters = [func.lower(func.coalesce(Candidate.skillset, "")).like(f"%{t.lower()}%") for t in tokens]
-            q = q.filter(or_(*filters))
+# 🔹 APPLY EXISTING STRICT FILTERS (UNCHANGED LOGIC)
 
-    # location prefilter
-    if location:
-        q = q.filter(func.lower(func.coalesce(Candidate.location, "")).like(f"%{location.strip().lower()}%"))
-
-    # fetch candidates (without wrong LIKE on years)
-    candidates = q.order_by(func.coalesce(Candidate.candidates_id, 0).desc()).limit(500).all()
-
-    # strict location match
+# strict location match
     if location and str(location).strip():
-        candidates = [c for c in candidates if _location_matches(getattr(c, 'location', '') or '', location)]
+        final_list = [
+            c for c in final_list
+            if _location_matches(getattr(c, "location", "") or "", location)
+        ]  
 
-    # experience filter using months
+# experience filter using months
     if experience and str(experience).strip():
         try:
             min_m, max_m = parse_experience_filter_input(experience)
@@ -304,11 +307,40 @@ async def search(request: Request,
             min_m, max_m = None, None
 
     if min_m is not None or max_m is not None:
-        candidates = _filter_candidates_by_experience(candidates, min_m, max_m)
+        final_list = _filter_candidates_by_experience(final_list, min_m, max_m)
+        
+        # -------------------------
+        # FINAL AI EVALUATION (ADDED)
+        # -------------------------
+        try:
+            ai_scored = ai_match_jd_with_resumes(jd_text, final_list)
+        except Exception as e:
+            logger.exception("Final AI evaluation failed: %s", e)
+            ai_scored = []
 
-    final_list = candidates
+        # Map AI scores back
+        score_map = {
+            int(r.get("candidates_id")): int(r.get("ai_score") or r.get("score") or 0)
+            for r in ai_scored
+            if r.get("candidates_id") is not None
+        }
 
+        # Apply threshold ≥ 70
+        filtered_final = []
+        for c in final_list:
+            cid = getattr(c, "candidates_id", None)
+            if cid is None:
+                continue
+            score = score_map.get(cid, 0)
+            if score >= 70:
+                try:
+                    setattr(c, "ai_score", score)
+                except Exception:
+                    pass
+                filtered_final.append(c)
 
+        # 🔁 overwrite final_list
+        final_list = filtered_final
     
     # 4) Map to rows for template (attach mapping metadata -> is_linked, existing_jd_ids, mapping_display)
     from collections import defaultdict
@@ -480,13 +512,54 @@ async def search(request: Request,
         "experience": experience or "",
         "clients": clients,
     })
+    
+# -------------------------
+# JD → Auto-fill extraction (STRICT, NO SEARCH)
+# -------------------------
+@router.post("/extract-jd-fields")
+async def extract_jd_fields(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    
+    jd_url = payload.get("jd_url")
+    if not jd_url:
+        return JSONResponse({"error": "jd_url required"}, status_code=400)
 
-# -------------------------
-# Manual AI endpoint (AJAX)
-# -------------------------
-# -------------------------
-# Advanced: Parse JD link and AI-match (UI)
-# -------------------------
+    try:
+        jd_text = extract_text_from_jd_file(jd_url)
+        
+        print("\n🔥🔥🔥 JD TEXT START 🔥🔥🔥")
+        print(jd_text[:1500])
+        print("🔥🔥🔥 JD TEXT END 🔥🔥🔥\n")
+
+        # FIX 1 — JD text validation
+        if not jd_text or len(jd_text.strip()) < 50:
+            logger.error("[JD-EXTRACT] JD text is empty or too short")
+            return JSONResponse(
+                {
+                    "error": "JD text could not be extracted",
+                    "jd_text_length": len(jd_text or "")
+                },
+                status_code=422
+            )
+
+        features = extract_jd_features(jd_text)
+
+        # FIX 2 — log extracted features
+        logger.info(f"[JD-EXTRACT] FEATURES = {features}")
+
+        # FIX 3 — don’t hide failures
+        return JSONResponse({
+            "skills": features.get("skills"),
+            "experience": features.get("experience"),
+            "location": features.get("location")
+        })
+
+    except Exception:
+        logger.exception("JD field extraction failed")
+        return JSONResponse({"error": "JD extraction failed"}, status_code=500)
+
 # -------------------------
 # Cascading dropdown endpoints (client -> vendors -> jobs)
 # -------------------------
@@ -564,7 +637,7 @@ async def get_jds_by_vendor(vendor_id: int, db: Session = Depends(get_db)):
         jtitle = _first_attr(j, ["job_title", "title", "jobTitle"])
         if jid is None:
             continue
-        out.append({"job_id": jid, "job_title": jtitle or ""})
+        out.append({"job_id": jid, "job_title": jtitle or "", "jd_url": j.job_description })
     return JSONResponse(out)
 
 @router.get("/get-mapped-candidates/{job_id}")
@@ -947,6 +1020,8 @@ async def link_selected_candidates(payload: dict = Body(...), db: Session = Depe
 # Background AI job support (optional)
 # -------------------------
 AI_JOBS: Dict[str, Dict[str, Any]] = {}
+AI_JOB_LOCK = threading.Lock()
+
 
 def _start_ai_worker(jd_link: str, job_id: str):
     """Background worker that scores candidates in the background and writes results to AI_JOBS[job_id]."""
@@ -958,11 +1033,16 @@ def _start_ai_worker(jd_link: str, job_id: str):
         return
 
     try:
-        jd_text = fetch_text_from_url(jd_link) if callable(fetch_text_from_url) else jd_link
-        if not jd_text:
-            jd_text = jd_link
-    except Exception:
-        jd_text = jd_link
+        jd_text = extract_text_from_jd_file(jd_link)
+    except Exception as e:
+        logger.exception("JD extraction failed in AI worker: %s", e)
+        jd_text = ""
+
+    if not jd_text.strip():
+        AI_JOBS[job_id]["status"] = "failed"
+        AI_JOBS[job_id]["error"] = "Unable to extract JD text"
+        return
+
 
     # extract prefill
     try:
@@ -977,19 +1057,20 @@ def _start_ai_worker(jd_link: str, job_id: str):
     min_m, max_m = None, None
 
     AI_JOBS[job_id]["prefill"] = {"skills": pre_skills, "location": pre_location, "experience": pre_experience}
+    
+    # 🔹 STEP 1: VECTOR SHORTLIST (THIS WAS MISSING)
+    all_candidates = shortlist_candidates_by_embedding(
+        db=db,
+        jd_text=jd_text,
+        top_k=200
+    )
+    
+    MAX_AI_CANDIDATES = 150
+    all_candidates = all_candidates[:MAX_AI_CANDIDATES]
 
-    # Score candidates in batches using existing helper
-    # PREFILTER candidates by extracted fields (only if those fields were actually extracted)
-    q = db.query(Candidate)
-    if pre_skills:
-        tokens = [t.strip() for t in pre_skills.split(',') if t.strip()]
-        if tokens:
-            filters = [func.lower(func.coalesce(Candidate.skillset, '')).like(f"%{t.lower()}%") for t in tokens]
-            q = q.filter(or_(*filters))
-    if pre_location:
-        q = q.filter(func.lower(func.coalesce(Candidate.location, '')).like(f"%{pre_location.strip().lower()}%"))
 
-    all_candidates = q.order_by(getattr(Candidate, 'candidates_id', Candidate)).all()
+    if not all_candidates:
+        logger.warning("No candidates found from embedding shortlist")
 
     # Enforce strict token-level location & strict experience filtering (post-prefilter)
     if pre_location:
@@ -1004,7 +1085,7 @@ def _start_ai_worker(jd_link: str, job_id: str):
             all_candidates = _filter_candidates_by_experience(all_candidates, min_m, max_m)
 
     total = max(1, len(all_candidates))
-    batch = 10
+    batch = 8
     matched_ids = set()
     score_map = {}
     expl_map = {}
@@ -1012,13 +1093,32 @@ def _start_ai_worker(jd_link: str, job_id: str):
     for i in range(0, len(all_candidates), batch):
         slice_batch = all_candidates[i:i+batch]
         try:
-            scored = ai_match_jd_with_resumes(jd_text, slice_batch)
+            ai_payload = [
+                {
+                    "candidates_id": c.candidates_id,
+                    "resume_text": _candidate_to_resume_text(c)
+                }
+                for c in slice_batch
+            ]
+            scored = evaluate_candidates_batch(jd_text, ai_payload)
+            logger.error(f"[CRITICAL] AI RAW OUTPUT = {scored}")
+
         except Exception as exc:
             logger.exception("ai_match_jd_with_resumes failed in worker: %s", exc)
             scored = []
 
         for item in (scored or []):
-            cid = item.get("candidate_id") or item.get("candidates_id") or item.get("id")
+            cid = (
+                item.get("candidates_id")
+                or item.get("candidate_id")
+                or item.get("id")
+            )
+
+            if not cid:
+                continue
+
+            cid = int(cid)
+
             score = item.get("ai_score") or item.get("score") or 0
             expl = item.get("explanation") or item.get("reasons") or item.get("ai_explanation") or ""
             if cid:
@@ -1188,6 +1288,30 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
             "clients": _get_active_clients(db),
             "error": "Invalid job selected.",
         })
+        
+    # ================== AI EXECUTION LOCK (ADD HERE ONLY) ==================
+    job_key = str(job_id)
+    
+    with AI_JOB_LOCK:
+        if job_key in AI_JOBS and AI_JOBS[job_key].get("status") == "running":
+            logger.error(f"[JD-AI] BLOCKED duplicate AI run for job_id={job_key}")
+            return templates.TemplateResponse("search.html", {
+                "request": request,
+                "results": [],
+                "skills": "",
+                "location": "",
+                "experience": "",
+                "clients": _get_active_clients(db),
+                "error": "AI matching already running for this job. Please wait.",
+            })
+
+        AI_JOBS[job_key] = {
+            "status": "running",
+            "started_at": datetime.utcnow()
+        }
+
+    # ======================================================================
+
 
     # find a JD link on the job object using common attribute names
     jd_link = _first_attr(job, ["jd_link", "jd_drive_link", "job_link", "job_drive_link", "drive_link", "jd_url", "description_link"]) or ""
@@ -1214,19 +1338,12 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
     pre_experience = extracted.get("experience", "") or ""
 
     # Prefilter candidates (same approach as advanced_search)
-    q = db.query(Candidate)
-    if pre_skills:
-        tokens = [t.strip() for t in pre_skills.split(",") if t.strip()]
-        if tokens:
-            filters = [func.lower(func.coalesce(Candidate.skillset, "")).like(f"%{t.lower()}%") for t in tokens]
-            q = q.filter(or_(*filters))
-    if pre_location:
-        try:
-            q = q.filter(func.lower(func.coalesce(Candidate.location, "")).like(f"%{pre_location.strip().lower()}%"))
-        except Exception:
-            pass
-
-    all_candidates = q.order_by(getattr(Candidate, "candidates_id", Candidate)).all()
+    # 🔹 STEP 1: VECTOR SHORTLIST (CRITICAL FIX)
+    all_candidates = shortlist_candidates_by_embedding(
+        db=db,
+        jd_text=jd_text,
+        top_k=200
+    )
 
     # enforce strict token-level location & experience
     if pre_location:
@@ -1242,30 +1359,77 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
             all_candidates = _filter_candidates_by_experience(all_candidates, min_m, max_m)
 
     # Batch AI scoring (10 at a time, preserve existing behavior)
-    batch = 10
+    batch = 8
     matched_ids = set()
     score_map = {}
     expl_map = {}
+    
+    MAX_AI_CALLS = 5
+    call_count = 0
+
 
     for i in range(0, len(all_candidates), batch):
+
+        if call_count >= MAX_AI_CALLS:
+            logger.warning("[JD-AI] Stopping early to avoid Groq rate limit")
+            break
+
         slice_batch = all_candidates[i:i+batch]
+
+        ai_payload = []
+        for c in slice_batch:
+            ai_payload.append({
+                "candidate_id": int(c.candidates_id),
+                "skills": c.skillset or "",
+                "experience": str(c.it_experience or c.relevant_experience or ""),
+                "location": c.location or ""
+            })
+
         try:
-            scored = ai_match_jd_with_resumes(jd_text, slice_batch)
+            scored = evaluate_candidates_batch(jd_text, ai_payload)
+            logger.error(f"[CRITICAL] GROQ RAW RESPONSE = {scored}")
         except Exception:
+            logger.exception("LLM batch evaluation failed")
             scored = []
+        finally:
+            call_count += 1
+            time.sleep(1.5)
+            
         for item in (scored or []):
-            cid = item.get("candidate_id") or item.get("candidates_id") or item.get("id")
-            score = item.get("ai_score") or item.get("score") or 0
-            expl = item.get("explanation") or item.get("reasons") or item.get("ai_explanation") or ""
-            if cid:
-                try:
-                    cid = int(cid)
-                    matched_ids.add(cid)
-                    score_map[cid] = int(score)
-                    if expl:
-                        expl_map[cid] = expl
-                except Exception:
+            try:
+                cid = item.get("candidate_id") or item.get("candidates_id") or item.get("id")
+                if not cid:
                     continue
+
+                raw_score = item.get("ai_score") or item.get("score") or 0
+
+                # 🔥 FINAL SAFE SCORE PARSING (ONLY THIS)
+                if isinstance(raw_score, str):
+                    raw_score = raw_score.replace('%', '').strip()
+
+                score = int(float(raw_score))
+
+                #if score < JD_MATCH_THRESHOLD:
+                    #continue
+
+                cid = int(cid)
+                if score >= 70:
+                    prev = score_map.get(cid, 0)
+                    if score > prev:
+                        score_map[cid] = score
+                        matched_ids.add(cid)
+
+
+                expl = item.get("explanation") or item.get("reasons") or item.get("ai_explanation")
+                if expl:
+                    expl_map[cid] = expl
+
+            except Exception as e:
+                logger.warning(f"AI score parse failed: {e}")
+                continue
+    # 🔍 DEBUG — AI scoring summary
+    logger.info(f"[JD-AI] Total AI scored candidates (>=70): {len(score_map)}")
+    logger.info(f"[JD-AI] Score map: {score_map}")
 
     results = []
     if matched_ids:
@@ -1275,6 +1439,7 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
         # Fetch the candidate rows for matched ids
         found_q = db.query(Candidate).filter(Candidate.candidates_id.in_(list(matched_ids)))
         found = found_q.all()
+        logger.info(f"[JD-AI] Candidates fetched from DB: {len(found)}")
 
         # Build mapping rows for the found candidates so we can attach mapping metadata (is_linked, existing_jd_ids, mapping_display)
         from collections import defaultdict
@@ -1455,8 +1620,17 @@ async def dropdown_ai_search(request: Request, job_id: str = Form(...), db: Sess
             db.commit()
         except Exception:
             db.rollback()
+            
+    else:
+        results = []
+
 
     clients = _get_active_clients(db)
+    with AI_JOB_LOCK:
+        if str(job_id) in AI_JOBS:
+            AI_JOBS[str(job_id)]["status"] = "done"
+            AI_JOBS[str(job_id)]["finished_at"] = datetime.utcnow()
+
     return templates.TemplateResponse("search.html", {
         "request": request,
         "results": results,

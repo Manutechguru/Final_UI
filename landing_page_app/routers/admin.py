@@ -20,6 +20,7 @@ from landing_page_app.models.log import UserLog
 from landing_page_app.core.jinja import templates
 from landing_page_app.deps import get_current_user
 from landing_page_app.models import Candidate
+from landing_page_app.services.embedding_service import embed_text
 
 router = APIRouter(tags=["Admin"])
 
@@ -653,6 +654,34 @@ def upload_csv(
             if exists:
                 duplicates.append(email or f"{name}-{contact}")
                 continue
+            
+            
+            # ------------------ BUILD EMBEDDING TEXT ------------------
+            embed_parts = []
+
+            if skillset:
+                embed_parts.append(f"Skills: {skillset}")
+
+            if it_experience:
+                embed_parts.append(f"IT Experience: {it_experience}")
+
+            if relevant_experience:
+                embed_parts.append(f"Relevant Experience: {relevant_experience}")
+
+            if location:
+                embed_parts.append(f"Location: {location}")
+
+            embedding_text = " | ".join(embed_parts).strip()
+
+            embedding_vector = None
+            if embedding_text:
+                try:
+                    embedding_vector = embed_text(embedding_text)
+                except Exception as e:
+                    # Do NOT break CSV upload for embedding issues
+                    print(f"[EMBEDDING ERROR] {email or name}: {e}")
+                    embedding_vector = None
+
 
             candidate = Candidate(
                 candidate_name=name,
@@ -671,6 +700,7 @@ def upload_csv(
                 recruitment_notes=recruitment_notes,
                 ai_score=ai_score,
                 ai_explanation=ai_explanation,
+                embedding=embedding_vector,
             )
             db.add(candidate)
             inserted += 1

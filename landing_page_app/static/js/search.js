@@ -1,52 +1,35 @@
-(function(){
-  try {
-    document.addEventListener("DOMContentLoaded", function () {
-      const jdSelect = document.getElementById("jdSelect");
-      const jobInput = document.getElementById("selectedJobInput");
-      const form = document.getElementById("dropdownAiForm");
-      if (!form || !jdSelect || !jobInput) return;
-      // on submit, ensure job selected and set hidden input, then show AI overlay before submitting
-      form.addEventListener("submit", function(e) {
-        if (!jdSelect.value) {
-          e.preventDefault();
-          alert("Please select a Job first.");
-          return;
-        }
-        jobInput.value = jdSelect.value;
+function initAiSearchButton() {
+  let aiRunning = false;
 
-        // Show AI progress overlay before submit
-        e.preventDefault();
-        try {
-          if (typeof showAiProgress === 'function') {
-            showAiProgress({
-              title: "AI Evaluation",
-              subtitle: "Analyzing JD and matching candidates — this may take a few moments."
-            });
-          } else {
-            const overlay = document.getElementById('aiProgressOverlay');
-            if (overlay) {
-              const titleEl = document.getElementById('aiProgressTitle');
-              const subEl = document.getElementById('aiProgressSubtitle');
-              if (titleEl) titleEl.textContent = "AI Evaluation";
-              if (subEl) subEl.textContent = "Analyzing JD and matching candidates — this may take a few moments.";
-              overlay.style.display = 'flex';
-              try { document.body.style.overflow = 'hidden'; } catch(e){}
-            }
-          }
-        } catch (err) {
-          console.warn('showAiProgress error', err);
-        }
+  const aiBtn = document.getElementById("aiSearchBtn");
+  const form = document.getElementById("dropdownAiForm");
+  const jdSelect = document.getElementById("jdSelect");
+  const jobInput = document.getElementById("selectedJobInput");
 
-        // Ensure browser repaints overlay before navigation by waiting two animation frames
-        requestAnimationFrame(function(){
-          requestAnimationFrame(function(){
-            form.submit();
-          });
-        });
-      });
-    });
-  } catch (e) { console.warn('dropdownAiForm init failed', e); }
-})();
+  if (!aiBtn || !form || !jdSelect || !jobInput) {
+    console.warn("AI search elements missing");
+    return;
+  }
+
+  aiBtn.addEventListener("click", function () {
+    console.log("🔥 PROCEED BUTTON CLICKED");
+    if (aiRunning) return;
+
+    if (!jdSelect.value) {
+      alert("Please select a Job first.");
+      return;
+    }
+
+    aiRunning = true;
+    aiBtn.disabled = true;
+    jobInput.value = jdSelect.value;
+
+    const overlay = document.getElementById("aiProgressOverlay");
+    if (overlay) overlay.style.display = "flex";
+
+    form.submit();
+  });
+}
 
 /* Replaced JS — robust dropdown persistence, reset, pageshow handling, delegation, modal, pagination.
    IMPORTANT: This script keeps every backend endpoint, form action and UI markup EXACTLY the same.
@@ -101,6 +84,34 @@ document.addEventListener('DOMContentLoaded', function () {
     ta.innerHTML = str;
     return ta.value;
   }
+
+  async function autoFillFromJD(jdUrl) {
+    if (!jdUrl) return;
+
+    try {
+      const res = await fetch('/candidates/extract-jd-fields', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jd_url: jdUrl })
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const skillsInput = document.querySelector('input[name="skills"]');
+      const locationInput = document.querySelector('input[name="location"]');
+      const experienceInput = document.querySelector('input[name="experience"]');
+
+      if (skillsInput && data.skills) skillsInput.value = data.skills;
+      if (locationInput && data.location) locationInput.value = data.location;
+      if (experienceInput && data.experience) experienceInput.value = data.experience;
+
+    } catch (e) {
+      console.warn("JD auto-fill failed", e);
+    }
+  }
+
+
 // Modern white-card toast (search page)
 function showToast(msg, type = 'default', time = 3200) {
   try {
@@ -218,7 +229,11 @@ function showToast(msg, type = 'default', time = 3200) {
       const res = await fetch(`/candidates/get-jobs/${encodeURIComponent(vendorId)}`);
       const data = await res.json().catch(()=>[]);
       (data || []).forEach(j => {
-        const o = document.createElement('option'); o.value = j.job_id; o.textContent = j.job_title; jdSelect.appendChild(o);
+        const o = document.createElement('option'); o.value = j.job_id; o.textContent = j.job_title; 
+        if (j.jd_url) {
+          o.dataset.jdUrl = j.jd_url; 
+        }
+        jdSelect.appendChild(o);
       });
       saveDropdownState();
     } catch(e){ console.warn('fetchJobsForVendor', e); }
@@ -239,9 +254,20 @@ function showToast(msg, type = 'default', time = 3200) {
         vendorSelect.dataset.bound = '1';
       }
       if (jdSelect && jdSelect.dataset.bound !== '1') {
-        jdSelect.addEventListener('change', function(){ saveDropdownState(); if (this.value) refreshMappingsForJob(this.value); });
+        jdSelect.addEventListener('change', function () {
+          saveDropdownState();
+
+          if (this.value) {
+            refreshMappingsForJob(this.value);
+
+            // 🔥 ADD ONLY THIS
+            const jdUrl = this.selectedOptions[0]?.dataset?.jdUrl;
+            autoFillFromJD(jdUrl);
+          }
+        });
         jdSelect.dataset.bound = '1';
       }
+
     } catch(e){}
   }
   bindCascadingOnce();
@@ -928,7 +954,7 @@ if (row) {
 
 
   // --- refresh mapping for selected job ---
-  async function refreshMappingsForJob() {
+  async function refreshMappingsForJob(jobId) {
 if (!jobId) { applyLinkedIds(); return; }
   showAiProgress({ title:'Updating job mapping', subtitle:'Fetching mapped candidates.' });
   try {
@@ -1110,30 +1136,6 @@ body.innerHTML = `
   // aiExplanation modal close
   document.getElementById('aiExplanationModalClose').addEventListener('click', function(){ document.getElementById('aiExplanationModal').style.display = 'none'; document.body.style.overflow = ''; });
 
-  // --- Advanced & Manual form overlay behavior (preserve AI overlay) ---
-  if (advancedForm) {
-    advancedForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      showAiProgress({ title:'AI is evaluating candidates', subtitle:'Analyzing JD and matching candidates — this may take a few moments.' });
-      const submitBtn = advancedForm.querySelector('button[type="submit"], input[type="submit"]');
-      if (submitBtn) submitBtn.disabled = true;
-      try {
-        const formData = new FormData(advancedForm);
-        const resp = await fetch(advancedForm.action, { method:'POST', body: formData, credentials: 'same-origin' });
-        if (!resp.ok) {
-          const txt = await resp.text().catch(()=>null); hideAiProgress(); if (submitBtn) submitBtn.disabled = false; alert('Advanced search failed: ' + (txt || (resp.status + ' ' + resp.statusText))); return;
-        }
-        const contentType = resp.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const j = await resp.json().catch(()=>null);
-          if (j && j.redirect) { window.location.href = j.redirect; return; }
-          hideAiProgress(); window.location.reload(); return;
-        }
-        const html = await resp.text();
-        try { document.open(); document.write(html); document.close(); } catch(e) { window.location.href = '/candidates/search'; }
-      } catch(err) { hideAiProgress(); if (submitBtn) submitBtn.disabled = false; alert('Advanced search error: ' + (err.message || err)); }
-    });
-  }
 
   if (searchForm) {
     searchForm.addEventListener('submit', function () {
@@ -1241,17 +1243,25 @@ body.innerHTML = `
 
   // --- pageshow handler (bfcache) ---
   window.addEventListener('pageshow', async function (e) {
-    try {
-      bindResetInterceptors();
-      bindCascadingOnce();
-      // Wait for restore so selects are repopulated before mapping refresh
-      await restoreDropdownStateIfSafe();
-      attachDelegation();
-      applyLinkedIds();
-      renderPagination();
-      const jd = jdSelectEl(); if (jd && jd.value) refreshMappingsForJob(jd.value);
-    } catch(err){ console.warn('pageshow handler', err); }
-  });
+  try {
+    bindResetInterceptors();
+    bindCascadingOnce();
+
+    // 🔥 WAIT for dropdown restore to finish
+    await restoreDropdownStateIfSafe();
+
+    attachDelegation();
+    applyLinkedIds();
+    renderPagination();
+
+    const jd = jdSelectEl();
+    if (jd && jd.value) {
+      refreshMappingsForJob(String(jd.value));
+    }
+  } catch (err) {
+    console.warn('pageshow handler', err);
+  }
+});
 
   // --- initial hydration and state apply ---
   attachDelegation();
@@ -1261,4 +1271,5 @@ body.innerHTML = `
   restoreDropdownStateIfSafe();
   applyLinkedIds();
   renderPagination();
+  initAiSearchButton();
 });

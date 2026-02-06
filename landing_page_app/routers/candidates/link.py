@@ -28,7 +28,7 @@ from landing_page_app.deps import get_current_user
 
 router = APIRouter(prefix="/candidates", tags=["Candidates Linking"])
 
-STATUS_OPTIONS = ["Screening", "Submissions", "Interview",
+STATUS_OPTIONS = ["Screening", "Submissions", "Interview", "Preboarding", "Onboarding",
                   "Offered", "Hired", "Rejected", "Archived"]
 
 # -----------------------------

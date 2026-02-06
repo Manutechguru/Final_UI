@@ -23,7 +23,8 @@ import pytesseract
 from docx import Document
 import textract
 
-import google.generativeai as genai
+from groq import Groq
+from landing_page_app.services.embedding_service import embed_text
 import gspread
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
@@ -35,7 +36,6 @@ router = APIRouter(prefix="/admin", tags=["Admin: Resume Extract"])
 # ==========================
 # CONFIG
 # ==========================
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 SHEET_NAME = os.getenv("SHEET_NAME", "Resume")
@@ -46,14 +46,14 @@ if TESSERACT_CMD:
 
 SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
 
-# ==========================
-# GEMINI CONFIG
-# ==========================
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-2.0-flash-lite")
-else:
-    gemini_model = None
+
+GROQ_RESUME_API_KEY = os.getenv("GROQ_RESUME_API_KEY", "")
+if not GROQ_RESUME_API_KEY:
+    raise RuntimeError("GROQ_RESUME_API_KEY not set")
+
+groq_client = Groq(api_key=GROQ_RESUME_API_KEY)
+
+
 
 # ==========================
 # AUTH HELPERS
@@ -364,85 +364,6 @@ def _download_file_bytes(file_id: str) -> bytes:
     return fh.getvalue()
 
 
-# ==========================
-# GEMINI PROMPT BUILDERS (improved)
-# ==========================
-def _build_resume_prompt_from_text(text: str, resume_url: str) -> str:
-    # Single-resume extraction prompt (strict JSON array output)
-    return f"""
-You are an extremely literal AI Resume Extractor. Read the resume text delimited between <<<RESUME>>> markers and output ONLY a valid JSON array containing exactly one object with these fields (use exact keys):
-
-"Candidate Name", "Email ID", "Contact Number", "Location", "Skillset",
-"IT Exp.", "Relevant Exp.", "Education", "Company", "Client", "ResumeLink", "Comment", "notice_period"
-
-Rules:
-- Output valid JSON array only, nothing else.
-- If a field is missing, set "" (empty string). Do not omit fields.
-- Normalize phone to digits only (we will further normalize locally). Format email lowercase.
-- "ResumeLink" must be exactly: "{resume_url}"
-- Keep "Comment" short (1-3 lines) and factual: one sentence about strengths and one about gaps.
-- For "Skillset" separate skills by commas.
-- For "IT Exp." provide best estimate like '5 years' or '3 years 6 months'.
-
-<<<RESUME>>>
-{text}
-<<<RESUME>>>
-Return ONLY the JSON array.
-""".strip()
-
-
-def _build_validation_prompt(original_text: str, candidate_json: dict) -> str:
-    # Ask Gemini to validate & normalize extracted fields (phone -> 91xxxxxxxxxx, email lowercase,
-    # ensure name capitalization, ensure IT Exp. consistent) — now explicitly asking for Relevant Exp.
-    cj = json.dumps(candidate_json, ensure_ascii=False)
-    return f"""
-You are a data normalizer. Given the original resume text (between <<<RESUME>>> markers) and the extracted JSON (between <<<JSON>>> markers), return ONLY a corrected/normalized JSON array (same shape) with the following rules:
-
-- Normalize "Email ID" to lowercase.
-- Normalize "Contact Number" to the format '91XXXXXXXXXX' if possible.
-- Normalize "Candidate Name" to proper capitalization.
-- Normalize "Relevant Exp." to a concise value like '3 years' or '2 years 6 months'. If the resume contains a 'Relevant Experience' section or mentions domain-specific experience, compute the best estimate and fill here.
-- If "IT Exp." is missing or clearly wrong, compute best estimate using the resume text.
-- If "Education" is empty, try to extract highest degree from the resume text.
-- If "Skillset" is empty or messy, extract up to 20 top skills as comma-separated values.
-- Do NOT add any extra fields. Use an array with a single object.
-- Keep all fields; missing remains empty string only if unknown.
-
-<<<RESUME>>>
-{original_text}
-<<<RESUME>>>
-
-<<<JSON>>>
-{cj}
-<<<JSON>>>
-
-Return ONLY the corrected JSON array.
-""".strip()
-
-
-# ==========================
-# GEMINI CALL
-# ==========================
-def _call_gemini(prompt: str, max_retries: int = 4) -> str:
-    if not gemini_model:
-        raise RuntimeError("Gemini not configured (GEMINI_API_KEY missing).")
-    delay = 1.5
-    for attempt in range(1, max_retries + 1):
-        try:
-            resp = gemini_model.generate_content(prompt)
-            return (resp.text or "").strip()
-        except Exception as e:
-            msg = str(e).lower()
-            # backoff on common transient errors
-            if any(code in msg for code in ["429", "quota", "503", "500", "timeout"]):
-                time.sleep(delay)
-                delay = min(delay * 2, 20)
-                continue
-            # non-transient: re-raise so caller can skip that file
-            raise
-    return ""
-
-
 def _extract_json_block(s: str):
     if not s:
         return None
@@ -458,6 +379,43 @@ def _extract_json_block(s: str):
         return json.loads(s)
     except Exception:
         return None
+
+
+def _build_groq_batch_prompt(resumes: list[dict]) -> str:
+    return f"""
+You are a STRICT JSON generator.
+
+You MUST return ONLY a valid JSON array.
+NO explanations.
+NO markdown.
+NO text outside JSON.
+
+If you cannot extract a field, return "" (empty string).
+
+JSON schema (MUST MATCH EXACTLY):
+[
+  {{
+    "candidate_name": "",
+    "email": "",
+    "contact": "",
+    "location": "",
+    "skillset": "",
+    "it_experience": "",
+    "relevant_experience": "",
+    "education": "",
+    "company": "",
+    "clients": "",
+    "resumelinks": "",
+    "comment": "",
+    "notice_period": ""
+  }}
+]
+
+Return ONE object per resume, SAME ORDER.
+
+INPUT:
+{json.dumps(resumes)}
+""".strip()
 
 
 # ==========================
@@ -517,166 +475,129 @@ def extract_resumes_endpoint(
     inserted = 0
     duplicates = []
 
-    for f in files:
-        file_id = f.get("id")
-        fname = f.get("name")
-        mime = f.get("mimeType", "").lower()
-        resume_url = f"https://drive.google.com/file/d/{file_id}/view"
+    BATCH_SIZE = 3
 
-        # Download file bytes from Google Drive
-        try:
-            file_bytes = _download_file_bytes(file_id)
-        except HttpError:
-            # skip files we cannot download
-            continue
+    for i in range(0, len(files), BATCH_SIZE):
+        batch = files[i:i + BATCH_SIZE]
 
-        # 1) Extract text locally (best-effort). This helps accuracy massively.
-        try:
-            resume_text = extract_text_from_bytes_by_mime(fname, file_bytes)
-        except Exception:
-            resume_text = ""
+        groq_input = []
+        file_context = []
+        
+        for f in batch:
+            file_id = f.get("id")
+            fname = f.get("name")
+            mime = f.get("mimeType", "").lower()
+            resume_url = f"https://drive.google.com/file/d/{file_id}/view"
 
-        # If local extraction produced almost nothing, as a fallback keep file upload path to Gemini
-        use_upload_to_gemini = False
-        if not resume_text or len(resume_text) < 100:
-            use_upload_to_gemini = True
-
-        parsed = None
-        raw_response = ""
-
-        # 2) Primary path: use local text + Gemini extraction + validation
-        try:
-            if not use_upload_to_gemini:
-                prompt = _build_resume_prompt_from_text(resume_text, resume_url)
-                raw_response = _call_gemini(prompt)
-                parsed = _extract_json_block(raw_response)
-                # if Gemini returned something, run a validation/normalization pass
-                if parsed and isinstance(parsed, list) and len(parsed) == 1:
-                    candidate_obj = parsed[0]
-                    # call validation prompt to normalize fields (now includes Relevant Exp.)
-                    val_prompt = _build_validation_prompt(resume_text, candidate_obj)
-                    val_raw = _call_gemini(val_prompt)
-                    val_parsed = _extract_json_block(val_raw)
-                    if val_parsed and isinstance(val_parsed, list) and len(val_parsed) == 1:
-                        parsed = val_parsed
-                    else:
-                        # keep original parsed if validation failed
-                        parsed = parsed
-            else:
-                # Fallback: upload file to Gemini (legacy behavior) if local text empty
-                # preserve your existing logic but still perform validation step using extracted raw text (if any)
-                try:
-                    if fname.lower().endswith(".pdf"):
-                        mime_type = "application/pdf"
-                    elif fname.lower().endswith(".docx"):
-                        mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    elif fname.lower().endswith(".doc"):
-                        mime_type = "application/msword"
-                    else:
-                        mime_type = "application/octet-stream"
-
-                    uploaded_file = genai.upload_file(
-                        io.BytesIO(file_bytes),
-                        mime_type=mime_type,
-                        display_name=fname
-                    )
-
-                    prompt = f"""
-                    You are an AI Resume Extractor.
-
-                    Read the attached resume and output ONLY a valid JSON array with one entry containing these fields:
-                    "Candidate Name", "Email ID", "Contact Number", "Location", "Skillset",
-                    "IT Exp.", "Relevant Exp.", "Education", "Company", "Client", "ResumeLink", "Comment", "notice_period".
-
-                    Format phone as '91XXXXXXXXXX', fill missing as "", and always include:
-                    "ResumeLink": "{resume_url}"
-                    """
-
-                    response = gemini_model.generate_content([prompt, uploaded_file])
-                    raw_response = (response.text or "").strip()
-                    parsed = _extract_json_block(raw_response)
-
-                    # validation pass: use whatever text we have (may be empty) to attempt normalization
-                    if parsed and isinstance(parsed, list) and len(parsed) == 1:
-                        val_prompt = _build_validation_prompt(resume_text or "", parsed[0])
-                        val_raw = _call_gemini(val_prompt)
-                        val_parsed = _extract_json_block(val_raw)
-                        if val_parsed and isinstance(val_parsed, list) and len(val_parsed) == 1:
-                            parsed = val_parsed
-                except Exception as e:
-                    print("Gemini upload fallback error:", e)
-                    parsed = None
-        except Exception as e:
-            print("Gemini extraction/validation error:", e)
-            parsed = None
-
-        if not parsed:
-            # as a safety fallback, attempt to extract basic email/phone from resume_text using regex
-            if resume_text:
-                email_m = EMAIL_RE.search(resume_text)
-                phone_m = PHONE_RE.search(resume_text)
-                candidate_guess = {
-                    "Candidate Name": "",
-                    "Email ID": email_m.group(0) if email_m else "",
-                    "Contact Number": normalize_phone(phone_m.group(1)) if phone_m else "",
-                    "Location": "",
-                    "Skillset": "",
-                    "IT Exp.": compute_experience_from_text(resume_text),
-                    "Relevant Exp.": compute_relevant_experience_from_text(resume_text),
-                    "Education": extract_education_from_text(resume_text),
-                    "Company": "",
-                    "Client": "",
-                    "ResumeLink": resume_url,
-                    "Comment": "",
-                    "notice_period": ""
-                }
-                parsed = [candidate_guess]
-            else:
+            # Download file bytes from Google Drive
+            try:
+                file_bytes = _download_file_bytes(file_id)
+            except HttpError:
                 continue
 
-        # parsed is expected to be a list of candidate dicts (often length 1)
-        for c in parsed:
-            # defensive get with alternative keys in case Gemini used slightly different keys
-            email = normalize_email(c.get("Email ID", "") or c.get("email", ""))
-            name = normalize_name(c.get("Candidate Name", "") or c.get("name", ""))
-            contact = normalize_phone(c.get("Contact Number", "") or c.get("contact", ""))
+            # Extract text locally
+            try:
+                resume_text = extract_text_from_bytes_by_mime(fname, file_bytes)
+            except Exception:
+                resume_text = ""
 
-            # further local fallbacks using resume_text
-            if not email and resume_text:
-                m = EMAIL_RE.search(resume_text)
-                if m:
-                    email = normalize_email(m.group(0))
-            if (not contact or len(re.sub(r"\D", "", contact)) < 10) and resume_text:
-                pm = PHONE_RE.search(resume_text)
-                if pm:
-                    contact = normalize_phone(pm.group(1))
+            # Skip junk resumes
+            if not resume_text or len(resume_text) < 100:
+                continue
 
-            skillset = normalize_skilllist(c.get("Skillset", "") or "")
-            it_exp = c.get("IT Exp.", "") or compute_experience_from_text(resume_text)
-            # Relevant experience: use parsed -> fallback compute -> final fallback to IT Exp.
-            relevant_exp = c.get("Relevant Exp.", "") or compute_relevant_experience_from_text(resume_text)
-            if not relevant_exp:
-                relevant_exp = it_exp or ""
-            education = c.get("Education", "") or extract_education_from_text(resume_text)
-            company = c.get("Company", "") or ""
-            client = c.get("Client", "") or ""
-            comment = c.get("Comment", "") or ""
-            notice_period = c.get("notice_period", "") or ""
+            # Collect input for Groq (DO NOT PARSE HERE)
+            groq_input.append({
+                "text": resume_text,
+                "resume_url": resume_url
+            })
 
-            # Avoid duplicates (your existing logic)
+            file_context.append((f, resume_text, resume_url))
+        # ===== GROQ EXTRACTION (BATCH LEVEL) =====
+        if not groq_input:
+            continue
+
+        prompt = _build_groq_batch_prompt(groq_input)
+
+        try:
+            resp = groq_client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": "You extract resumes into structured JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0,
+            )
+            
+            raw = resp.choices[0].message.content
+
+            print("===== GROQ RAW START =====")
+            print(raw)
+            print("===== GROQ RAW END =====")
+
+            if not raw:
+                print("❌ Groq returned empty response")
+                continue
+
+            try:
+                parsed_batch = json.loads(raw)
+            except Exception:
+                print("❌ Invalid JSON from Groq")
+                print(raw)
+                continue
+
+        except Exception as e:
+                print("Groq extraction failed:", e)
+                continue
+
+
+        # parsed_batch is a list of candidate dicts returned by Groq
+        for c in parsed_batch:
+            email = normalize_email(c.get("email", ""))
+            name = normalize_name(c.get("candidate_name", ""))
+            contact = normalize_phone(c.get("contact", ""))
+
+            skillset = normalize_skilllist(c.get("skillset", ""))
+            it_exp = c.get("it_experience", "")
+            relevant_exp = c.get("relevant_experience", "")
+            location = c.get("location", "")
+            education = c.get("education", "")
+            company = c.get("company", "")
+            client = c.get("clients", "")
+            comment = c.get("comment", "")
+            notice_period = c.get("notice_period", "")
+            resume_url = c.get("resumelinks", "")
+
+            # Avoid duplicates (UNCHANGED LOGIC)
             if email:
                 exists = db.query(Candidate).filter(Candidate.email == email).first()
             else:
-                exists = db.query(Candidate).filter(Candidate.candidate_name == name, Candidate.contact == contact).first()
+                exists = db.query(Candidate).filter(
+                    Candidate.candidate_name == name,
+                    Candidate.contact == contact
+                ).first()
+
             if exists:
                 duplicates.append(email or f"{name}-{contact}")
                 continue
+
+            # -------- EMBEDDING (INGESTION TIME) --------
+            embed_parts = []
+            if skillset:
+                embed_parts.append(f"Skills: {skillset}")
+            if it_exp:
+                embed_parts.append(f"IT Experience: {it_exp}")
+            if relevant_exp:
+                embed_parts.append(f"Relevant Experience: {relevant_exp}")
+            if location:
+                embed_parts.append(f"Location: {location}")
+
+            embedding = embed_text(" | ".join(embed_parts))
 
             candidate = Candidate(
                 candidate_name=name,
                 contact=contact,
                 email=email,
-                location=c.get("Location", ""),
+                location=location,
                 skillset=skillset,
                 relevant_experience=relevant_exp,
                 it_experience=it_exp,
@@ -686,20 +607,23 @@ def extract_resumes_endpoint(
                 resumelinks=resume_url,
                 comment=comment,
                 notice_period=notice_period,
+                embedding=embedding,
                 recruitment_notes="",
                 ai_score=None,
                 ai_explanation="",
             )
+
             db.add(candidate)
             db.flush()
             inserted += 1
+
 
             # Append to sheet with normalized values
             _append_row_to_sheet(gclient, {
                 "Candidate Name": name,
                 "Email ID": email,
                 "Contact Number": contact,
-                "Location": c.get("Location", "") or "",
+                "Location": location,
                 "Skillset": skillset,
                 "Relevant Exp.": relevant_exp,
                 "IT Exp.": it_exp,
@@ -713,18 +637,6 @@ def extract_resumes_endpoint(
                 "ai_score": "",
                 "ai_explanation": "",
             })
-
-        # cleanup: if we used uploaded_file earlier, attempt to delete
-        try:
-            if 'uploaded_file' in locals():
-                # delete by name if available (best-effort)
-                try:
-                    genai.delete_file(uploaded_file.name)
-                except Exception:
-                    pass
-                del uploaded_file
-        except Exception:
-            pass
 
     db.add(UserLog(user_id=admin.id, action=f"Resume extraction from folder={folder_id}, inserted={inserted}, duplicates={len(duplicates)}"))
     db.commit()

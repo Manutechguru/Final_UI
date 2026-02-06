@@ -2,7 +2,7 @@
 from landing_page_app.routers import auth, admin, status_history, templates as template_router
 from landing_page_app.routers import uploadCSV
 from landing_page_app.routers import user_activity
-
+from landing_page_app.routers import invoice
 
 # clients sub-routers
 from landing_page_app.routers.clients import base as clients_base
@@ -28,7 +28,8 @@ def include_routers(app):
     # Auth & Admin
     app.include_router(auth.router, tags=["Auth"])
     app.include_router(admin.router, prefix="/admin", tags=["Admin"])
-
+    app.include_router(invoice.router)
+    
     # Clients: register static listing routes before parameterized ones to avoid capture
     app.include_router(all_managers.router, tags=["All Managers"])
     app.include_router(alljobs.router, tags=["All Jobs"])

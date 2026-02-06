@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: teetli_pg
+    ports:
+      - "55432:5432"
+    environment:
+      POSTGRES_DB: Teetli
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: StrongPassword123
+    volumes:
+      - teetli_pgdata:/var/lib/postgresql/data
+
+volumes:
+  teetli_pgdata:
