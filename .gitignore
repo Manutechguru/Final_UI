@@ -2,7 +2,6 @@
 # ENV / SECRETS
 # ===============================
 .env
-.env.*
 gmail_tokens.json
 token.json
 
