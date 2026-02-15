@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice – Data Entry</title>
+
+    <style>
+        :root {
+            --bg:#f4f6f9;
+            --card:#ffffff;
+            --text:#1f2937;
+            --muted:#6b7280;
+            --border:#e5e7eb;
+            --accent:#2563eb;
+            --accent-soft:#eff6ff;
+            --radius:10px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin:0;
+            padding:30px;
+            background:var(--bg);
+            font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+            color:var(--text);
+        }
+
+        h1 { margin:0 0 6px; font-size:26px; font-weight:700; }
+        .subtitle { color:var(--muted); font-size:14px; }
+
+        .header {
+            display:flex;
+            border-bottom:1px solid var(--border);
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:30px;
+        }
+
+        /* three dot menu */
+        .invoice-menu { position:relative; }
+        .invoice-menu button {
+            font-size:22px;
+            background:none;
+            border:none;
+            cursor:pointer;
+            padding:6px 10px;
+        }
+
+        .dropdown {
+            position:absolute;
+            right:0;
+            top:36px;
+            background:#fff;
+            border:1px solid var(--border);
+            border-radius:8px;
+            min-width:180px;
+            box-shadow:0 10px 30px rgba(0,0,0,.08);
+            z-index:100;
+        }
+
+        .dropdown button {
+            width:100%;
+            padding:10px 14px;
+            border:none;
+            background:transparent;
+            cursor:pointer;
+            text-align:left;
+            font-size:14px;
+        }
+
+        .dropdown button:hover { background:var(--accent-soft); }
+        .hidden { display:none!important; }
+
+        form { max-width:1100px; margin:auto; }
+
+        .section {
+            background:var(--card);
+            border-radius:var(--radius);
+            padding:24px;
+            margin-bottom:24px;
+            border:1px solid var(--border);
+        }
+
+        .section-title {
+            font-size:16px;
+            font-weight:600;
+            margin-bottom:16px;
+            border-left:4px solid var(--accent);
+            padding-left:10px;
+        }
+
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+
+        label {
+            font-size:13px;
+            font-weight:500;
+            margin-bottom:6px;
+            display:block;
+            color:var(--muted);
+        }
+
+        input, textarea {
+            width:100%;
+            padding:10px 12px;
+            border-radius:8px;
+            border:1px solid var(--border);
+            font-size:14px;
+        }
+
+        input[readonly] {
+            background:#f9fafb;
+            cursor:not-allowed;
+        }
+
+        textarea { resize:vertical; min-height:70px; }
+
+        input:focus, textarea:focus {
+            outline:none;
+            border-color:var(--accent);
+        }
+
+        .form-footer {
+            display:flex;
+            justify-content:flex-end;
+            margin-top:20px;
+        }
+
+        .btn-primary {
+            background:var(--accent);
+            color:#fff;
+            border:none;
+            padding:12px 22px;
+            font-size:14px;
+            border-radius:10px;
+            cursor:pointer;
+            font-weight:600;
+        }
+
+        /* modal */
+        #invoiceModal {
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,.45);
+            z-index:2000;
+        }
+        #invoiceModal.hidden { display:none; }
+
+        #clientModal {
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,.45);
+            z-index:2000;
+        }
+
+        #clientModal.hidden {
+            display:none;
+        }
+
+        .modal-box {
+            background:#fff;
+            border-radius:12px;
+            width:65%;
+            max-height:75%;
+            overflow-y:auto;
+            padding:24px;
+            margin:8% auto;
+        }
+
+        table { width:100%; border-collapse:collapse; margin-top:14px; }
+        th,td {
+            border-bottom:1px solid var(--border);
+            padding:10px;
+            font-size:14px;
+            text-align:center;
+        }
+        th { background:#f9fafb; font-weight:600; }
+        .modal-actions { text-align:right; margin-top:16px; }
+
+        .header-actions{
+            display:flex;
+            gap:12px;
+            align-items:center;
+        }
+
+.back-btn{
+text-decoration:none;
+color:#334155;
+font-weight:600;
+font-size:14px;
+transition:.2s;
+}
+
+.back-btn:hover{
+color:var(--accent);
+transform:translateX(-2px);
+}
+
+.generated-btn{
+background:var(--accent);
+color:#fff;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+font-weight:600;
+cursor:pointer;
+transition:.2s;
+}
+
+.generated-btn:hover{
+background:#1d4ed8;
+box-shadow:0 8px 20px rgba(37,99,235,.35);
+transform:translateY(-1px);
+}
+
+/* ===== CLIENT PICK MODAL UPGRADE ===== */
+
+#clientModal .modal-box{
+max-width:1100px;
+}
+
+.client-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:16px;
+}
+
+.client-grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+gap:24px;
+margin:20px 0 24px;
+}
+
+.client-header h3{
+margin:0;
+font-size:20px;
+}
+
+.client-sub{
+color:var(--muted);
+font-size:13px;
+margin-bottom:12px;
+}
+
+/* Add client section */
+.add-client{
+margin-top:18px;
+padding-top:16px;
+border-top:1px solid var(--border);
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:14px;
+}
+
+.add-client textarea,
+.add-client input{
+border-radius:10px;
+}
+
+.add-client textarea{
+grid-column:1 / -1;
+}
+
+.client-actions{
+display:flex;
+justify-content:flex-end;
+gap:12px;
+margin-top:10px;
+}
+
+.client-actions button{
+padding:10px 18px;
+border-radius:10px;
+border:none;
+cursor:pointer;
+font-weight:600;
+}
+
+.client-actions .save{
+background:var(--accent);
+color:white;
+}
+
+.client-actions .save:hover{
+background:#1d4ed8;
+}
+
+.client-actions .close{
+background:#e5e7eb;
+}
+
+.client-actions .close:hover{
+background:#d1d5db;
+}
+
+.client-card{
+border:1px solid var(--border);
+border-radius:14px;
+overflow:hidden;
+cursor:pointer;
+background:white;
+transition:.25s ease;
+display:flex;
+flex-direction:column;
+}
+
+.client-card:hover{
+transform:translateY(-4px);
+box-shadow:0 16px 40px rgba(0,0,0,.18);
+border-color:var(--accent);
+}
+
+.client-card img{
+width:100%;
+height:200px;
+object-fit:cover;
+background:#f8fafc;
+}
+
+.client-title{
+padding:10px;
+text-align:center;
+font-weight:600;
+font-size:14px;
+background:#f9fafb;
+}
+
+    </style>
+</head>
+
+<body>
+
+{% set d = data if data else {} %}
+
+<div class="header">
+    <div class="header-left">
+        <h1>Invoice Creation</h1>
+        <div class="subtitle">Create, preview and export invoices</div>
+    </div>
+
+    <div class="header-actions">
+        <a href="/admin" class="back-btn">← Back</a>
+        <button class="generated-btn" onclick="openInvoices()">Generated Invoices</button>
+        <button class="generated-btn" onclick="openClients()">Pick Client</button>
+    </div>
+</div>
+
+<form method="post" action="/admin/invoice/preview" enctype="multipart/form-data">
+
+<input type="hidden" name="client_bg" id="clientBg" value="{{ d.get('client_bg','') }}">
+<input type="hidden" name="layout_key" id="layoutKey" value="{{ d.get('layout_key','') }}">
+
+{% if d.get('signature_blob') %}
+<input type="hidden" name="signature_blob" value="{{ d.get('signature_blob') }}">
+{% endif %}
+
+<!-- PARTY DETAILS -->
+<div class="section">
+    <div class="section-title">Party Details</div>
+    <div class="grid-2">
+        <div>
+            <label>Seller (Bill From)</label>
+            <textarea name="bill_from_address" required>{{ d.get('bill_from_address','') }}</textarea>
+        </div>
+        <div>
+            <label>Buyer (Bill To)</label>
+            <textarea name="bill_to_address" required>{{ d.get('bill_to_address','') }}</textarea>
+        </div>
+    </div>
+</div>
+
+<!-- INVOICE INFO -->
+<div class="section">
+    <div class="section-title">Invoice Information</div>
+    <div class="grid-3">
+        <div>
+            <label>Invoice No.</label>
+            <input name="invoice_no" id="invoiceNo" value="{{ d.get('invoice_no','') }}" readonly>
+        </div>
+        <div>
+            <label>Dated</label>
+            <input type="date" name="invoice_date" required value="{{ d.get('invoice_date','') }}">
+        </div>
+        <div>
+            <label>Delivery Note</label>
+            <input name="delivery_note" value="{{ d.get('delivery_note','') }}">
+        </div>
+        <div>
+            <label>Mode / Terms of Payment</label>
+            <input name="payment_terms" value="{{ d.get('payment_terms','') }}">
+        </div>
+        <div>
+            <label>Reference No. & Date</label>
+            <input name="reference_no_date" value="{{ d.get('reference_no_date','') }}">
+        </div>
+        <div>
+            <label>Other References</label>
+            <input name="other_references" value="{{ d.get('other_references','') }}">
+        </div>
+    </div>
+</div>
+
+<!-- ORDER & DISPATCH -->
+<div class="section">
+    <div class="section-title">Order & Dispatch Details</div>
+    <div class="grid-3">
+        <div>
+            <label>Buyer’s Order No.</label>
+            <input name="buyers_order_no" value="{{ d.get('buyers_order_no','') }}">
+        </div>
+        <div>
+            <label>Dated</label>
+            <input type="date" name="buyers_order_date" value="{{ d.get('buyers_order_date','') }}">
+        </div>
+        <div>
+            <label>Dispatched Through</label>
+            <input name="dispatched_through" value="{{ d.get('dispatched_through','') }}">
+        </div>
+        <div>
+            <label>Destination</label>
+            <input name="destination" value="{{ d.get('destination','') }}">
+        </div>
+        <div>
+            <label>Remarks</label>
+            <input name="remarks" value="{{ d.get('remarks','') }}">
+        </div>
+    </div>
+</div>
+
+<!-- ITEM DETAILS -->
+<div class="section">
+    <div class="section-title">Item Details</div>
+    <div class="grid-2">
+        <div>
+            <label>Particulars</label>
+            <textarea name="particulars" required>{{ d.get('particulars','') }}</textarea>
+        </div>
+        <div>
+            <label>HSN / SAC</label>
+            <input name="hsn_sac" required value="{{ d.get('hsn_sac','') }}">
+
+            <label style="margin-top:10px">GST %</label>
+            <input type="number" step="0.01" name="gst_rate" id="gstRate" required value="{{ d.get('gst_rate','') }}">
+
+            <label style="margin-top:10px">Amount</label>
+            <input type="number" step="0.01" name="amount" id="baseAmount" required value="{{ d.get('amount','') }}">
+
+            <label style="margin-top:10px">GST Amount</label>
+            <input type="number" step="0.01" name="gst_amount" id="gstAmount" readonly value="{{ d.get('gst_amount','') }}">
+
+            <label style="margin-top:10px">Total Amount</label>
+            <input type="number" step="0.01" name="total_amount" id="totalAmount" readonly value="{{ d.get('total_amount','') }}">
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Amount in Words</div>
+    <input name="amount_in_words" id="amountInWords" readonly value="{{ d.get('amount_in_words','') }}">
+</div>
+
+<!-- BANK -->
+<div class="section">
+    <div class="section-title">Bank Details</div>
+    <div class="grid-2">
+        <div>
+            <label>Account Holder Name</label>
+            <input name="account_holder_name" required value="{{ d.get('account_holder_name','') }}">
+        </div>
+        <div>
+            <label>Bank Name</label>
+            <input name="bank_name" required value="{{ d.get('bank_name','') }}">
+        </div>
+        <div>
+            <label>Account No.</label>
+            <input name="account_no" required value="{{ d.get('account_no','') }}">
+        </div>
+        <div>
+            <label>Branch & IFSC</label>
+            <input name="branch_ifsc" required value="{{ d.get('branch_ifsc','') }}">
+        </div>
+    </div>
+</div>
+
+<!-- SIGNATURE -->
+<div class="section">
+    <div class="section-title">Authorized Signature</div>
+
+    <label>Upload Signature Image</label>
+    <input type="file" name="signature_image" accept="image/*">
+
+    {% if d.get("signature_blob") %}
+        <img
+            src="data:image/png;base64,{{ d.signature_blob }}"
+            style="margin-top:10px;max-height:80px;display:block;"
+        >
+
+        <input type="hidden" name="signature_blob" value="{{ d.signature_blob }}">
+    {% endif %}
+
+</div>
+
+
+<div class="form-footer">
+    <button type="submit" class="btn-primary">Preview Invoice</button>
+</div>
+
+</form>
+
+<!-- MODAL -->
+<div id="invoiceModal" class="hidden">
+    <div class="modal-box">
+        <h3>Generated Invoices</h3>
+
+        <!-- 🔍 SEARCH INPUT (ADD HERE) -->
+        <input
+            id="invoiceSearch"
+            placeholder="Search by Invoice No..."
+            style="
+                width:100%;
+                padding:10px 12px;
+                border-radius:10px;
+                border:1px solid #e5e7eb;
+                margin:12px 0 8px;
+                font-size:14px;
+            "
+        >
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Invoice</th>
+                    <th>View</th>
+                    <th>Download</th>
+                </tr>
+            </thead>
+            <tbody id="invoiceTable"></tbody>
+        </table>
+
+        <div class="modal-actions">
+            <button class="btn-primary" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="clientModal" class="hidden">
+<div class="modal-box">
+
+<div class="client-header">
+<h3>Pick Client Template</h3>
+</div>
+
+<div class="client-sub">
+Select an existing client or add a new one
+</div>
+
+<div id="clientList" class="client-grid"></div>
+
+<div class="add-client">
+
+<input id="clientName" placeholder="Client Name">
+
+<input type="file" id="bgUpload">
+
+<textarea id="fromAddr" placeholder="From Address"></textarea>
+<textarea id="toAddr" placeholder="Buyer (To) Address"></textarea>
+
+</div>
+
+<div class="client-actions">
+<button class="close" onclick="closeClient()">Close</button>
+<button class="save" onclick="saveClient()">Save Client</button>
+</div>
+
+</div>
+</div>
+
+<script>
+
+const modal=document.getElementById("invoiceModal");
+
+function openInvoices(){
+
+    const layoutKey = document.getElementById("layoutKey").value;
+
+    if(!layoutKey){
+        alert("Pick client first");
+        return;
+    }
+
+    const company = layoutKey.split("-")[0];
+
+    fetch(`/admin/invoice/generated?company=${company}`)
+    .then(r=>r.json())
+    .then(data=>{
+        const t=document.getElementById("invoiceTable");
+        t.innerHTML="";
+
+        data.forEach(i=>{
+            t.innerHTML+=`
+            <tr>
+                <td>${i.invoice_no}</td>
+                <td><a href="/admin/invoice/view/${i.id}" target="_blank">View</a></td>
+                <td><a href="/admin/invoice/download/${i.id}">Download</a></td>
+            </tr>`;
+        });
+
+        modal.classList.remove("hidden");
+    });
+}
+
+function closeModal(){
+ modal.classList.add("hidden");
+
+ // reset invoice search
+ if(invoiceSearch){
+   invoiceSearch.value="";
+   document.querySelectorAll("#invoiceTable tr").forEach(r=>r.style.display="");
+ }
+}
+
+window.addEventListener("DOMContentLoaded",()=>{
+
+const gstRate=document.getElementById("gstRate");
+const baseAmt=document.getElementById("baseAmount");
+const gstAmt=document.getElementById("gstAmount");
+const totalAmt=document.getElementById("totalAmount");
+const wordsOut=document.getElementById("amountInWords");
+
+function recalc(){
+ const rate = parseFloat(gstRate.value) || 0;
+ const amt = parseFloat(baseAmt.value) || 0;
+
+ const g = (amt * rate) / 100;
+ const t = amt + g;
+
+ // ROUND TO NEAREST RUPEE
+ const roundedTotal = Math.round(t);
+
+ gstAmt.value = g.toFixed(2);
+ totalAmt.value = roundedTotal.toFixed(2);
+
+ // Amount in words MUST match rounded total
+ wordsOut.value = `INR ${numberToWords(roundedTotal)} rupees only`;
+}
+
+gstRate.addEventListener("input",recalc);
+baseAmt.addEventListener("input",recalc);
+recalc();
+gstRate.addEventListener("input",recalc);
+baseAmt.addEventListener("input",recalc);
+recalc();
+
+});
+
+function numberToWords(num){
+    const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
+             'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+    const b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+    function c(n){
+        if(n<20) return a[n];
+        if(n<100) return b[Math.floor(n/10)] + (n%10?' '+a[n%10]:'');
+        if(n<1000) return a[Math.floor(n/100)]+' Hundred'+(n%100?' '+c(n%100):'');
+        if(n<100000) return c(Math.floor(n/1000))+' Thousand'+(n%1000?' '+c(n%1000):'');
+        if(n<10000000) return c(Math.floor(n/100000))+' Lakh'+(n%100000?' '+c(n%100000):'');
+        return c(Math.floor(n/10000000))+' Crore';
+    }
+    return c(num);
+}
+
+function openClients(){
+ fetch("/admin/invoice/clients")
+ .then(r=>r.json())
+ .then(d=>{
+   const box=document.getElementById("clientList");
+   box.innerHTML="";
+
+   d.forEach(c=>{
+   box.innerHTML+=`
+   <div class="client-card"
+        data-bg="${c.bg}"
+        data-name="${c.name}"
+        data-addr="${c.from_address.replace(/"/g,"&quot;")}"
+        data-to="${(c.to_address || '').replace(/"/g,"&quot;")}"
+        onclick="pickClient(this)">
+
+        <img src="data:image/png;base64,${c.bg}">
+
+        <div class="client-title">${c.name}</div>
+
+    </div>
+    `;
+    });
+
+   document.getElementById("clientModal").classList.remove("hidden");
+ });
+}
+
+function closeClient(){
+ document.getElementById("clientModal").classList.add("hidden");
+}
+
+function pickClient(btn){
+
+ const bg = btn.dataset.bg;
+ const addr = btn.dataset.addr;
+ const toAddr = btn.dataset.to;
+ const name = btn.dataset.name;
+
+ document.getElementById("clientBg").value = "data:image/png;base64," + bg;
+ document.querySelector("textarea[name=bill_from_address]").value = addr;
+ document.querySelector("textarea[name=bill_to_address]").value = toAddr;
+ document.getElementById("layoutKey").value = name;
+
+ // 🔥 ask backend for NEXT invoice number
+ fetch(`/admin/invoice/next-number/${encodeURIComponent(name)}`)
+   .then(r => r.json())
+   .then(d => {
+       document.getElementById("invoiceNo").value = d.invoice_no;
+   });
+
+ closeClient();
+}
+
+function saveClient(){
+
+ const clientName = document.getElementById("clientName");
+
+ if(!clientName.value.trim()){
+   alert("Client name required");
+   return;
+ }
+
+ if(!bgUpload.files.length || !fromAddr.value.trim()){
+   alert("Upload background + enter address");
+   return;
+ }
+
+ const f=new FormData();
+ f.append("name", clientName.value.trim());
+ f.append("bg_image",bgUpload.files[0]);
+ f.append("from_address",fromAddr.value);
+ f.append("to_address", document.getElementById("toAddr").value);
+
+ fetch("/admin/invoice/client",{method:"POST",body:f})
+ .then(r=>r.json())
+ .then(()=>{
+   clientName.value="";
+   fromAddr.value="";
+   document.getElementById("toAddr").value = "";
+   bgUpload.value="";
+   openClients();
+ });
+}
+
+// Invoice search
+// Invoice search (SCOPED to invoice modal only)
+const invoiceSearch = document.getElementById("invoiceSearch");
+
+if(invoiceSearch){
+invoiceSearch.addEventListener("input", function(){
+const filter = this.value.toLowerCase();
+
+if(!modal.classList.contains("hidden")){
+document.querySelectorAll("#invoiceTable tr").forEach(row=>{
+const txt = row.children[0].innerText.toLowerCase();
+row.style.display = txt.includes(filter) ? "" : "none";
+});
+}
+});
+}
+
+</script>
+
+</body>
+</html>

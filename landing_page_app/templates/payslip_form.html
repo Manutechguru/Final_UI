@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Payslip – Data Entry</title>
+
+<style>
+:root{
+--bg:#f6f7fb;
+--card:#ffffff;
+--text:#0f172a;
+--muted:#64748b;
+--border:#e5e7eb;
+--primary:#2563eb;
+--primary-soft:#eef2ff;
+--radius:14px;
+}
+
+*{box-sizing:border-box}
+
+body{
+margin:0;
+background:linear-gradient(180deg,#f8fafc,#f1f5f9);
+font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+color:var(--text);
+}
+
+/* ===== TOP HEADER ===== */
+.header{
+background:#ffffff;
+border-bottom:1px solid var(--border);
+padding:22px 36px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.header-left{
+display:flex;
+flex-direction:column;
+gap:6px;
+}
+
+.header-left h1{
+margin:0;
+font-size:28px;
+font-weight:700;
+letter-spacing:-0.3px;
+}
+
+.header-left p{
+margin:0;
+color:var(--muted);
+font-size:14px;
+}
+
+.header-actions{
+display:flex;
+gap:12px;
+align-items:center;
+}
+
+.back-btn{
+text-decoration:none;
+color:#334155;
+font-weight:600;
+font-size:14px;
+}
+
+.generated-btn{
+background:var(--primary);
+color:#fff;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+font-weight:600;
+cursor:pointer;
+}
+
+/* ===== PAGE ===== */
+.page{
+padding:36px;
+max-width:1200px;
+margin:auto;
+}
+
+/* ===== STEP HINT ===== */
+.step-hint{
+background:var(--primary-soft);
+color:#1e3a8a;
+padding:14px 18px;
+border-radius:12px;
+font-size:14px;
+margin-bottom:26px;
+}
+
+/* ===== FORM CARDS ===== */
+.section{
+background:var(--card);
+border-radius:var(--radius);
+padding:26px;
+margin-bottom:26px;
+border:1px solid var(--border);
+box-shadow:0 10px 30px rgba(0,0,0,.06);
+}
+
+.section-title{
+font-size:17px;
+font-weight:600;
+margin-bottom:18px;
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.section-title::before{
+content:"";
+width:6px;
+height:18px;
+background:var(--primary);
+border-radius:4px;
+}
+
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+label{
+font-size:13px;
+font-weight:500;
+color:var(--muted);
+margin-bottom:6px;
+display:block;
+}
+
+input{
+width:100%;
+padding:12px 14px;
+border-radius:10px;
+border:1px solid var(--border);
+font-size:14px;
+background:#fff;
+}
+
+input:focus{
+outline:none;
+border-color:var(--primary);
+box-shadow:0 0 0 2px rgba(37,99,235,.12);
+}
+
+/* ===== FOOTER ACTION ===== */
+.form-footer{
+display:flex;
+justify-content:flex-end;
+margin-top:10px;
+}
+
+.btn-primary{
+background:var(--primary);
+color:#fff;
+border:none;
+padding:14px 28px;
+font-size:15px;
+border-radius:12px;
+font-weight:600;
+cursor:pointer;
+}
+
+/* ===== MODAL ===== */
+#payslipModal{
+position:fixed;
+inset:0;
+background:rgba(15,23,42,.55);
+z-index:2000;
+}
+
+#payslipModal.hidden{display:none}
+
+.modal-box{
+background:#fff;
+border-radius:18px;
+width:72%;
+max-height:78%;
+overflow-y:auto;
+padding:26px;
+margin:5% auto;
+box-shadow:0 30px 80px rgba(0,0,0,.35);
+}
+
+.modal-box h3{
+margin-top:0;
+font-size:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:16px;
+}
+
+th,td{
+padding:14px;
+font-size:14px;
+border-bottom:1px solid var(--border);
+text-align:center;
+}
+
+th{
+background:#f8fafc;
+font-weight:600;
+}
+
+.modal-actions{
+text-align:right;
+margin-top:18px;
+}
+
+/* ===== HOVER INTERACTIONS ===== */
+
+/* Back button */
+.back-btn {
+    transition: color .2s ease, transform .2s ease;
+}
+
+.back-btn:hover {
+    color: var(--primary);
+    transform: translateX(-2px);
+}
+
+/* Generated Payslips button */
+.generated-btn {
+    transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.generated-btn:hover {
+    background: #1d4ed8;
+    box-shadow: 0 8px 20px rgba(37,99,235,.35);
+    transform: translateY(-1px);
+}
+
+/* Preview Payslip (primary CTA) */
+.btn-primary {
+    transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+    box-shadow: 0 10px 26px rgba(37,99,235,.35);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(37,99,235,.3);
+}
+
+</style>
+</head>
+
+<body>
+
+{% set d = d if d else {} %}
+
+<!-- HEADER -->
+<div class="header">
+<div class="header-left">
+<h1>Payslip Processing</h1>
+<p>Create, preview and export employee payslips</p>
+</div>
+
+<div class="header-actions">
+<a href="/admin" class="back-btn">← Back</a>
+<button class="generated-btn" onclick="openPayslips()">Generated Payslips</button>
+</div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+<form method="post" action="/admin/payslip/preview">
+
+<!-- EMPLOYEE INFO -->
+<div class="section">
+<div class="section-title">Employee Information</div>
+
+<div class="grid-3">
+
+<div>
+<label>Payslip Month</label>
+<input type="month" name="payslip_month" value="{{ d.get('payslip_month','') }}" required>
+</div>
+
+{% for f,l in [
+('employee_code','Employee Code'),
+('employee_name','Employee Name'),
+('designation','Designation'),
+('department','Department'),
+('bank_name','Bank Name'),
+('account_number','Account Number'),
+('location','Location'),
+('pan','PAN'),
+('pf_number','PF Number'),
+('uan','UAN')
+] %}
+<div>
+<label>{{l}}</label>
+<input name="{{f}}" value="{{ d.get(f,'') }}">
+</div>
+{% endfor %}
+
+<div><label>DOB</label><input type="date" name="dob" value="{{ d.get('dob','') }}"></div>
+<div><label>DOJ</label><input type="date" name="doj" value="{{ d.get('doj','') }}"></div>
+
+{% for f,l in [
+('lop_days','LOP Days'),
+('work_days','Work Days'),
+('gender','Gender'),
+('regime_type','Regime Type'),
+('lop_reversal','LOP Reversal'),
+('pay_mode','Pay Mode')
+] %}
+<div>
+<label>{{l}}</label>
+<input name="{{f}}" value="{{ d.get(f,'') }}" {% if f == 'work_days' %}readonly{% endif %}>
+</div>
+{% endfor %}
+</div>
+</div>
+
+<!-- EARNINGS -->
+<div class="section">
+<div class="section-title">Earnings</div>
+<div class="grid-3">
+{% for f,l in [
+('basic_salary','Basic Salary'),
+('special_allowance','Special Allowance'),
+('employer_pf','Provident Fund (Employer)'),
+('total_earnings','Total Gross Earnings')
+] %}
+<div><label>{{l}}</label><input name="{{f}}" value="{{ d.get(f,'') }}"></div>
+{% endfor %}
+</div>
+</div>
+
+<!-- DEDUCTIONS -->
+<div class="section">
+<div class="section-title">Deductions</div>
+<div class="grid-3">
+{% for f,l in [
+('pf','Provident Fund'),
+('pf_arrears','PF Arrears'),
+('professional_tax','Professional Tax'),
+('total_deductions','Total Gross Deductions')
+] %}
+<div><label>{{l}}</label><input name="{{f}}" value="{{ d.get(f,'') }}"></div>
+{% endfor %}
+</div>
+</div>
+
+<!-- NET PAY -->
+<div class="section">
+<div class="section-title">Net Pay Summary</div>
+<div class="grid-2">
+<div><label>Net Pay</label><input name="net_pay" value="{{ d.get('net_pay','') }}"></div>
+<div><label>Amount in Words</label><input name="amount_words" value="{{ d.get('amount_words','') }}"></div>
+</div>
+</div>
+
+<div class="form-footer">
+<button type="submit" class="btn-primary">Preview Payslip</button>
+</div>
+
+</form>
+</div>
+
+<!-- MODAL -->
+<div id="payslipModal" class="hidden">
+<div class="modal-box">
+<h3>Generated Payslips</h3>
+<input
+id="payslipSearch"
+placeholder="Search by Employee Code..."
+style="
+width:100%;
+padding:10px 12px;
+border-radius:10px;
+border:1px solid #e5e7eb;
+margin:12px 0 8px;
+font-size:14px;
+">
+
+<table>
+<thead>
+<tr><th>Employee Code</th><th>View</th><th>Download</th></tr>
+</thead>
+<tbody>
+{% for s in slips %}
+<tr>
+<td>{{ s.employee_code }}</td>
+<td><a href="/admin/payslip/file/{{ s.id }}" target="_blank">View</a></td>
+<td><a href="/admin/payslip/download/{{ s.id }}">Download</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<div class="modal-actions">
+<button class="btn-primary" onclick="closeModal()">Close</button>
+</div>
+</div>
+</div>
+
+<script>
+function openPayslips(){
+document.getElementById("payslipModal").classList.remove("hidden");
+}
+function closeModal(){
+document.getElementById("payslipModal").classList.add("hidden");
+}
+
+/* PAY CALCULATION — untouched */
+function val(name){return parseFloat(document.querySelector(`input[name="${name}"]`)?.value)||0}
+function setVal(name,v){document.querySelector(`input[name="${name}"]`).value=v.toFixed(2)}
+
+function numberToWords(num){
+const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+function inWords(n){
+if(n<20)return a[n];
+if(n<100)return b[Math.floor(n/10)]+' '+a[n%10];
+if(n<1000)return a[Math.floor(n/100)]+' Hundred '+inWords(n%100);
+if(n<100000)return inWords(Math.floor(n/1000))+' Thousand '+inWords(n%1000);
+if(n<10000000)return inWords(Math.floor(n/100000))+' Lakh '+inWords(n%100000);
+return inWords(Math.floor(n/10000000))+' Crore '+inWords(n%10000000);
+}
+return inWords(num);
+}
+
+function recalcPayslip(){
+const gross=val("basic_salary")+val("special_allowance")+val("employer_pf");
+setVal("total_earnings",gross);
+const ded=val("pf")+val("pf_arrears")+val("professional_tax");
+setVal("total_deductions",ded);
+const net=gross-ded;
+setVal("net_pay",net);
+document.querySelector('input[name="amount_words"]').value=
+net?`INR ${numberToWords(Math.floor(net))} rupees only`:"";
+}
+
+["basic_salary","special_allowance","employer_pf","pf","pf_arrears","professional_tax"]
+.forEach(f=>{
+const el=document.querySelector(`input[name="${f}"]`);
+if(el)el.addEventListener("input",recalcPayslip);
+});
+window.addEventListener("load",recalcPayslip);
+
+// Payslip search
+const searchInput = document.getElementById("payslipSearch");
+
+if(searchInput){
+searchInput.addEventListener("input", function(){
+const filter = this.value.toLowerCase();
+document.querySelectorAll("#payslipModal tbody tr").forEach(row=>{
+const code = row.children[0].innerText.toLowerCase();
+row.style.display = code.includes(filter) ? "" : "none";
+});
+});
+}
+
+const monthInput = document.querySelector('input[name="payslip_month"]');
+const workDaysInput = document.querySelector('input[name="work_days"]');
+
+function fillWorkDays(){
+    if(!monthInput.value) return;
+
+    const [year, month] = monthInput.value.split("-");
+    const days = new Date(year, month, 0).getDate();
+
+    workDaysInput.value = days;
+}
+
+if(monthInput && workDaysInput){
+
+    // when user changes month
+    monthInput.addEventListener("change", fillWorkDays);
+
+    // ALSO run once on page load
+    fillWorkDays();
+}
+
+</script>
+
+</body>
+</html>
