@@ -1,469 +1,170 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Invoice – Data Entry</title>
 
-    <style>
-        :root {
-            --bg:#f4f6f9;
-            --card:#ffffff;
-            --text:#1f2937;
-            --muted:#6b7280;
-            --border:#e5e7eb;
-            --accent:#2563eb;
-            --accent-soft:#eff6ff;
-            --radius:10px;
-        }
+<style>
+/* minimal required styles copied from your real form */
 
-        * { box-sizing: border-box; }
+.hidden{display:none!important;}
 
-        body {
-            margin:0;
-            padding:30px;
-            background:var(--bg);
-            font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-            color:var(--text);
-        }
+#clientModal{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.45);
+z-index:2000;
+}
 
-        h1 { margin:0 0 6px; font-size:26px; font-weight:700; }
-        .subtitle { color:var(--muted); font-size:14px; }
+.modal-box{
+background:#fff;
+border-radius:12px;
+width:65%;
+max-height:75%;
+overflow-y:auto;
+padding:24px;
+margin:8% auto;
+}
 
-        .header {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            margin-bottom:30px;
-        }
+.client-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:16px;
+}
 
-        /* three dot menu */
-        .invoice-menu { position:relative; }
-        .invoice-menu button {
-            font-size:22px;
-            background:none;
-            border:none;
-            cursor:pointer;
-            padding:6px 10px;
-        }
+.client-grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+gap:24px;
+margin:20px 0 24px;
+}
 
-        .dropdown {
-            position:absolute;
-            right:0;
-            top:36px;
-            background:#fff;
-            border:1px solid var(--border);
-            border-radius:8px;
-            min-width:180px;
-            box-shadow:0 10px 30px rgba(0,0,0,.08);
-            z-index:100;
-        }
+.client-sub{
+color:#6b7280;
+font-size:13px;
+margin-bottom:12px;
+}
 
-        .dropdown button {
-            width:100%;
-            padding:10px 14px;
-            border:none;
-            background:transparent;
-            cursor:pointer;
-            text-align:left;
-            font-size:14px;
-        }
+.add-client{
+margin-top:18px;
+padding-top:16px;
+border-top:1px solid #e5e7eb;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:14px;
+}
 
-        .dropdown button:hover { background:var(--accent-soft); }
-        .hidden { display:none!important; }
+.add-client textarea,
+.add-client input{
+border-radius:10px;
+padding:10px;
+border:1px solid #e5e7eb;
+}
 
-        form { max-width:1100px; margin:auto; }
+.add-client textarea{
+grid-column:1 / -1;
+}
 
-        .section {
-            background:var(--card);
-            border-radius:var(--radius);
-            padding:24px;
-            margin-bottom:24px;
-            border:1px solid var(--border);
-        }
+.client-actions{
+display:flex;
+justify-content:flex-end;
+gap:12px;
+margin-top:10px;
+}
 
-        .section-title {
-            font-size:16px;
-            font-weight:600;
-            margin-bottom:16px;
-            border-left:4px solid var(--accent);
-            padding-left:10px;
-        }
+.client-actions button{
+padding:10px 18px;
+border-radius:10px;
+border:none;
+cursor:pointer;
+font-weight:600;
+}
 
-        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-        .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.client-actions .save{
+background:#2563eb;
+color:white;
+}
 
-        label {
-            font-size:13px;
-            font-weight:500;
-            margin-bottom:6px;
-            display:block;
-            color:var(--muted);
-        }
+.client-actions .close{
+background:#e5e7eb;
+}
 
-        input, textarea {
-            width:100%;
-            padding:10px 12px;
-            border-radius:8px;
-            border:1px solid var(--border);
-            font-size:14px;
-        }
+.client-card{
+border:1px solid #e5e7eb;
+border-radius:14px;
+overflow:hidden;
+cursor:pointer;
+background:white;
+transition:.25s ease;
+display:flex;
+flex-direction:column;
+}
 
-        input[readonly] {
-            background:#f9fafb;
-            cursor:not-allowed;
-        }
+.client-card:hover{
+transform:translateY(-4px);
+box-shadow:0 16px 40px rgba(0,0,0,.18);
+border-color:#2563eb;
+}
 
-        textarea { resize:vertical; min-height:70px; }
+.client-card img{
+width:100%;
+height:200px;
+object-fit:cover;
+}
 
-        input:focus, textarea:focus {
-            outline:none;
-            border-color:var(--accent);
-        }
+.client-title{
+padding:10px;
+text-align:center;
+font-weight:600;
+font-size:14px;
+background:#f9fafb;
+}
+</style>
 
-        .form-footer {
-            display:flex;
-            justify-content:flex-end;
-            margin-top:20px;
-        }
-
-        .btn-primary {
-            background:var(--accent);
-            color:#fff;
-            border:none;
-            padding:12px 22px;
-            font-size:14px;
-            border-radius:10px;
-            cursor:pointer;
-            font-weight:600;
-        }
-
-        /* modal */
-        #invoiceModal {
-            position:fixed;
-            inset:0;
-            background:rgba(0,0,0,.45);
-            z-index:2000;
-        }
-        #invoiceModal.hidden { display:none; }
-
-        #clientModal {
-            position:fixed;
-            inset:0;
-            background:rgba(0,0,0,.45);
-            z-index:2000;
-        }
-
-        #clientModal.hidden {
-            display:none;
-        }
-
-        .modal-box {
-            background:#fff;
-            border-radius:12px;
-            width:65%;
-            max-height:75%;
-            overflow-y:auto;
-            padding:24px;
-            margin:8% auto;
-        }
-
-        table { width:100%; border-collapse:collapse; margin-top:14px; }
-        th,td {
-            border-bottom:1px solid var(--border);
-            padding:10px;
-            font-size:14px;
-            text-align:center;
-        }
-        th { background:#f9fafb; font-weight:600; }
-        .modal-actions { text-align:right; margin-top:16px; }
-    </style>
 </head>
 
 <body>
 
-{% set d = data if data else {} %}
+{% if client_key %}
 
-<div class="header">
-    <div>
-        <h1>Invoice Creation</h1>
-        <div class="subtitle">Enter invoice details carefully before generating PDF</div>
-    </div>
+{% include "invoice_forms/" ~ client_key ~ ".html" %}
 
-    <div class="invoice-menu">
-        <button id="menuBtn">⋮</button>
-        <div id="menuDropdown" class="dropdown hidden">
-            <button onclick="openInvoices()">Generated Invoices</button>
-            <button onclick="openClients()">Pick Client</button>
-        </div>
-    </div>
-</div>
+{% else %}
 
-<form method="post" action="/admin/invoice/preview" enctype="multipart/form-data">
-
-<input type="hidden" name="client_bg" id="clientBg" value="{{ d.get('client_bg','') }}">
-{% if d.get('signature_blob') %}
-<input type="hidden" name="signature_blob" value="{{ d.get('signature_blob') }}">
-{% endif %}
-
-<!-- PARTY DETAILS -->
-<div class="section">
-    <div class="section-title">Party Details</div>
-    <div class="grid-2">
-        <div>
-            <label>Seller (Bill From)</label>
-            <textarea name="bill_from_address" required>{{ d.get('bill_from_address','') }}</textarea>
-        </div>
-        <div>
-            <label>Buyer (Bill To)</label>
-            <textarea name="bill_to_address" required>{{ d.get('bill_to_address','') }}</textarea>
-        </div>
-    </div>
-</div>
-
-<!-- INVOICE INFO -->
-<div class="section">
-    <div class="section-title">Invoice Information</div>
-    <div class="grid-3">
-        <div>
-            <label>Invoice No.</label>
-            <input name="invoice_no" required value="{{ d.get('invoice_no','') }}">
-        </div>
-        <div>
-            <label>Dated</label>
-            <input type="date" name="invoice_date" required value="{{ d.get('invoice_date','') }}">
-        </div>
-        <div>
-            <label>Delivery Note</label>
-            <input name="delivery_note" value="{{ d.get('delivery_note','') }}">
-        </div>
-
-        <div>
-            <label>Mode / Terms of Payment</label>
-            <input name="payment_terms" value="{{ d.get('payment_terms','') }}">
-        </div>
-        <div>
-            <label>Reference No. & Date</label>
-            <input name="reference_no_date" value="{{ d.get('reference_no_date','') }}">
-        </div>
-        <div>
-            <label>Other References</label>
-            <input name="other_references" value="{{ d.get('other_references','') }}">
-        </div>
-    </div>
-</div>
-
-<!-- ORDER & DISPATCH -->
-<div class="section">
-    <div class="section-title">Order & Dispatch Details</div>
-    <div class="grid-3">
-        <div>
-            <label>Buyer’s Order No.</label>
-            <input name="buyers_order_no" value="{{ d.get('buyers_order_no','') }}">
-        </div>
-        <div>
-            <label>Dated</label>
-            <input type="date" name="buyers_order_date" value="{{ d.get('buyers_order_date','') }}">
-        </div>
-        <div>
-            <label>Dispatched Through</label>
-            <input name="dispatched_through" value="{{ d.get('dispatched_through','') }}">
-        </div>
-        <div>
-            <label>Destination</label>
-            <input name="destination" value="{{ d.get('destination','') }}">
-        </div>
-        <div>
-            <label>Remarks</label>
-            <input name="remarks" value="{{ d.get('remarks','') }}">
-        </div>
-    </div>
-</div>
-
-<!-- ITEM DETAILS -->
-<div class="section">
-    <div class="section-title">Item Details</div>
-    <div class="grid-2">
-        <div>
-            <label>Particulars</label>
-            <textarea name="particulars" required>{{ d.get('particulars','') }}</textarea>
-        </div>
-        <div>
-            <label>HSN / SAC</label>
-            <input name="hsn_sac" required value="{{ d.get('hsn_sac','') }}">
-
-            <label style="margin-top:10px">GST %</label>
-            <input type="number" step="0.01" name="gst_rate" id="gstRate" required value="{{ d.get('gst_rate','') }}">
-
-            <label style="margin-top:10px">Amount</label>
-            <input type="number" step="0.01" name="amount" id="baseAmount" required value="{{ d.get('amount','') }}">
-
-            <label style="margin-top:10px">GST Amount</label>
-            <input type="number" step="0.01" name="gst_amount" id="gstAmount" readonly value="{{ d.get('gst_amount','') }}">
-
-            <label style="margin-top:10px">Total Amount</label>
-            <input type="number" step="0.01" name="total_amount" id="totalAmount" readonly value="{{ d.get('total_amount','') }}">
-        </div>
-    </div>
-</div>
-
-<div class="section">
-    <div class="section-title">Amount in Words</div>
-    <input name="amount_in_words" id="amountInWords" readonly value="{{ d.get('amount_in_words','') }}">
-</div>
-
-<!-- BANK -->
-<div class="section">
-    <div class="section-title">Bank Details</div>
-    <div class="grid-2">
-        <div>
-            <label>Account Holder Name</label>
-            <input name="account_holder_name" required value="{{ d.get('account_holder_name','') }}">
-        </div>
-        <div>
-            <label>Bank Name</label>
-            <input name="bank_name" required value="{{ d.get('bank_name','') }}">
-        </div>
-        <div>
-            <label>Account No.</label>
-            <input name="account_no" required value="{{ d.get('account_no','') }}">
-        </div>
-        <div>
-            <label>Branch & IFSC</label>
-            <input name="branch_ifsc" required value="{{ d.get('branch_ifsc','') }}">
-        </div>
-    </div>
-</div>
-
-<!-- SIGNATURE -->
-<div class="section">
-    <div class="section-title">Authorized Signature</div>
-
-    <label>Upload Signature Image</label>
-    <input type="file" name="signature_image" accept="image/*">
-
-    {% if d.get("signature_blob") %}
-        <img
-            src="data:image/png;base64,{{ d.signature_blob }}"
-            style="margin-top:10px;max-height:80px;display:block;"
-        >
-
-        <input type="hidden" name="signature_blob" value="{{ d.signature_blob }}">
-    {% endif %}
-
-</div>
-
-
-<div class="form-footer">
-    <button type="submit" class="btn-primary">Preview Invoice</button>
-</div>
-
-</form>
-
-<!-- MODAL -->
-<div id="invoiceModal" class="hidden">
-    <div class="modal-box">
-        <h3>Generated Invoices</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Invoice</th>
-                    <th>View</th>
-                    <th>Download</th>
-                </tr>
-            </thead>
-            <tbody id="invoiceTable"></tbody>
-        </table>
-        <div class="modal-actions">
-            <button class="btn-primary" onclick="closeModal()">Close</button>
-        </div>
-    </div>
-</div>
+<!-- CLIENT PICKER MODAL -->
 
 <div id="clientModal" class="hidden">
 <div class="modal-box">
 
-<h3>Pick Client</h3>
+<div class="client-header">
+<h3>Pick Client Template</h3>
+</div>
 
-<div id="clientList" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+<div class="client-sub">
+Select an existing client or add a new one
+</div>
 
-<hr>
+<div id="clientList" class="client-grid"></div>
 
-<h4>Add Client</h4>
+<div class="add-client">
+
+<input id="clientName" placeholder="Client Name">
 
 <input type="file" id="bgUpload">
+
 <textarea id="fromAddr" placeholder="From Address"></textarea>
+<textarea id="toAddr" placeholder="Buyer (To) Address"></textarea>
 
-<div style="text-align:right;margin-top:10px">
-<button onclick="saveClient()">Save</button>
-<button onclick="closeClient()">Close</button>
+</div>
+
+<div class="client-actions">
+<button class="close" onclick="closeClient()">Close</button>
+<button class="save" onclick="saveClient()">Save Client</button>
 </div>
 
 </div>
 </div>
-
 
 <script>
-const menuBtn=document.getElementById("menuBtn");
-const menuDropdown=document.getElementById("menuDropdown");
-const modal=document.getElementById("invoiceModal");
-
-menuBtn.onclick=()=>menuDropdown.classList.toggle("hidden");
-
-function openInvoices(){
-    fetch("/admin/invoice/generated")
-    .then(r=>r.json())
-    .then(data=>{
-        const t=document.getElementById("invoiceTable");
-        t.innerHTML="";
-        data.forEach(i=>{
-            t.innerHTML+=`
-            <tr>
-                <td>${i.invoice_no_last3}</td>
-                <td><a href="/admin/invoice/view/${i.id}" target="_blank">View</a></td>
-                <td><a href="/admin/invoice/download/${i.id}">Download</a></td>
-            </tr>`;
-        });
-        modal.classList.remove("hidden");
-        menuDropdown.classList.add("hidden");
-    });
-}
-
-function closeModal(){ modal.classList.add("hidden"); }
-
-const gstRate=document.getElementById("gstRate");
-const baseAmt=document.getElementById("baseAmount");
-const gstAmt=document.getElementById("gstAmount");
-const totalAmt=document.getElementById("totalAmount");
-const wordsOut=document.getElementById("amountInWords");
-
-function numberToWords(num){
-    const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
-             'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
-    const b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
-    function c(n){
-        if(n<20) return a[n];
-        if(n<100) return b[Math.floor(n/10)] + (n%10?' '+a[n%10]:'');
-        if(n<1000) return a[Math.floor(n/100)]+' Hundred'+(n%100?' '+c(n%100):'');
-        if(n<100000) return c(Math.floor(n/1000))+' Thousand'+(n%1000?' '+c(n%1000):'');
-        if(n<10000000) return c(Math.floor(n/100000))+' Lakh'+(n%100000?' '+c(n%100000):'');
-        return c(Math.floor(n/10000000))+' Crore';
-    }
-    return c(num);
-}
-
-function recalc(){
-    const rate=parseFloat(gstRate.value)||0;
-    const amt=parseFloat(baseAmt.value)||0;
-    const g=(amt*rate)/100;
-    const t=amt+g;
-    gstAmt.value=g.toFixed(2);
-    totalAmt.value=t.toFixed(2);
-    wordsOut.value=`INR ${numberToWords(Math.floor(t))} rupees only`;
-}
-
-gstRate.addEventListener("input",recalc);
-baseAmt.addEventListener("input",recalc);
-window.addEventListener("load",recalc);
 
 function openClients(){
  fetch("/admin/invoice/clients")
@@ -472,25 +173,24 @@ function openClients(){
    const box=document.getElementById("clientList");
    box.innerHTML="";
 
-   d.forEach((c,i)=>{
-    box.innerHTML+=`
-    <div style="text-align:center">
-        <img src="data:image/png;base64,${c.bg}"
-            style="width:140px;border:2px solid #eee;display:block;margin-bottom:6px">
+   d.forEach(c=>{
+   box.innerHTML+=`
+   <div class="client-card"
+        data-id="${c.id}"
+        data-bg="${c.bg}"
+        data-name="${c.name}"
+        data-addr="${c.from_address.replace(/"/g,"&quot;")}"
+        data-to="${(c.to_address || '').replace(/"/g,"&quot;")}"
+        onclick="pickClient(this)">
 
-        <button
-          data-bg="${c.bg}"
-          data-addr="${c.from_address.replace(/"/g,"&quot;")}"
-          onclick="pickClient(this)">
-          Pick
-        </button>
+        <img src="data:image/png;base64,${c.bg}">
+        <div class="client-title">${c.name}</div>
+
     </div>
     `;
-   });
-
+    });
 
    document.getElementById("clientModal").classList.remove("hidden");
-   menuDropdown.classList.add("hidden");
  });
 }
 
@@ -499,16 +199,24 @@ function closeClient(){
 }
 
 function pickClient(btn){
- const bg = btn.dataset.bg;
- const addr = btn.dataset.addr;
-
- document.getElementById("clientBg").value = "data:image/png;base64," + bg;
- document.querySelector("textarea[name=bill_from_address]").value = addr;
-
- closeClient();
+ const id = btn.dataset.id;
+ if(!id){
+   alert("Client ID missing");
+   return;
+ }
+ window.location.href = "/admin/invoice?client_id=" + id;
 }
 
 function saveClient(){
+
+ const clientName = document.getElementById("clientName");
+ const fromAddr = document.getElementById("fromAddr");
+ const bgUpload = document.getElementById("bgUpload");
+
+ if(!clientName.value.trim()){
+   alert("Client name required");
+   return;
+ }
 
  if(!bgUpload.files.length || !fromAddr.value.trim()){
    alert("Upload background + enter address");
@@ -516,20 +224,30 @@ function saveClient(){
  }
 
  const f=new FormData();
+ f.append("name", clientName.value.trim());
  f.append("bg_image",bgUpload.files[0]);
  f.append("from_address",fromAddr.value);
+ f.append("to_address", document.getElementById("toAddr").value);
 
  fetch("/admin/invoice/client",{method:"POST",body:f})
  .then(r=>r.json())
  .then(()=>{
+   clientName.value="";
    fromAddr.value="";
+   document.getElementById("toAddr").value="";
    bgUpload.value="";
    openClients();
  });
 }
 
+/* AUTO OPEN ON PAGE LOAD */
+window.addEventListener("DOMContentLoaded",()=>{
+ openClients();
+});
 
 </script>
+
+{% endif %}
 
 </body>
 </html>

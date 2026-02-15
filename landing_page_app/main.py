@@ -1,4 +1,7 @@
 # landing_page_app/main.py
+import asyncio
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from fastapi import FastAPI, Request
 from landing_page_app.routers.router import include_routers
 from landing_page_app import database

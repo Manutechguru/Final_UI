@@ -4,14 +4,14 @@ from fastapi.responses import JSONResponse
 from fastapi import UploadFile, File
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 import uuid
 import os
 import re
 import base64
-from playwright.async_api import async_playwright
-
+import subprocess
+import sys
 
 from landing_page_app.database import get_db
 from landing_page_app.core.jinja import templates
@@ -41,6 +41,48 @@ def require_admin(db: Session, user_email: str | None):
         return None
     return user
 
+def current_fin_year():
+    today = date.today()
+    y = today.year
+
+    if today.month < 4:
+        start = y - 1
+        end = y
+    else:
+        start = y
+        end = y + 1
+
+    return f"{str(start)[-2:]}-{str(end)[-2:]}"
+
+
+def get_next_invoice_no(db: Session, client_name: str):
+
+    # Orca-RIT → Orca
+    company = client_name.split("-")[0]
+
+    fy = current_fin_year()
+
+    invoices = (
+        db.query(Invoice.invoice_no)
+        .filter(Invoice.invoice_no.like(f"{company}-%/{fy}/%"))
+        .all()
+    )
+
+    if not invoices:
+        return f"{client_name}/{fy}/001"
+
+    nums = []
+
+    for inv in invoices:
+        try:
+            nums.append(int(inv[0].split("/")[-1]))
+        except:
+            pass
+
+    next_no = max(nums) + 1
+
+    return f"{client_name}/{fy}/{str(next_no).zfill(3)}"
+
 # ==================================================
 # STEP 1: FORM (GET)
 # ==================================================
@@ -49,13 +91,40 @@ def invoice_form(
     request: Request,
     db: Session = Depends(get_db),
     user_email: str | None = Cookie(None),
+    client_id: int | None = None,
 ):
     if not require_admin(db, user_email):
         return RedirectResponse("/login", status_code=302)
 
+    # defaults
+    client_key = None
+    data = None
+    invoice_no = ""
+
+    # only fetch client IF client_id exists
+    if client_id:
+        client = db.query(InvoiceClient).filter(InvoiceClient.id == client_id).first()
+
+        if client:
+            client_key = client.name.replace(" ", "-")
+            invoice_no = get_next_invoice_no(db, client_key)
+
+            data = {
+                "invoice_no": invoice_no,
+                "bill_from_address": client.from_address,
+                "bill_to_address": client.to_address or "",
+                "client_bg": "data:image/png;base64," + base64.b64encode(client.bg_blob).decode(),
+                "layout_key": client.name,
+            }
+
     return templates.TemplateResponse(
         "invoice_form.html",
-        {"request": request, "data": None},
+        {
+            "request": request,
+            "client_key": client_key,
+            "invoice_no": invoice_no,
+            "data": data,
+        },
     )
 
 # ==================================================
@@ -72,13 +141,15 @@ async def invoice_form_post(
 
     form = await request.form()
     data = dict(form)
-
+    
+    client_key = data.get("layout_key")
+    
     return templates.TemplateResponse(
         "invoice_form.html",
         {
             "request": request,
+            "client_key": client_key,
             "data": data,
-            "d": data,
         },
     )
 
@@ -100,17 +171,21 @@ async def invoice_preview(
     payment_terms: str = Form(None),
     reference_no_date: str = Form(None),
     other_references: str = Form(None),
+    currency: str = Form(None),
 
     buyers_order_no: str = Form(None),
     buyers_order_date: str = Form(None),
+    service_duration: str = Form(None),
 
     dispatched_through: str = Form(None),
     destination: str = Form(None),
+    remarks: str = Form(None),
 
     leave_info: str = Form(None),
 
-    particulars: str = Form(...),
-    hsn_sac: str = Form(...),
+    particulars: str | None = Form(None),
+    hsn_sac: str | None = Form(None),
+
     gst_rate: float = Form(...),
     amount: float = Form(...),
 
@@ -121,6 +196,14 @@ async def invoice_preview(
     bank_name: str = Form(...),
     account_no: str = Form(...),
     branch_ifsc: str = Form(...),
+    swift_code: str = Form(None),
+    
+    services: str = Form(None),
+    consultant_name: str = Form(None),
+    joining_date: str = Form(None),
+    annual_salary: str = Form(None),
+    referral_fee: str = Form(None),
+
     signature_image: UploadFile = File(None),
 ):
     # ---------------- AUTH ----------------
@@ -130,6 +213,9 @@ async def invoice_preview(
     # ---------------- FORM (READ ONCE) ----------------
     form = await request.form()
     client_bg = form.get("client_bg")
+    layout_key = db.query(InvoiceClient)\
+        .filter(InvoiceClient.from_address == bill_from_address)\
+        .first().name
     existing_sig = form.get("signature_blob")
 
     signature_blob = None
@@ -144,12 +230,34 @@ async def invoice_preview(
 
     bg_image = client_bg or ""
 
-    # ---------------- GST ----------------
-    gst_amount = round((amount * gst_rate) / 100, 2)
+    # ================= AUTO LPA → COMMISSION → GST =================
+    detected_lpa = None
+    commission_percent = None
+
+    particulars = particulars or ""
+    lpa_match = re.search(r'(\d+(\.\d+)?)\s*LPA', particulars, re.IGNORECASE)
+
+    if lpa_match:
+        lpa = float(lpa_match.group(1))
+        detected_lpa = lpa
+
+        # Recruitment fee = 1 month salary
+        commission_percent = round(100 / 12, 2)   # 8.33%
+
+        service_amount = lpa * 100000 * (commission_percent / 100)
+
+        gst_rate = 18.0
+        gst_amount = round(service_amount * gst_rate / 100, 2)
+
+        amount = round(service_amount, 2)
+        total_amount = round(amount + gst_amount, 2)
+
+    else:
+        gst_amount = round((amount * gst_rate) / 100, 2)
 
     # ---------------- REMARKS (STRICT RULE) ----------------
     # Remarks MUST always be Buyer's Order No.
-    remarks = buyers_order_no or ""
+    remarks = remarks or ""
 
     # ---------------- AUTO INVOICE LINE ----------------
     """
@@ -180,25 +288,35 @@ async def invoice_preview(
         start_date = datetime.strptime(start_part, "%d %b,%Y")
 
         month_tag = start_date.strftime("%b'%y")
-        auto_invoice_line = f"{month_tag} Invoice - {person_name}"
+        auto_invoice_line = ""
 
     except Exception:
         auto_invoice_line = ""
+        
+    # ---------- DATE FORMATTER ----------
+    def format_date(val):
+        try:
+            return datetime.strptime(val, "%Y-%m-%d").strftime("%d-%b-%y")
+        except Exception:
+            return val or ""
+
 
     # ---------------- DATA ----------------
     data = {
         "bill_from_address": bill_from_address,
         "bill_to_address": bill_to_address,
         "invoice_no": invoice_no,
-        "invoice_date": invoice_date,
+        "invoice_date": format_date(invoice_date),
 
         "delivery_note": delivery_note,
         "payment_terms": payment_terms,
         "reference_no_date": reference_no_date,
         "other_references": other_references,
+        "currency": currency,
 
         "buyers_order_no": buyers_order_no,
-        "buyers_order_date": buyers_order_date,
+        "buyers_order_date": format_date(buyers_order_date),
+        "service_duration": service_duration,
 
         "dispatched_through": dispatched_through,
         "destination": destination,
@@ -210,6 +328,8 @@ async def invoice_preview(
 
         "particulars": particulars,
         "hsn_sac": hsn_sac,
+        "detected_lpa": detected_lpa,
+        "commission_percent": commission_percent,
         "gst_rate": gst_rate,
         "amount": amount,
         "gst_amount": gst_amount,
@@ -220,6 +340,13 @@ async def invoice_preview(
         "bank_name": bank_name,
         "account_no": account_no,
         "branch_ifsc": branch_ifsc,
+        "swift_code": swift_code,
+        "services": services,
+        "consultant_name": consultant_name,
+        "joining_date": joining_date,
+        "annual_salary": annual_salary,
+        "referral_fee": referral_fee,
+
         "signature_blob": signature_blob,
     }
     
@@ -229,6 +356,7 @@ async def invoice_preview(
             "request": request,
             "data": data,
             "bg_image": bg_image,
+            "layout_key": layout_key,
         },
     )
 
@@ -248,15 +376,23 @@ async def invoice_export(
 
     form = await request.form()
     data = dict(form)
+    layout_key = data.get("layout_key")
     
     sig_base64 = data.get("signature_blob")
 
     sig_bytes = None
     sig_template = None
+    sig_path = None
+
 
     if sig_base64:
-        sig_bytes = base64.b64decode(sig_base64)   # for DB
-        sig_template = sig_base64                  # for HTML
+        sig_bytes = base64.b64decode(sig_base64)
+
+        # write temp image for PDF engine
+        tmp_sig = Path("tmp_signature.png")
+        tmp_sig.write_bytes(sig_bytes)
+
+        sig_path = str(tmp_sig.resolve())
 
 
     # ---------- VALIDATION ----------
@@ -298,8 +434,9 @@ async def invoice_export(
     # ---------- RENDER HTML ----------
     html = templates.get_template("invoice_preview.html").render(
         request=request,
-        data={**data, "signature_blob": sig_template},
+        data={**data, "signature_path": sig_path},
         bg_image=bg_image,
+        layout_key=layout_key, 
     )
     
     debug_html = Path("debug_invoice.html")
@@ -310,34 +447,24 @@ async def invoice_export(
     out_dir.mkdir(exist_ok=True)
 
     pdf_path = out_dir / f"{data['invoice_no']}-{uuid.uuid4().hex}.pdf"
+    
+    subprocess.run(
+        [
+            sys.executable,
+            "landing_page_app/pdf_worker.py",
+            str(debug_html),
+            str(pdf_path),
+        ],
+        check=True,
+    )
 
-    # ---------- PLAYWRIGHT (ASYNC) ----------
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-
-        await page.goto(debug_html.resolve().as_uri(), wait_until="networkidle")
-
-        await page.pdf(
-            path=str(pdf_path),
-            format="A4",
-            print_background=True,
-            margin={
-                "top": "0mm",
-                "bottom": "0mm",
-                "left": "0mm",
-                "right": "0mm",
-            },
-        )
-
-        await browser.close()
 
     # ---------- SAVE TO DB ----------
     invoice = Invoice(
         bill_from_address=data["bill_from_address"],
         bill_to_address=data["bill_to_address"],
         invoice_no=data["invoice_no"],
-        invoice_date=datetime.strptime(data["invoice_date"], "%Y-%m-%d").date(),
+        invoice_date=datetime.strptime(data["invoice_date"], "%d-%b-%y").date(),
         total_amount=float(data["total_amount"]),
         amount_in_words=data["amount_in_words"],
         account_holder_name=data["account_holder_name"],
@@ -371,6 +498,7 @@ async def invoice_export(
 
 @router.get("/generated")
 def list_generated_invoices(
+    company: str,
     db: Session = Depends(get_db),
     user_email: str | None = Cookie(None),
 ):
@@ -380,18 +508,18 @@ def list_generated_invoices(
 
     invoices = (
         db.query(Invoice)
+        .filter(Invoice.invoice_no.like(f"{company}-%/%"))
         .order_by(desc(Invoice.id))
         .all()
     )
 
-    result = []
-    for inv in invoices:
-        result.append({
+    return [
+        {
             "id": inv.id,
-            "invoice_no_last3": inv.invoice_no[-3:],
-        })
-
-    return result
+            "invoice_no": inv.invoice_no,
+        }
+        for inv in invoices
+    ]
 
 @router.get("/view/{invoice_id}")
 def view_invoice_pdf(
@@ -429,13 +557,30 @@ def download_invoice_pdf(
     if not invoice or not invoice.file:
         return Response("PDF not found", status_code=404)
 
-    filename = f"{invoice.invoice_no}.pdf"
+    # ================= FILENAME LOGIC =================
+
+    invoice_no = invoice.invoice_no              # NQLP/25-26/012
+    invoice_date = invoice.invoice_date         # date object
+
+    # last 3 digits
+    last3 = invoice_no.split("/")[-1]           # 012
+
+    # remove /012 and slashes
+    prefix = invoice_no.rsplit("/", 1)[0].replace("/", "")  
+    # NQLP25-26
+
+    # Dec25
+    mon_year = invoice_date.strftime("%b%y")
+
+    filename = f"{last3}-{mon_year}-Invoice-{prefix}.pdf"
+
+    # =================================================
 
     return Response(
         content=invoice.file.pdf_blob,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}"
+            "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
 
@@ -444,8 +589,10 @@ async def create_client(
     request: Request,
     db: Session = Depends(get_db),
     user_email: str | None = Cookie(None),
+    name: str = Form(...), 
     bg_image: UploadFile = File(...),
-    from_address: str = Form(...)
+    from_address: str = Form(...),
+    to_address: str = Form(None) 
 ):
     admin = require_admin(db, user_email)
     if not admin:
@@ -461,7 +608,9 @@ async def create_client(
         return JSONResponse({"error": "duplicate"}, status_code=400)
 
     client = InvoiceClient(
+        name=name.strip(),
         from_address=from_address,
+        to_address=to_address,
         bg_blob=raw
     )
 
@@ -484,7 +633,9 @@ def list_clients(
     return [
         {
             "id": c.id,
+            "name": c.name,
             "from_address": c.from_address,
+            "to_address": c.to_address,
             "bg": base64.b64encode(c.bg_blob).decode()
         }
         for c in clients
@@ -502,3 +653,19 @@ def serve_signature(sig_id: int, db: Session = Depends(get_db)):
         content=sig.pdf_blob,
         media_type="image/png"
     )
+
+@router.get("/next-number/{client_name}")
+def get_next_number_api(
+    client_name: str,
+    db: Session = Depends(get_db),
+    user_email: str | None = Cookie(None),
+):
+    admin = require_admin(db, user_email)
+    if not admin:
+        return JSONResponse(status_code=401)
+
+    client_key = client_name.replace(" ", "-")
+
+    invoice_no = get_next_invoice_no(db, client_key)
+
+    return {"invoice_no": invoice_no}

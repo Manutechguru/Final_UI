@@ -90,7 +90,8 @@ class InvoiceClient(Base):
     __tablename__ = "invoice_clients"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(200))
+    name = Column(String(200), nullable=False, unique=True)
     from_address = Column(Text, nullable=False)
+    to_address = Column(Text, nullable=True)
     bg_blob = Column(LargeBinary, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

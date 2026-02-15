@@ -21,6 +21,7 @@ from .invoice import (
     InvoiceFile,
     InvoiceClient,
 )
+from .payslip import Payslip, PayslipFile
 
 __all__ = [
     "Client",
@@ -40,4 +41,6 @@ __all__ = [
     "Invoice",
     "InvoiceItem",
     "InvoiceFile",
+    "Payslip",
+    "PayslipFile",
 ]
