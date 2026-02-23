@@ -3,28 +3,26 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+# Load .env for local development
 load_dotenv()
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://postgres:StrongPassword123@127.0.0.1:55432/Teetli"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-safe_url = DATABASE_URL.replace(
-    DATABASE_URL.split("@")[0], "postgresql+psycopg2://****:****"
-)
-print("🔗 DB URL seen by app:", safe_url)
+# HARD FAIL if missing (no silent fallback)
+if not DATABASE_URL:
+    raise RuntimeError("❌ DATABASE_URL not set in environment")
 
+# Create engine
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    connect_args={"connect_timeout": 5}
+    connect_args={"connect_timeout": 5},
 )
 
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine,
 )
 
 Base = declarative_base()
